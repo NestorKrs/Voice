@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.8-alpha - 2026-11-05
+- Play path visibility in status bar.
+
+## 0.1.7-alpha - 2026-11-05
+- Visible status bar and swallowed-error surfacing.
+
 ## 0.1.6-alpha - 2026-11-05
 - wiring and first live read of 3 chunks with HTML audio.
 

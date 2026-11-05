@@ -32,6 +32,7 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
   async function runLoop() {
     if (running) return;
     running = true;
+    let currentIdx = null;
     try {
       while (!paused && state.state !== 'cancelled') {
         // check window
@@ -63,6 +64,7 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
           continue;
         }
         // miss
+        currentIdx = idx;
         state.chunks[idx].status = 'generating';
         state.chunks[idx].error = null;
         emit();
@@ -117,6 +119,14 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
         emit();
         break;
       }
+    } catch (e) {
+      const msg = (e && e.message ? e.message : String(e)).slice(0, 300);
+      if (currentIdx !== null && state.chunks[currentIdx] && state.chunks[currentIdx].status === 'generating') {
+        state.chunks[currentIdx].status = 'failed';
+        state.chunks[currentIdx].error = { kind: 'internal', message: msg };
+      }
+      state.state = 'error';
+      emit();
     } finally {
       running = false;
     }
@@ -134,10 +144,16 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
           if (await cache.has(state.chunks[i].key)) {
             state.chunks[i].status = 'ready';
           }
-        } catch (e) {}
+        } catch (e) {
+          state.state = 'error';
+          state.chunks[i].status = 'failed';
+          state.chunks[i].error = { kind: 'cache', message: (e && e.message ? e.message : String(e)).slice(0,300) };
+          emit();
+          return;
+        }
       }
       emit();
-      runLoop();
+      await runLoop();
     },
     setPlayhead(index) {
       state.playhead = index;

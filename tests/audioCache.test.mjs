@@ -58,6 +58,13 @@ test('clear empties', async () => {
   assert.equal(await cache.get('k'), null);
 });
 
+test('get rejection propagates', async () => {
+  const store = { get: async () => { throw new Error('IndexedDB unavailable: test'); }, put: async () => {}, has: async () => false, clear: async () => {}, totalBytes: async () => 0 };
+  const cache = createAudioCache(store);
+  await assert.rejects(() => cache.get('k'), /IndexedDB unavailable: test/);
+  await assert.rejects(() => cache.has('k'), /IndexedDB unavailable: test/);
+});
+
 test('totalBytes adds sizes', async () => {
   const cache = createAudioCache(createMemoryStore());
   await cache.put('a', new Uint8Array([1, 2]).buffer);

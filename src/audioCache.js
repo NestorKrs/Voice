@@ -104,13 +104,9 @@ export function createIdbStore(dbName = 'voice-audio') {
 export function createAudioCache(store) {
   return {
     async get(key) {
-      try {
-        const v = await store.get(key);
-        if (!v) return null;
-        return v instanceof ArrayBuffer ? v : (v.bytes || null);
-      } catch {
-        return null;
-      }
+      const v = await store.get(key);
+      if (!v) return null;
+      return v instanceof ArrayBuffer ? v : (v.bytes || null);
     },
     async put(key, bytes) {
       if (!bytes || bytes.byteLength === 0) throw new Error('Empty audio');

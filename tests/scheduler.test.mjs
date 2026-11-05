@@ -177,7 +177,7 @@ test('9 cancel', async () => {
   const counter = { add() {}, resetAt() { return 0; } };
   const makeKey = async ({ text }) => 'k:' + text;
   const s = createScheduler({ chunks, voice: 'v', lookahead: 0, cache, speak, counter, makeKey });
-  await s.start();
+  s.start();
   await wait(10);
   s.cancel();
   await wait(10);
@@ -228,6 +228,32 @@ test('12 no sentinel in state or onChange', async () => {
   for (const p of payloads) assert.ok(!JSON.stringify(p).includes(SENT));
 });
 
+test('cache.has reject -> error', async () => {
+  const chunks = ['a'];
+  const cache = makeCache();
+  cache.has = async () => { throw new Error('IndexedDB unavailable: test'); };
+  const speak = async () => ({ ok: true, bytes: new ArrayBuffer(1), attempts: 1 });
+  const counter = { add() {}, resetAt() { return 0; } };
+  const makeKey = async ({ text }) => 'k:' + text;
+  const s = createScheduler({ chunks, voice: 'v', lookahead: 0, cache, speak, counter, makeKey });
+  await s.start().catch(() => {});
+  await wait();
+  assert.equal(s.getState().state, 'error');
+  assert.ok(s.getState().chunks[0].error.message.includes('IndexedDB unavailable'));
+});
+
+test('speak throws -> error not stuck generating', async () => {
+  const chunks = ['a'];
+  const cache = makeCache();
+  const speak = async () => { throw new Error('boom'); };
+  const counter = { add() {}, resetAt() { return 0; } };
+  const makeKey = async ({ text }) => 'k:' + text;
+  const s = createScheduler({ chunks, voice: 'v', lookahead: 0, cache, speak, counter, makeKey });
+  await s.start().catch(() => {});
+  await wait();
+  assert.equal(s.getState().state, 'error');
+  assert.notEqual(s.getState().chunks[0].status, 'generating');
+});
 test('13 empty chunks done', async () => {
   const cache = makeCache();
   const speak = async () => ({ ok: true, bytes: new ArrayBuffer(1), attempts: 1 });

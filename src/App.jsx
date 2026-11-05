@@ -24,23 +24,39 @@ export default function App() {
   const [notice, setNotice] = useState('');
   const [cacheSize, setCacheSize] = useState(0);
   const [audioUrl, setAudioUrl] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [showEvents, setShowEvents] = useState(false);
   const audioRef = useRef(null);
   const schedulerRef = useRef(null);
   const timer = useRef(null);
 
+  const logEvent = (msg) => {
+    const line = `${new Date().toLocaleTimeString()} ${msg}`;
+    setEvents((prev) => [line, ...prev].slice(0, 20));
+  };
+
+  useEffect(() => {
+    const onError = (e) => logEvent(e && e.message ? e.message : 'error');
+    const onRej = (e) => logEvent(e && e.reason && e.reason.message ? e.reason.message : String(e && e.reason));
+    window.addEventListener('error', onError);
+    window.addEventListener('unhandledrejection', onRej);
+    return () => {
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onRej);
+    };
+  }, []);
+
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
-      if (storage) {
-        saveText(storage, text);
-      }
+      if (storage) saveText(storage, text);
     }, 300);
     return () => { if (timer.current) clearTimeout(timer.current); };
   }, [text]);
 
   useEffect(() => {
     if (drawerOpen && services) {
-      services.cache.totalBytes().then((n) => setCacheSize(n)).catch(() => setCacheSize(0));
+      services.cache.totalBytes().then((n) => setCacheSize(n)).catch((e) => { const m = e && e.message ? e.message : 'error'; setJobError(m); logEvent(m); });
     }
   }, [drawerOpen]);
 
@@ -56,11 +72,13 @@ export default function App() {
     : '';
 
   const handleStart = async () => {
+    logEvent('Start Reading pressed');
     if (!services) return;
     if (schedulerRef.current) {
       try { schedulerRef.current.cancel(); } catch (e) {}
     }
     const chunks = chunkText(text, settings.chunkSize);
+    logEvent(`Split into ${chunks.length} chunks`);
     const sched = createScheduler({
       chunks,
       voice: settings.voice,
@@ -72,6 +90,12 @@ export default function App() {
       onChange: (p) => {
         setSchedState(p);
         setUsedToday(services.counter.count());
+        if (p.state === 'waiting_reset') logEvent(`waiting for daily reset ${new Date(p.resetAt).toLocaleString()}`);
+        if (p.state === 'error') {
+          const m = p.chunks.map((c) => c.error && c.error.message).find(Boolean) || 'error';
+          logEvent(`error ${m}`);
+        }
+        if (p.state === 'done') logEvent('done');
       },
     });
     schedulerRef.current = sched;
@@ -79,66 +103,142 @@ export default function App() {
     try {
       await sched.start();
     } catch (e) {
-      setJobError(`Audio cache unavailable: ${e && e.message ? e.message : 'error'}`);
+      const m = e && e.message ? e.message : 'error';
+      setJobError(m);
+      logEvent(m);
     }
   };
 
   const handleResume = () => {
-    if (schedulerRef.current) schedulerRef.current.resume();
+    logEvent('Resume pressed');
+    try {
+      if (schedulerRef.current) schedulerRef.current.resume();
+    } catch (e) {
+      const m = e && e.message ? e.message : 'error';
+      setJobError(m);
+      logEvent(m);
+    }
   };
   const handleCancel = () => {
-    if (schedulerRef.current) schedulerRef.current.cancel();
+    logEvent('Cancel pressed');
+    try {
+      if (schedulerRef.current) schedulerRef.current.cancel();
+    } catch (e) {
+      const m = e && e.message ? e.message : 'error';
+      setJobError(m);
+      logEvent(m);
+    }
   };
   const handleRetry = (i) => {
-    if (schedulerRef.current) schedulerRef.current.retryChunk(i);
+    logEvent(`Retry chunk ${i + 1} pressed`);
+    try {
+      if (schedulerRef.current) schedulerRef.current.retryChunk(i);
+    } catch (e) {
+      const m = e && e.message ? e.message : 'error';
+      setJobError(m);
+      logEvent(m);
+    }
   };
 
   const playChunk = async (index) => {
+    logEvent(`Play chunk ${index + 1} pressed`);
     if (!services || !schedulerRef.current) return;
-    const st = schedulerRef.current.getState();
-    const key = await services.makeKey({ text: chunkText(text, settings.chunkSize)[index], voice: settings.voice });
-    const bytes = await services.cache.get(key);
-    if (!bytes) return;
-    const blob = new Blob([bytes], { type: 'audio/mpeg' });
-    const url = URL.createObjectURL(blob);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      if (audioUrl) URL.revokeObjectURL(audioUrl);
-    }
-    const audio = new Audio(url);
-    audioRef.current = audio;
-    setAudioUrl(url);
-    audio.onended = () => { URL.revokeObjectURL(url); setAudioUrl(null); };
     try {
-      await audio.play();
+      const chunkList = chunkText(text, settings.chunkSize);
+      const key = await services.makeKey({ text: chunkList[index], voice: settings.voice });
+      logEvent(`Chunk ${index + 1} requested`);
+      const t0 = Date.now();
+      const bytes = await services.cache.get(key);
+      if (!bytes) {
+        logEvent(`Play chunk ${index + 1}: no audio in cache for this chunk`);
+        setNotice('Play chunk ' + (index + 1) + ': no audio in cache for this chunk');
+        return;
+      }
+      logEvent(`Play chunk ${index + 1}: ${bytes.byteLength} bytes from cache`);
+      const blob = new Blob([bytes], { type: 'audio/mpeg' });
+      logEvent(`Play chunk ${index + 1}: blob ${blob.size} bytes, type ${blob.type}`);
+      const url = URL.createObjectURL(blob);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        if (audioUrl) URL.revokeObjectURL(audioUrl);
+      }
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      setAudioUrl(url);
+      audio.onloadedmetadata = () => logEvent(`duration ${audio.duration} s`);
+      audio.oncanplay = () => logEvent('canplay');
+      audio.onplaying = () => logEvent('playing');
+      audio.onended = () => { URL.revokeObjectURL(url); setAudioUrl(null); logEvent('ended'); };
+      audio.onerror = () => {
+        const code = audio.error ? audio.error.code : 0;
+        const msg = audio.error ? audio.error.message : 'error';
+        logEvent(`error ${code} ${msg}`);
+        setNotice(`Playback failed (code ${code})`);
+      };
+      logEvent(`audio volume ${audio.volume}, muted ${audio.muted}`);
+      try {
+        await audio.play();
+        logEvent('play() resolved');
+      } catch (e) {
+        const m = e && e.name ? `${e.name}: ${e.message}` : 'error';
+        logEvent(`play() rejected: ${m}`);
+        setNotice('Click Play again to start audio.');
+      }
+      setTimeout(() => {
+        logEvent(`1 s later: paused=${audio.paused}, currentTime=${audio.currentTime.toFixed(2)}, readyState=${audio.readyState}`);
+      }, 1000);
     } catch (e) {
-      setNotice('Click Play again to start audio.');
+      const m = e && e.message ? e.message : 'error';
+      setJobError(m);
+      logEvent(m);
     }
   };
 
   const handleSaveKey = () => {
-    if (!storage) return;
-    saveKey(storage, keyInput);
-    setKeySet(hasKey(storage));
-    setKeyInput('');
-    setNotice('Key saved.');
+    logEvent('Save key pressed');
+    try {
+      if (!storage) return;
+      saveKey(storage, keyInput);
+      setKeySet(hasKey(storage));
+      setKeyInput('');
+      setNotice('Key saved.');
+    } catch (e) {
+      const m = e && e.message ? e.message : 'error';
+      setJobError(m);
+      logEvent(m);
+    }
   };
   const handleClearKey = () => {
-    if (!storage) return;
-    clearKey(storage);
-    setKeySet(false);
-    setNotice('Key cleared.');
+    logEvent('Clear key pressed');
+    try {
+      if (!storage) return;
+      clearKey(storage);
+      setKeySet(false);
+      setNotice('Key cleared.');
+    } catch (e) {
+      const m = e && e.message ? e.message : 'error';
+      setJobError(m);
+      logEvent(m);
+    }
   };
   const handleSaveSettings = () => {
-    if (!storage) return;
-    const next = { voice: voiceInput, chunkSize: Number(chunkInput), lookahead: Number(lookInput) };
-    saveSettings(storage, next);
-    const loaded = loadSettings(storage);
-    setSettings(loaded);
-    setUsedToday(services ? services.counter.count() : 0);
-    setNotice('Settings saved.');
+    logEvent('Save settings pressed');
+    try {
+      if (!storage) return;
+      const next = { voice: voiceInput, chunkSize: Number(chunkInput), lookahead: Number(lookInput) };
+      saveSettings(storage, next);
+      const loaded = loadSettings(storage);
+      setSettings(loaded);
+      setUsedToday(services ? services.counter.count() : 0);
+      setNotice('Settings saved.');
+    } catch (e) {
+      const m = e && e.message ? e.message : 'error';
+      setJobError(m);
+      logEvent(m);
+    }
   };
   const handleClearCache = async () => {
+    logEvent('Clear audio cache pressed');
     if (!services) return;
     try {
       await services.cache.clear();
@@ -146,7 +246,21 @@ export default function App() {
       setCacheSize(n);
       setNotice('Cache cleared.');
     } catch (e) {
-      setNotice(`Cache error: ${e && e.message ? e.message : 'error'}`);
+      const m = e && e.message ? e.message : 'error';
+      setJobError(m);
+      logEvent(m);
+    }
+  };
+
+  const handleClearText = () => {
+    logEvent('Clear pressed');
+    try {
+      setText('');
+      if (storage) saveText(storage, '');
+    } catch (e) {
+      const m = e && e.message ? e.message : 'error';
+      setJobError(m);
+      logEvent(m);
     }
   };
 
@@ -181,7 +295,7 @@ export default function App() {
             <span>{stats.fitsToday ? 'Fits today' : `Needs ${stats.daysNeeded} days`}</span>
           </div>
           <div className="row">
-            <button onClick={() => { setText(''); if (storage) saveText(storage, ''); }}>Clear</button>
+            <button onClick={handleClearText}>Clear</button>
             <button onClick={handleStart} disabled={!canStart}>Start Reading</button>
             <button disabled title="File loading comes later.">Load file</button>
           </div>
@@ -240,6 +354,14 @@ export default function App() {
           <div>Audio cache: {(cacheSize / 1024 / 1024).toFixed(2)} MB</div>
           <button onClick={handleClearCache}>Clear audio cache</button>
         </aside>
+      ) : null}
+      <div className="statusbar" onClick={() => setShowEvents((v) => !v)}>
+        {events[0] || 'ready'}
+      </div>
+      {showEvents ? (
+        <div className="eventlist">
+          {events.map((e, i) => (<div key={i}>{e}</div>))}
+        </div>
       ) : null}
     </div>
   );
