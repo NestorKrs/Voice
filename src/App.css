@@ -1,5 +1,22 @@
 body { margin: 0; background: #15171a; color: #e6e8eb; font-family: system-ui, sans-serif; }
+.app { display: flex; flex-direction: column; height: 100vh; }
 .topbar { display: flex; gap: 12px; align-items: baseline; padding: 10px 16px; background: #1d2024; border-bottom: 1px solid #2c3036; }
 .title { font-weight: 600; }
 .version { color: #8b929a; font-size: 12px; }
-.placeholder { padding: 24px; color: #8b929a; }
+.requests { color: #8b929a; font-size: 12px; margin-left: auto; }
+.settings-btn { margin-left: 8px; }
+.columns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; flex: 1; min-height: 0; }
+.panel { background: #1d2024; border: 1px solid #2c3036; border-radius: 6px; padding: 12px; display: flex; flex-direction: column; min-height: 0; }
+.text-panel textarea { flex: 1; min-height: 0; background: #15171a; color: #e6e8eb; border: 1px solid #2c3036; padding: 8px; resize: none; }
+.stats { display: flex; gap: 12px; flex-wrap: wrap; color: #8b929a; font-size: 12px; margin: 8px 0; }
+.row { display: flex; gap: 8px; margin: 8px 0; }
+button { background: #2c3036; color: #e6e8eb; border: 1px solid #3a3f46; padding: 6px 10px; border-radius: 4px; cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.reason { color: #8b929a; font-size: 12px; margin: 4px 0; }
+.privacy { color: #8b929a; font-size: 11px; margin-top: 8px; }
+.notice { color: #8b929a; font-size: 12px; margin-top: 4px; }
+.job-panel .state { font-weight: 600; }
+.job-panel .state-text { color: #8b929a; }
+.drawer { position: fixed; top: 0; right: 0; width: 360px; height: 100vh; background: #1d2024; border-left: 1px solid #2c3036; padding: 16px; overflow: auto; z-index: 10; }
+.drawer label { display: block; margin-top: 8px; font-size: 12px; color: #8b929a; }
+.drawer input { width: 100%; box-sizing: border-box; background: #15171a; color: #e6e8eb; border: 1px solid #2c3036; padding: 6px; margin-top: 4px; }

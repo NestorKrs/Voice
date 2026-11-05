@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.4-alpha - 2026-11-05
+- App shell: dark layout, text panel with counts, settings drawer.
+
 ## 0.1.3-alpha - 2026-11-05
 - audioCache and requestCounter with tests.
 
