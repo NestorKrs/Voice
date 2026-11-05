@@ -47,49 +47,43 @@ export function createIdbStore(dbName = 'voice-audio') {
       } catch { throw new Error('IndexedDB unavailable'); }
     },
     async put(key, bytes) {
-      try {
-        const db = await openDb();
-        await new Promise((resolve, reject) => {
-          const tx = db.transaction('chunks', 'readwrite');
-          const os = tx.objectStore('chunks');
-          const r = os.put({ bytes, size: bytes.byteLength, savedAt: Date.now() }, key);
-          r.onsuccess = () => {};
-          r.onerror = () => reject(new Error('IndexedDB write failed: ' + (r.error ? r.error.name + ': ' + r.error.message : 'request error')));
-          tx.oncomplete = () => resolve();
-          tx.onerror = () => reject(new Error('IndexedDB write failed: ' + (tx.error ? tx.error.name + ': ' + tx.error.message : 'transaction error')));
-          tx.onabort = () => reject(new Error('IndexedDB write failed: transaction aborted'));
-        });
-      } catch (e) { throw e; }
+      const db = await openDb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction('chunks', 'readwrite');
+        const os = tx.objectStore('chunks');
+        const r = os.put({ bytes, size: bytes.byteLength, savedAt: Date.now() }, key);
+        r.onsuccess = () => {};
+        r.onerror = () => reject(new Error('IndexedDB write failed: ' + (r.error ? r.error.name + ': ' + r.error.message : 'request error')));
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(new Error('IndexedDB write failed: ' + (tx.error ? tx.error.name + ': ' + tx.error.message : 'transaction error')));
+        tx.onabort = () => reject(new Error('IndexedDB write failed: transaction aborted'));
+      });
     },
     async delete(key) {
-      try {
-        const db = await openDb();
-        await new Promise((resolve, reject) => {
-          const tx = db.transaction('chunks', 'readwrite');
-          const os = tx.objectStore('chunks');
-          const r = os.delete(key);
-          r.onsuccess = () => {};
-          r.onerror = () => reject(new Error('IndexedDB write failed: ' + (r.error ? r.error.name + ': ' + r.error.message : 'request error')));
-          tx.oncomplete = () => resolve();
-          tx.onerror = () => reject(new Error('IndexedDB write failed: ' + (tx.error ? tx.error.name + ': ' + tx.error.message : 'transaction error')));
-          tx.onabort = () => reject(new Error('IndexedDB write failed: transaction aborted'));
-        });
-      } catch (e) { throw e; }
+      const db = await openDb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction('chunks', 'readwrite');
+        const os = tx.objectStore('chunks');
+        const r = os.delete(key);
+        r.onsuccess = () => {};
+        r.onerror = () => reject(new Error('IndexedDB write failed: ' + (r.error ? r.error.name + ': ' + r.error.message : 'request error')));
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(new Error('IndexedDB write failed: ' + (tx.error ? tx.error.name + ': ' + tx.error.message : 'transaction error')));
+        tx.onabort = () => reject(new Error('IndexedDB write failed: transaction aborted'));
+      });
     },
     async clear() {
-      try {
-        const db = await openDb();
-        await new Promise((resolve, reject) => {
-          const tx = db.transaction('chunks', 'readwrite');
-          const os = tx.objectStore('chunks');
-          const r = os.clear();
-          r.onsuccess = () => {};
-          r.onerror = () => reject(new Error('IndexedDB write failed: ' + (r.error ? r.error.name + ': ' + r.error.message : 'request error')));
-          tx.oncomplete = () => resolve();
-          tx.onerror = () => reject(new Error('IndexedDB write failed: ' + (tx.error ? tx.error.name + ': ' + tx.error.message : 'transaction error')));
-          tx.onabort = () => reject(new Error('IndexedDB write failed: transaction aborted'));
-        });
-      } catch (e) { throw e; }
+      const db = await openDb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction('chunks', 'readwrite');
+        const os = tx.objectStore('chunks');
+        const r = os.clear();
+        r.onsuccess = () => {};
+        r.onerror = () => reject(new Error('IndexedDB write failed: ' + (r.error ? r.error.name + ': ' + r.error.message : 'request error')));
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(new Error('IndexedDB write failed: ' + (tx.error ? tx.error.name + ': ' + tx.error.message : 'transaction error')));
+        tx.onabort = () => reject(new Error('IndexedDB write failed: transaction aborted'));
+      });
     },
     async totalBytes() {
       try {

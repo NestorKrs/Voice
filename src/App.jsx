@@ -75,7 +75,7 @@ export default function App() {
     logEvent('Start Reading pressed');
     if (!services) return;
     if (schedulerRef.current) {
-      try { schedulerRef.current.cancel(); } catch (e) {}
+      try { schedulerRef.current.cancel(); } catch {}
     }
     const chunks = chunkText(text, settings.chunkSize);
     logEvent(`Split into ${chunks.length} chunks`);
@@ -119,7 +119,7 @@ export default function App() {
     setJobError('');
     try {
       await sched.start();
-    } catch (e) {
+    } catch {
       const m = e && e.message ? e.message : 'error';
       setJobError(m);
       logEvent(m);
@@ -130,7 +130,7 @@ export default function App() {
     logEvent('Resume pressed');
     try {
       if (schedulerRef.current) schedulerRef.current.resume();
-    } catch (e) {
+    } catch {
       const m = e && e.message ? e.message : 'error';
       setJobError(m);
       logEvent(m);
@@ -140,7 +140,7 @@ export default function App() {
     logEvent('Cancel pressed');
     try {
       if (schedulerRef.current) schedulerRef.current.cancel();
-    } catch (e) {
+    } catch {
       const m = e && e.message ? e.message : 'error';
       setJobError(m);
       logEvent(m);
@@ -150,7 +150,7 @@ export default function App() {
     logEvent(`Retry chunk ${i + 1} pressed`);
     try {
       if (schedulerRef.current) schedulerRef.current.retryChunk(i);
-    } catch (e) {
+    } catch {
       const m = e && e.message ? e.message : 'error';
       setJobError(m);
       logEvent(m);
@@ -164,7 +164,6 @@ export default function App() {
       const chunkList = chunkText(text, settings.chunkSize);
       const key = await services.makeKey({ text: chunkList[index], voice: settings.voice });
       logEvent(`Chunk ${index + 1} requested`);
-      const t0 = Date.now();
       const bytes = await services.cache.get(key);
       if (!bytes) {
         logEvent(`Play chunk ${index + 1}: key ${key.slice(0, 8)}, no audio in cache for this chunk`);
@@ -196,7 +195,7 @@ export default function App() {
       try {
         await audio.play();
         logEvent('play() resolved');
-      } catch (e) {
+      } catch {
         const m = e && e.name ? `${e.name}: ${e.message}` : 'error';
         logEvent(`play() rejected: ${m}`);
         setNotice('Click Play again to start audio.');
@@ -204,7 +203,7 @@ export default function App() {
       setTimeout(() => {
         logEvent(`1 s later: paused=${audio.paused}, currentTime=${audio.currentTime.toFixed(2)}, readyState=${audio.readyState}`);
       }, 1000);
-    } catch (e) {
+    } catch {
       const m = e && e.message ? e.message : 'error';
       setJobError(m);
       logEvent(m);
@@ -219,7 +218,7 @@ export default function App() {
       setKeySet(hasKey(storage));
       setKeyInput('');
       setNotice('Key saved.');
-    } catch (e) {
+    } catch {
       const m = e && e.message ? e.message : 'error';
       setJobError(m);
       logEvent(m);
@@ -232,7 +231,7 @@ export default function App() {
       clearKey(storage);
       setKeySet(false);
       setNotice('Key cleared.');
-    } catch (e) {
+    } catch {
       const m = e && e.message ? e.message : 'error';
       setJobError(m);
       logEvent(m);
@@ -248,7 +247,7 @@ export default function App() {
       setSettings(loaded);
       setUsedToday(services ? services.counter.count() : 0);
       setNotice('Settings saved.');
-    } catch (e) {
+    } catch {
       const m = e && e.message ? e.message : 'error';
       setJobError(m);
       logEvent(m);
@@ -262,7 +261,7 @@ export default function App() {
       const n = await services.cache.totalBytes();
       setCacheSize(n);
       setNotice('Cache cleared.');
-    } catch (e) {
+    } catch {
       const m = e && e.message ? e.message : 'error';
       setJobError(m);
       logEvent(m);
@@ -274,7 +273,7 @@ export default function App() {
     try {
       setText('');
       if (storage) saveText(storage, '');
-    } catch (e) {
+    } catch {
       const m = e && e.message ? e.message : 'error';
       setJobError(m);
       logEvent(m);

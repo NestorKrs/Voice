@@ -54,7 +54,7 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
         let hit = false;
         try {
           hit = await cache.has(key);
-        } catch (e) {
+        } catch {
           hit = false;
         }
         if (hit) {
@@ -72,7 +72,7 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
         let result;
         try {
           result = await speak({ input: list[idx], voice, signal: currentController.signal });
-        } catch (e) {
+        } catch {
           result = { ok: false, error: { kind: 'network', message: 'Network error.' }, attempts: 0 };
         }
         currentController = null;
@@ -84,13 +84,13 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
         }
 
         if (result && result.attempts) {
-          try { counter.add(result.attempts); } catch (e) {}
+          try { counter.add(result.attempts); } catch {}
         }
 
         if (result && result.ok) {
           try {
             await cache.put(key, result.bytes);
-          } catch (e) {
+          } catch {
             state.chunks[idx].status = 'failed';
             state.chunks[idx].error = { kind: 'cache', message: 'Could not save audio.' };
             state.state = 'error';
@@ -119,7 +119,7 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
         emit();
         break;
       }
-    } catch (e) {
+    } catch {
       const msg = (e && e.message ? e.message : String(e)).slice(0, 300);
       if (currentIdx !== null && state.chunks[currentIdx] && state.chunks[currentIdx].status === 'generating') {
         state.chunks[currentIdx].status = 'failed';
@@ -190,7 +190,7 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
     cancel() {
       paused = true;
       if (currentController) {
-        try { currentController.abort(); } catch (e) {}
+        try { currentController.abort(); } catch {}
       }
       state.state = 'cancelled';
       emit();

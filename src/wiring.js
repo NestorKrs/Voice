@@ -12,7 +12,7 @@ export function makeSpeak({ readKey, requestSpeech, storage }) {
   };
 }
 
-export function createServices({ storage, idb = globalThis.indexedDB }) {
+export function createServices({ storage }) {
   const cache = createAudioCache(createIdbStore());
   const speak = makeSpeak({ readKey, requestSpeech, storage });
   const counter = createRequestCounter(storage);
