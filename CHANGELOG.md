@@ -1,4 +1,7 @@
 # Changelog
 
+## 0.1.1-alpha - 2026-11-05
+- textPipeline: cleanText and chunkText with tests.
+
 ## 0.1.0-alpha - 2026-11-05
 - Repo setup: Vite shell with a dark top bar and the version read from package.json.
