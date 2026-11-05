@@ -1,3 +1,6 @@
+## 0.1.15-alpha - 2026-11-06
+- Fix catch blocks that used an undefined e and hid the real error; add a source-scan test.
+
 ## 0.1.14-alpha - 2026-11-06
 - Add theme.css: teal buttons, thin dark scrollbars, focus outlines, 0.25s transitions.
 
