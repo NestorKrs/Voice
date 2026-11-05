@@ -16,7 +16,7 @@ export function loadSettings(storage) {
     if (!raw) return { ...DEFAULT_SETTINGS };
     const obj = JSON.parse(raw);
     return validate(obj);
-  } catch (e) {
+  } catch {
     return { ...DEFAULT_SETTINGS };
   }
 }
@@ -26,7 +26,7 @@ export function saveSettings(storage, settings) {
     const v = validate(settings);
     storage.setItem('voice.settings', JSON.stringify(v));
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -35,7 +35,7 @@ export function loadText(storage) {
   try {
     const v = storage.getItem('voice.text');
     return typeof v === 'string' ? v : (v == null ? '' : String(v));
-  } catch (e) {
+  } catch {
     return '';
   }
 }
@@ -44,7 +44,7 @@ export function saveText(storage, text) {
   try {
     storage.setItem('voice.text', text);
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -53,7 +53,7 @@ export function hasKey(storage) {
   try {
     const v = storage.getItem('voice.apiKey');
     return typeof v === 'string' && v.trim() !== '';
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -67,7 +67,7 @@ export function saveKey(storage, key) {
       storage.setItem('voice.apiKey', t);
     }
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -75,7 +75,7 @@ export function saveKey(storage, key) {
 export function clearKey(storage) {
   try {
     storage.removeItem('voice.apiKey');
-  } catch (e) {}
+  } catch {}
 }
 
 // only the speechClient wiring may import this function
@@ -83,7 +83,7 @@ export function readKey(storage) {
   try {
     const v = storage.getItem('voice.apiKey');
     return typeof v === 'string' ? v : '';
-  } catch (e) {
+  } catch {
     return '';
   }
 }

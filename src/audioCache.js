@@ -33,7 +33,6 @@ export function createIdbStore(dbName = 'voice-audio') {
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(new Error('IndexedDB unavailable'));
   });
-  const wrap = (fn) => (...args) => fn(...args).catch(() => { throw new Error('IndexedDB unavailable'); });
   const store = {
     async get(key) {
       try {
@@ -45,7 +44,7 @@ export function createIdbStore(dbName = 'voice-audio') {
           r.onsuccess = () => resolve(r.result ? r.result.bytes || r.result : null);
           r.onerror = () => reject(new Error('IndexedDB unavailable'));
         });
-      } catch (e) { throw new Error('IndexedDB unavailable'); }
+      } catch { throw new Error('IndexedDB unavailable'); }
     },
     async put(key, bytes) {
       try {
@@ -57,7 +56,7 @@ export function createIdbStore(dbName = 'voice-audio') {
           r.onsuccess = () => resolve();
           r.onerror = () => reject(new Error('IndexedDB unavailable'));
         });
-      } catch (e) { throw new Error('IndexedDB unavailable'); }
+      } catch { throw new Error('IndexedDB unavailable'); }
     },
     async delete(key) {
       try {
@@ -69,7 +68,7 @@ export function createIdbStore(dbName = 'voice-audio') {
           r.onsuccess = () => resolve();
           r.onerror = () => reject(new Error('IndexedDB unavailable'));
         });
-      } catch (e) { throw new Error('IndexedDB unavailable'); }
+      } catch { throw new Error('IndexedDB unavailable'); }
     },
     async clear() {
       try {
@@ -81,7 +80,7 @@ export function createIdbStore(dbName = 'voice-audio') {
           r.onsuccess = () => resolve();
           r.onerror = () => reject(new Error('IndexedDB unavailable'));
         });
-      } catch (e) { throw new Error('IndexedDB unavailable'); }
+      } catch { throw new Error('IndexedDB unavailable'); }
     },
     async totalBytes() {
       try {
@@ -96,7 +95,7 @@ export function createIdbStore(dbName = 'voice-audio') {
           };
           r.onerror = () => reject(new Error('IndexedDB unavailable'));
         });
-      } catch (e) { throw new Error('IndexedDB unavailable'); }
+      } catch { throw new Error('IndexedDB unavailable'); }
     },
   };
   return store;
@@ -109,7 +108,7 @@ export function createAudioCache(store) {
         const v = await store.get(key);
         if (!v) return null;
         return v instanceof ArrayBuffer ? v : (v.bytes || null);
-      } catch (e) {
+      } catch {
         return null;
       }
     },

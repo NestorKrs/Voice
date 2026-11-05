@@ -1,6 +1,7 @@
 export function cleanText(text) {
   if (typeof text !== 'string' || text === '') return '';
   let t = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+// oxlint-disable-next-line no-control-regex -- strips control characters on purpose
   t = t.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '');
   t = t.replace(/[ \t]+/g, ' ');
   t = t.split('\n').map((line) => line.trim()).join('\n');

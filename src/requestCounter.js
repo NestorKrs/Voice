@@ -20,7 +20,7 @@ export function createRequestCounter(storage, nowFn = Date.now, storageKey = 'vo
       const obj = JSON.parse(raw);
       if (!obj || typeof obj !== 'object') return null;
       return obj;
-    } catch (e) {
+    } catch {
       return null;
     }
   };

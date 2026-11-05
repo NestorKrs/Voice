@@ -84,16 +84,14 @@ export async function requestSpeech({ apiKey, input, voice, fetchImpl, signal, s
       return { kind: 'success', bytes, latencyMs };
     }
     let msg = '';
-    let parsed = false;
     try {
       const j = await res.json();
       if (j && j.error && j.error.message) msg = String(j.error.message);
       else if (j && j.message) msg = String(j.message);
-      parsed = true;
-    } catch (e) {
+    } catch {
       try {
         msg = await res.text();
-      } catch (e2) {
+      } catch {
         msg = '';
       }
     }
