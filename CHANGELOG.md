@@ -1,3 +1,6 @@
+## 0.1.14-alpha - 2026-11-06
+- Add theme.css: teal buttons, thin dark scrollbars, focus outlines, 0.25s transitions.
+
 ## 0.1.13-alpha - 2026-11-05
 - playerEngine with tests.
 
