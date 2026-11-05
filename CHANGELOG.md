@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.5-alpha - 2026-11-05
+- scheduler with tests.
+
 ## 0.1.4-alpha - 2026-11-05
 - App shell: dark layout, text panel with counts, settings drawer.
 
