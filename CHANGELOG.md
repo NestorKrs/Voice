@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.10-alpha - 2026-11-05
+- Fix cache read path: store returns bytes, cache no double unwrap.
+
+## 0.1.9-alpha - 2026-11-05
+- Honest cache writes and on-screen cache check.
+
 ## 0.1.8-alpha - 2026-11-05
 - Play path visibility in status bar.
 

@@ -53,10 +53,13 @@ export function createIdbStore(dbName = 'voice-audio') {
           const tx = db.transaction('chunks', 'readwrite');
           const os = tx.objectStore('chunks');
           const r = os.put({ bytes, size: bytes.byteLength, savedAt: Date.now() }, key);
-          r.onsuccess = () => resolve();
-          r.onerror = () => reject(new Error('IndexedDB unavailable'));
+          r.onsuccess = () => {};
+          r.onerror = () => reject(new Error('IndexedDB write failed: ' + (r.error ? r.error.name + ': ' + r.error.message : 'request error')));
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(new Error('IndexedDB write failed: ' + (tx.error ? tx.error.name + ': ' + tx.error.message : 'transaction error')));
+          tx.onabort = () => reject(new Error('IndexedDB write failed: transaction aborted'));
         });
-      } catch { throw new Error('IndexedDB unavailable'); }
+      } catch (e) { throw e; }
     },
     async delete(key) {
       try {
@@ -65,10 +68,13 @@ export function createIdbStore(dbName = 'voice-audio') {
           const tx = db.transaction('chunks', 'readwrite');
           const os = tx.objectStore('chunks');
           const r = os.delete(key);
-          r.onsuccess = () => resolve();
-          r.onerror = () => reject(new Error('IndexedDB unavailable'));
+          r.onsuccess = () => {};
+          r.onerror = () => reject(new Error('IndexedDB write failed: ' + (r.error ? r.error.name + ': ' + r.error.message : 'request error')));
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(new Error('IndexedDB write failed: ' + (tx.error ? tx.error.name + ': ' + tx.error.message : 'transaction error')));
+          tx.onabort = () => reject(new Error('IndexedDB write failed: transaction aborted'));
         });
-      } catch { throw new Error('IndexedDB unavailable'); }
+      } catch (e) { throw e; }
     },
     async clear() {
       try {
@@ -77,10 +83,13 @@ export function createIdbStore(dbName = 'voice-audio') {
           const tx = db.transaction('chunks', 'readwrite');
           const os = tx.objectStore('chunks');
           const r = os.clear();
-          r.onsuccess = () => resolve();
-          r.onerror = () => reject(new Error('IndexedDB unavailable'));
+          r.onsuccess = () => {};
+          r.onerror = () => reject(new Error('IndexedDB write failed: ' + (r.error ? r.error.name + ': ' + r.error.message : 'request error')));
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(new Error('IndexedDB write failed: ' + (tx.error ? tx.error.name + ': ' + tx.error.message : 'transaction error')));
+          tx.onabort = () => reject(new Error('IndexedDB write failed: transaction aborted'));
         });
-      } catch { throw new Error('IndexedDB unavailable'); }
+      } catch (e) { throw e; }
     },
     async totalBytes() {
       try {
@@ -106,7 +115,11 @@ export function createAudioCache(store) {
     async get(key) {
       const v = await store.get(key);
       if (!v) return null;
-      return v instanceof ArrayBuffer ? v : (v.bytes || null);
+      if (v instanceof ArrayBuffer || (v && typeof v.byteLength === 'number')) {
+        if (v.byteLength === 0) return null;
+        return v;
+      }
+      return null;
     },
     async put(key, bytes) {
       if (!bytes || bytes.byteLength === 0) throw new Error('Empty audio');

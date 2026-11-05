@@ -65,6 +65,39 @@ test('get rejection propagates', async () => {
   await assert.rejects(() => cache.has('k'), /IndexedDB unavailable: test/);
 });
 
+test('fake store returns Uint8Array', async () => {
+  const arr = new Uint8Array([1, 2, 3]);
+  const store = { get: async () => arr, put: async () => {}, has: async () => false, clear: async () => {}, totalBytes: async () => 0 };
+  const cache = createAudioCache(store);
+  const got = await cache.get('k');
+  assert.ok(got instanceof Uint8Array);
+  assert.equal(got.byteLength, 3);
+  assert.equal(await cache.has('k'), true);
+});
+
+test('fake store returns ArrayBuffer', async () => {
+  const buf = new ArrayBuffer(2);
+  const store = { get: async () => buf, put: async () => {}, has: async () => false, clear: async () => {}, totalBytes: async () => 0 };
+  const cache = createAudioCache(store);
+  const got = await cache.get('k');
+  assert.ok(got instanceof ArrayBuffer);
+  assert.equal(await cache.has('k'), true);
+});
+
+test('missing key null/false', async () => {
+  const store = { get: async () => null, put: async () => {}, has: async () => false, clear: async () => {}, totalBytes: async () => 0 };
+  const cache = createAudioCache(store);
+  assert.equal(await cache.get('k'), null);
+  assert.equal(await cache.has('k'), false);
+});
+
+test('empty buffer counts as miss', async () => {
+  const store = { get: async () => new Uint8Array([]), put: async () => {}, has: async () => false, clear: async () => {}, totalBytes: async () => 0 };
+  const cache = createAudioCache(store);
+  assert.equal(await cache.get('k'), null);
+  assert.equal(await cache.has('k'), false);
+});
+
 test('totalBytes adds sizes', async () => {
   const cache = createAudioCache(createMemoryStore());
   await cache.put('a', new Uint8Array([1, 2]).buffer);

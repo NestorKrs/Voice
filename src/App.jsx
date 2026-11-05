@@ -88,7 +88,24 @@ export default function App() {
       counter: services.counter,
       makeKey: services.makeKey,
       onChange: (p) => {
-        setSchedState(p);
+        setSchedState((prev) => {
+          // detect newly ready
+          const prevStatuses = prev.chunks.map((c) => c.status);
+          p.chunks.forEach((c, i) => {
+            if (c.status === 'ready' && prevStatuses[i] !== 'ready') {
+              const key = services.makeKey({ text: chunkText(text, settings.chunkSize)[i], voice: settings.voice });
+              key.then((k) => {
+                services.cache.has(k).then((stored) => {
+                  logEvent(`Chunk ${i + 1} ready, key ${k.slice(0, 8)}, stored: ${stored ? 'yes' : 'NO'}`);
+                  if (!stored) setJobError(`Chunk ${i + 1} is marked ready but the audio is not in the cache.`);
+                }).catch((e) => {
+                  logEvent(`Chunk ${i + 1} cache check failed: ${e && e.message ? e.message : 'error'}`);
+                });
+              });
+            }
+          });
+          return p;
+        });
         setUsedToday(services.counter.count());
         if (p.state === 'waiting_reset') logEvent(`waiting for daily reset ${new Date(p.resetAt).toLocaleString()}`);
         if (p.state === 'error') {
@@ -150,11 +167,11 @@ export default function App() {
       const t0 = Date.now();
       const bytes = await services.cache.get(key);
       if (!bytes) {
-        logEvent(`Play chunk ${index + 1}: no audio in cache for this chunk`);
+        logEvent(`Play chunk ${index + 1}: key ${key.slice(0, 8)}, no audio in cache for this chunk`);
         setNotice('Play chunk ' + (index + 1) + ': no audio in cache for this chunk');
         return;
       }
-      logEvent(`Play chunk ${index + 1}: ${bytes.byteLength} bytes from cache`);
+      logEvent(`Play chunk ${index + 1}: key ${key.slice(0, 8)}, ${bytes.byteLength} bytes from cache`);
       const blob = new Blob([bytes], { type: 'audio/mpeg' });
       logEvent(`Play chunk ${index + 1}: blob ${blob.size} bytes, type ${blob.type}`);
       const url = URL.createObjectURL(blob);

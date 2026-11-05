@@ -7,7 +7,8 @@ import { MODEL } from './speechClient.js';
 // only file that imports readKey
 export function makeSpeak({ readKey, requestSpeech, storage }) {
   return async function speak({ input, voice, signal }) {
-    return requestSpeech({ apiKey: readKey(storage), input, voice, signal });
+    const key = readKey(storage);
+    return requestSpeech({ apiKey: key, input, voice, signal });
   };
 }
 
