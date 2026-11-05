@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.3-alpha - 2026-11-05
+- audioCache and requestCounter with tests.
+
 ## 0.1.2-alpha - 2026-11-05
 - speechClient: classifyError and requestSpeech with retry and tests.
 
