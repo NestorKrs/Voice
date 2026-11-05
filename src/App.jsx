@@ -354,6 +354,7 @@ export default function App() {
       {drawerOpen ? (
         <aside className="drawer">
           <h3>Settings</h3>
+          <button onClick={() => setDrawerOpen(false)}>Close</button>
           <label>API key</label>
           <input type="password" value={keyInput} onChange={(e) => setKeyInput(e.target.value)} />
           <div className="row">
