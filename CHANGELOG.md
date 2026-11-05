@@ -1,3 +1,6 @@
+## 0.1.13-alpha - 2026-11-05
+- playerEngine with tests.
+
 ## 0.1.12-alpha - 2026-11-05
 - playerCore with tests.
 
