@@ -19,7 +19,7 @@ test('defaults', () => {
 test('round trip', () => {
   const s = makeStorage();
   saveSettings(s, { voice: 'v', chunkSize: 500, lookahead: 3 });
-  assert.deepEqual(loadSettings(s), { voice: 'v', chunkSize: 500, lookahead: 3 });
+  assert.deepEqual(loadSettings(s), { voice: 'v', chunkSize: 500, lookahead: 3, dailyLimit: 50 });
 });
 
 test('broken JSON', () => {
@@ -46,6 +46,40 @@ test('out of range numbers', () => {
   const l = loadSettings(s);
   assert.equal(l.chunkSize, 2000);
   assert.equal(l.lookahead, 2);
+});
+
+
+test('dailyLimit default is 50', () => {
+  const s = makeStorage();
+  assert.equal(loadSettings(s).dailyLimit, 50);
+  assert.equal(DEFAULT_SETTINGS.dailyLimit, 50);
+});
+
+test('dailyLimit 1000 round trips', () => {
+  const s = makeStorage();
+  saveSettings(s, { voice: 'v', chunkSize: 2000, lookahead: 2, dailyLimit: 1000 });
+  assert.equal(loadSettings(s).dailyLimit, 1000);
+});
+
+test('dailyLimit invalid falls back to 50', () => {
+  for (const v of [75, '1000', null]) {
+    const s = makeStorage();
+    saveSettings(s, { voice: 'v', chunkSize: 2000, lookahead: 2, dailyLimit: v });
+    assert.equal(loadSettings(s).dailyLimit, 50, String(v));
+  }
+  const s2 = makeStorage();
+  saveSettings(s2, { voice: 'v', chunkSize: 2000, lookahead: 2 });
+  assert.equal(loadSettings(s2).dailyLimit, 50);
+});
+
+test('invalid dailyLimit does not reset other settings', () => {
+  const s = makeStorage();
+  saveSettings(s, { voice: 'v', chunkSize: 500, lookahead: 3, dailyLimit: 75 });
+  const l = loadSettings(s);
+  assert.equal(l.voice, 'v');
+  assert.equal(l.chunkSize, 500);
+  assert.equal(l.lookahead, 3);
+  assert.equal(l.dailyLimit, 50);
 });
 
 test('text round trip', () => {

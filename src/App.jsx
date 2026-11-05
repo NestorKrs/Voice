@@ -11,13 +11,14 @@ const services = storage ? createServices({ storage }) : null;
 
 export default function App() {
   const [text, setText] = useState(() => (storage ? loadText(storage) : ''));
-  const [settings, setSettings] = useState(() => (storage ? loadSettings(storage) : { voice: '', chunkSize: 2000, lookahead: 2 }));
+  const [settings, setSettings] = useState(() => (storage ? loadSettings(storage) : { voice: '', chunkSize: 2000, lookahead: 2, dailyLimit: 50 }));
   const [keySet, setKeySet] = useState(() => (storage ? hasKey(storage) : false));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [keyInput, setKeyInput] = useState('');
   const [voiceInput, setVoiceInput] = useState(settings.voice);
   const [chunkInput, setChunkInput] = useState(settings.chunkSize);
   const [lookInput, setLookInput] = useState(settings.lookahead);
+  const [dailyInput, setDailyInput] = useState(settings.dailyLimit);
   const [schedState, setSchedState] = useState({ state: 'idle', resetAt: null, playhead: 0, chunks: [] });
   const [usedToday, setUsedToday] = useState(() => (services ? services.counter.count() : 0));
   const [jobError, setJobError] = useState('');
@@ -60,14 +61,14 @@ export default function App() {
     }
   }, [drawerOpen]);
 
-  const stats = computeStats({ text, chunkSize: settings.chunkSize, usedToday });
+  const stats = computeStats({ text, chunkSize: settings.chunkSize, usedToday, dailyLimit: settings.dailyLimit });
 
-  const canStart = text.trim() !== '' && keySet && usedToday < 50;
+  const canStart = text.trim() !== '' && keySet && usedToday < settings.dailyLimit;
   const startReason = !text.trim()
     ? 'Paste some text first.'
     : !keySet
     ? 'Set an API key in Settings.'
-    : usedToday >= 50
+    : usedToday >= settings.dailyLimit
     ? 'Daily limit reached.'
     : '';
 
@@ -241,7 +242,7 @@ export default function App() {
     logEvent('Save settings pressed');
     try {
       if (!storage) return;
-      const next = { voice: voiceInput, chunkSize: Number(chunkInput), lookahead: Number(lookInput) };
+      const next = { voice: voiceInput, chunkSize: Number(chunkInput), lookahead: Number(lookInput), dailyLimit: Number(dailyInput) };
       saveSettings(storage, next);
       const loaded = loadSettings(storage);
       setSettings(loaded);
@@ -296,7 +297,7 @@ export default function App() {
         <span className="title">Voice</span>
         <span className="version">v{APP_VERSION}</span>
         <span className="requests" title={services ? new Date(services.counter.resetAt()).toLocaleString() : ''}>
-          Requests today: {usedToday} / 50 (estimate)
+          Requests today: {usedToday} / {settings.dailyLimit} (estimate)
         </span>
         <button className="settings-btn" onClick={() => setDrawerOpen((o) => !o)}>Settings</button>
       </header>
@@ -366,6 +367,12 @@ export default function App() {
           <input type="number" value={chunkInput} onChange={(e) => setChunkInput(e.target.value)} />
           <label>Lookahead</label>
           <input type="number" value={lookInput} onChange={(e) => setLookInput(e.target.value)} />
+          <label>Daily limit</label>
+          <select value={dailyInput} onChange={(e) => setDailyInput(Number(e.target.value))}>
+            <option value={50}>50</option>
+            <option value={1000}>1000</option>
+          </select>
+          <small>1000 needs $10 of lifetime credit purchases on OpenRouter. The app cannot check this.</small>
           <button onClick={handleSaveSettings}>Save settings</button>
           <div>Audio cache: {(cacheSize / 1024 / 1024).toFixed(2)} MB</div>
           <button onClick={handleClearCache}>Clear audio cache</button>

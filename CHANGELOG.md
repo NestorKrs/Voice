@@ -1,3 +1,6 @@
+## 0.1.11-alpha - 2026-11-05
+- Daily limit setting (50 or 1000).
+
 # Changelog
 
 ## 0.1.10-alpha - 2026-11-05

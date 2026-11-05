@@ -1,4 +1,4 @@
-export const DEFAULT_SETTINGS = { voice: '', chunkSize: 2000, lookahead: 2 };
+export const DEFAULT_SETTINGS = { voice: '', chunkSize: 2000, lookahead: 2, dailyLimit: 50 };
 
 function validate(settings) {
   const out = { ...DEFAULT_SETTINGS };
@@ -6,6 +6,7 @@ function validate(settings) {
     if (typeof settings.voice === 'string') out.voice = settings.voice;
     if (Number.isInteger(settings.chunkSize) && settings.chunkSize >= 200 && settings.chunkSize <= 5000) out.chunkSize = settings.chunkSize;
     if (Number.isInteger(settings.lookahead) && settings.lookahead >= 0 && settings.lookahead <= 5) out.lookahead = settings.lookahead;
+    if (settings.dailyLimit === 50 || settings.dailyLimit === 1000) out.dailyLimit = settings.dailyLimit;
   }
   return out;
 }
