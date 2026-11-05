@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.6-alpha - 2026-11-05
+- wiring and first live read of 3 chunks with HTML audio.
+
 ## 0.1.5-alpha - 2026-11-05
 - scheduler with tests.
 

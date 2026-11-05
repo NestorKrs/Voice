@@ -5,8 +5,8 @@ body { margin: 0; background: #15171a; color: #e6e8eb; font-family: system-ui, s
 .version { color: #8b929a; font-size: 12px; }
 .requests { color: #8b929a; font-size: 12px; margin-left: auto; }
 .settings-btn { margin-left: 8px; }
-.columns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; flex: 1; min-height: 0; }
-.panel { background: #1d2024; border: 1px solid #2c3036; border-radius: 6px; padding: 12px; display: flex; flex-direction: column; min-height: 0; }
+.columns { display: grid; grid-template-columns: 1fr 1.4fr 0.8fr; gap: 12px; padding: 12px; flex: 1; min-height: 0; }
+.panel { background: #1d2024; border: 1px solid #2c3036; border-radius: 6px; padding: 12px; display: flex; flex-direction: column; min-height: 0; overflow: auto; }
 .text-panel textarea { flex: 1; min-height: 0; background: #15171a; color: #e6e8eb; border: 1px solid #2c3036; padding: 8px; resize: none; }
 .stats { display: flex; gap: 12px; flex-wrap: wrap; color: #8b929a; font-size: 12px; margin: 8px 0; }
 .row { display: flex; gap: 8px; margin: 8px 0; }
@@ -15,8 +15,19 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .reason { color: #8b929a; font-size: 12px; margin: 4px 0; }
 .privacy { color: #8b929a; font-size: 11px; margin-top: 8px; }
 .notice { color: #8b929a; font-size: 12px; margin-top: 4px; }
+.chunk-list { display: flex; flex-direction: column; gap: 8px; }
+.chunk-row { display: flex; gap: 8px; align-items: center; padding: 6px; border: 1px solid #2c3036; border-radius: 4px; }
+.badge { font-size: 11px; padding: 2px 6px; border-radius: 3px; background: #2c3036; }
+.badge.ready { background: #1f3a2a; color: #7ee2a8; }
+.badge.generating { background: #3a3320; color: #e2c97e; }
+.badge.failed { background: #3a2020; color: #e27e7e; }
+.badge.queued { background: #2c3036; color: #8b929a; }
+.chunk-num { color: #8b929a; font-size: 12px; }
+.chunk-preview { flex: 1; font-size: 12px; }
+.err { color: #e27e7e; font-size: 12px; }
+.progress { height: 6px; background: #2c3036; border-radius: 3px; margin: 8px 0; }
+.bar { height: 100%; background: #7ee2a8; border-radius: 3px; }
 .job-panel .state { font-weight: 600; }
-.job-panel .state-text { color: #8b929a; }
 .drawer { position: fixed; top: 0; right: 0; width: 360px; height: 100vh; background: #1d2024; border-left: 1px solid #2c3036; padding: 16px; overflow: auto; z-index: 10; }
 .drawer label { display: block; margin-top: 8px; font-size: 12px; color: #8b929a; }
 .drawer input { width: 100%; box-sizing: border-box; background: #15171a; color: #e6e8eb; border: 1px solid #2c3036; padding: 6px; margin-top: 4px; }
