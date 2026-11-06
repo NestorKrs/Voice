@@ -1,3 +1,6 @@
+## 0.1.45-alpha - 2026-11-06
+- Fix drag-over tint being overridden on the textarea.
+
 ## 0.1.44-alpha - 2026-11-06
 - Lighter full-area tint while dragging a file over the text panel.
 
