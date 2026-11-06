@@ -25,6 +25,16 @@ export default function App() {
   const [lookInput, setLookInput] = useState(settings.lookahead);
   const [dailyInput, setDailyInput] = useState(settings.dailyLimit);
   const [fontInput, setFontInput] = useState('400');
+  const [textZoom, setTextZoom] = useState(100);
+  useEffect(() => {
+    const preventBrowserZoom = (e) => { if (e.ctrlKey) e.preventDefault(); };
+    window.addEventListener('wheel', preventBrowserZoom, { passive: false });
+    window.addEventListener('keydown', preventBrowserZoom, { passive: false });
+    return () => {
+      window.removeEventListener('wheel', preventBrowserZoom);
+      window.removeEventListener('keydown', preventBrowserZoom);
+    };
+  }, []);
   const [schedState, setSchedState] = useState({ state: 'idle', resetAt: null, playhead: 0, chunks: [] });
   const [usedToday, setUsedToday] = useState(() => (services ? services.counter.count() : 0));
   const [jobError, setJobError] = useState('');
@@ -488,7 +498,7 @@ export default function App() {
             <span className="grip" role="button" tabIndex={0} draggable="true" title="Drag to move this panel. Keyboard: Alt+Left or Alt+Right." aria-label="Move the Text panel" onDragStart={onGripDragStart('text')} onDragEnd={onGripDragEnd} onKeyDown={onGripKeyDown('text')} />
             <span className="panel-title">Text</span>
           </div>
-          <textarea value={text} onChange={(e) => setText(e.target.value)} />
+          <textarea value={text} onChange={(e) => setText(e.target.value)} style={{ fontSize: `${textZoom}%` }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && e.key === '-') { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && e.key === '0') { e.preventDefault(); setTextZoom(100); } }} />
           <div className="stats">
             <span>{plural(stats.characters, 'character')}</span>
             <span>{plural(stats.pages, 'page')} (about)</span>
