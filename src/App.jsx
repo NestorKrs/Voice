@@ -120,13 +120,7 @@ export default function App() {
     ? 'Daily limit reached.'
     : '';
 
-  const handleStart = async () => {
-    logEvent('Start Reading pressed');
-    if (!services) return;
-    if (schedulerRef.current) {
-            try { schedulerRef.current.cancel(); } catch {}
-    }
-    const handleProviderChange = (id) => {
+  const handleProviderChange = (id) => {
     if (id === provider.id) return;
     const next = getProvider(providers, id);
     logEvent('Provider switched to ' + providerLabel(next));
@@ -155,7 +149,13 @@ export default function App() {
     }
   };
 
-  const chunks = chunkText(text, settings.chunkSize);
+  const handleStart = async () => {
+    logEvent('Start Reading pressed');
+    if (!services) return;
+    if (schedulerRef.current) {
+            try { schedulerRef.current.cancel(); } catch {}
+    }
+    const chunks = chunkText(text, settings.chunkSize);
     logEvent(`Split into ${chunks.length} chunks`);
     const sched = createScheduler({
       chunks,
