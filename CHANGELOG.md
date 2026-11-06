@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.29-alpha - 2026-11-06
+- Wire panelWidths logic into the UI with grid columns and resize handles.
+
+## 0.1.28-alpha - 2026-11-06
+- Make side and middle panel sizing depend on current panel order.
+
+## 0.1.27-alpha - 2026-11-06
+- Add maximum widths to side panels and the middle panel.
+
 ## 0.1.26-alpha - 2026-11-06
 - Make the middle panel flexible and keep the rightmost panel inside the app border.
 

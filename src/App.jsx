@@ -7,6 +7,7 @@ import { createScheduler } from './scheduler.js';
 import { createServices } from './wiring.js';
 import { createPlayerEngine } from './playerEngine.js';
 import { DEFAULT_ORDER, movePanel, stepPanel, loadOrder, saveOrder, resetOrder } from './panelLayout.js';
+import { DEFAULT_WIDTHS, WIDTHS_KEY, loadWidths, saveWidths, resetWidths, usableWidth, resizeFromHandle, columnsTemplate, clampWidths } from './panelWidths.js';
 
 const storage = typeof localStorage !== 'undefined' ? localStorage : null;
 const services = storage ? createServices({ storage }) : null;
@@ -35,7 +36,7 @@ export default function App() {
   const [order, setOrder] = useState(() => (storage ? loadOrder(storage) : [...DEFAULT_ORDER]));
   const [dragId, setDragId] = useState(null);
   const [drop, setDrop] = useState(null);
-  const [panelWidths, setPanelWidths] = useState({});
+  const [widths, setWidths] = useState(() => (storage ? loadWidths(storage) : { ...DEFAULT_WIDTHS }));
   const [dragGhost, setDragGhost] = useState(null);
   const [playerState, setPlayerState] = useState({ total: 0, index: 0, status: 'stopped', rate: 1, volume: 1, buffering: false, position: 0, duration: 0 });
   const audioRef = useRef(null);
@@ -396,32 +397,30 @@ export default function App() {
   const panelClass = (id, extra) =>
     'panel ' + extra + (dragId === id ? ' dragging' : '') + (drop && drop.id === id ? ' drop-' + drop.side : '');
 
-  const onResizeStart = (id) => (e) => {
+  const usable = usableWidth(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+  const panelStyle = () => ({});
+
+  const onResizeStart = (handle) => (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const panel = e.currentTarget.closest('.panel');
-    if (!panel) return;
     const startX = e.clientX;
-    const startWidth = panel.getBoundingClientRect().width;
+    const startWidths = widths;
     const move = (event) => {
-      const nextWidth = Math.max(220, Math.round(startWidth + event.clientX - startX));
-      setPanelWidths((current) => ({ ...current, [id]: nextWidth }));
+      const delta = event.clientX - startX;
+      const next = resizeFromHandle(startWidths, handle, delta, usable);
+      setWidths(next);
     };
     const stop = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', stop);
+      saveWidths(storage, widths);
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', stop, { once: true });
   };
 
-  const isRightmost = (id) => order.indexOf(id) === order.length - 1;
-
-  const panelStyle = (id) => {
-    if (id === 'reader') return { order: order.indexOf(id), flex: '1 1 auto', minWidth: '220px' };
-    if (id === 'job') return { order: order.indexOf(id), flex: '0 0 auto', width: panelWidths.job ? `${panelWidths.job}px` : 'auto', minWidth: '220px' };
-    return { order: order.indexOf(id), flex: '0 0 auto', width: panelWidths.text ? `${panelWidths.text}px` : 'auto', minWidth: '220px' };
-  };
+  const columnsStyle = { gridTemplateColumns: columnsTemplate(widths, 12), display: 'grid', gap: '12px', padding: '12px', flex: 1, minHeight: 0, overflow: 'hidden', width: '100%', boxSizing: 'border-box' };
 
   const stateWord = {
     idle: 'Idle',
@@ -443,12 +442,13 @@ export default function App() {
         <button onClick={handleResetLayout} disabled={isDefaultOrder} title={isDefaultOrder ? 'The panels are already in the default order.' : 'Put the panels back in the default order.'}>Reset layout</button>
         <button className="settings-btn" onClick={() => setDrawerOpen((o) => !o)}>Settings</button>
       </header>
-      <div className="columns">
-        <section className={panelClass('text', 'text-panel')} style={panelStyle('text')} onDragOver={onPanelDragOver('text')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('text')}>
+      <div className="columns" style={columnsStyle}>
+        <section className={panelClass('text', 'text-panel')} onDragOver={onPanelDragOver('text')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('text')}>
           <div className="panel-head">
             <span className="grip" role="button" tabIndex={0} draggable="true" title="Drag to move this panel. Keyboard: Alt+Left or Alt+Right." aria-label="Move the Text panel" onDragStart={onGripDragStart('text')} onDragEnd={onGripDragEnd} onKeyDown={onGripKeyDown('text')} />
             <span className="panel-title">Text</span>
-            <span className="resize-handle" role="separator" tabIndex={0} title="Drag to resize this panel." aria-label="Resize the Text panel" onPointerDown={onResizeStart('text')} />
+            <span className="resize-handle" role="separator" tabIndex={0} title="Drag to resize this panel." aria-label="Resize the Text panel" onPointerDown={onResizeStart(0)} />
+
           </div>
           <textarea value={text} onChange={(e) => setText(e.target.value)} />
           <div className="stats">
@@ -467,7 +467,7 @@ export default function App() {
           <div className="privacy">Your text is sent to OpenRouter and Fish Audio to make the speech.</div>
           {notice ? <div className="notice">{notice}</div> : null}
         </section>
-        <section className={panelClass('reader', 'reader-panel')} style={panelStyle('reader')} onDragOver={onPanelDragOver('reader')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('reader')}>
+        <section className={panelClass('reader', 'reader-panel')} onDragOver={onPanelDragOver('reader')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('reader')}>
           <div className="panel-head">
             <span className="grip" role="button" tabIndex={0} draggable="true" title="Drag to move this panel. Keyboard: Alt+Left or Alt+Right." aria-label="Move the Reader panel" onDragStart={onGripDragStart('reader')} onDragEnd={onGripDragEnd} onKeyDown={onGripKeyDown('reader')} />
             <span className="panel-title">Reader</span>
@@ -494,11 +494,11 @@ export default function App() {
             })}
           </div>
         </section>
-        <section className={panelClass('job', 'job-panel')} style={panelStyle('job')} onDragOver={onPanelDragOver('job')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('job')}>
+        <section className={panelClass('job', 'job-panel')} onDragOver={onPanelDragOver('job')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('job')}>
           <div className="panel-head">
             <span className="grip" role="button" tabIndex={0} draggable="true" title="Drag to move this panel. Keyboard: Alt+Left or Alt+Right." aria-label="Move the Job panel" onDragStart={onGripDragStart('job')} onDragEnd={onGripDragEnd} onKeyDown={onGripKeyDown('job')} />
             <span className="panel-title">Job</span>
-            <span className="resize-handle" role="separator" tabIndex={0} title="Drag to resize this panel." aria-label="Resize the Job panel" onPointerDown={onResizeStart('job')} />
+            <span className="resize-handle" role="separator" tabIndex={0} title="Drag to resize this panel." aria-label="Resize the Job panel" onPointerDown={onResizeStart(1)} />
           </div>
           <div className="state">{stateWord}{schedState.state === 'idle' && schedState.chunks.some((c) => c.status === 'ready') ? ' - window filled' : ''}</div>
           <div>Chunks ready {schedState.chunks.filter((c) => c.status === 'ready').length} / {chunks.length}</div>
