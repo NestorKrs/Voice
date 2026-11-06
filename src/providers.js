@@ -2,8 +2,8 @@ export const CUSTOM_KEY = 'voice.customProviders';
 export const FORMATS = ['mp3', 'pcm'];
 
 export const BUILTIN_PROVIDERS = [
-  { id: 'fish', label: 'Fish Audio', name: 'S2.1 Pro Free', model: 'fish-audio/s2.1-pro-free:free', format: 'mp3', voiceHint: 'Voice ID, for example b347db033a6549378b48d00acb0d06cd. Empty uses the default voice.', builtin: true },
-  { id: 'heygen', label: 'HeyGen', name: 'Voice Turbo Free', model: 'heygen/heygen-voice-1-turbo:free', format: 'pcm', voiceHint: 'Voice name, for example nadine (10 default voices).', builtin: true },
+  { id: 'fish', label: 'Fish Audio', name: 'S2.1 Pro Free', model: 'fish-audio/s2.1-pro-free:free', format: 'mp3', voiceHint: 'Voice ID, for example b347db033a6549378b48d00acb0d06cd. Empty uses the default voice.', voices: [], builtin: true },
+  { id: 'heygen', label: 'HeyGen', name: 'Voice Turbo Free', model: 'heygen/heygen-voice-1-turbo:free', format: 'pcm', voiceHint: 'Voice name, for example nadine (10 default voices).', voices: ['nadine','tabitha','bram','gareth','noelle','meredith','sabrina','lucian','weston','vincent'], builtin: true },
 ];
 
 export function isFreeModel(model) {

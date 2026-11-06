@@ -572,6 +572,7 @@ export default function App() {
           <div className="panel-head">
             <span className="grip" role="button" tabIndex={0} draggable="true" title="Drag to move this panel. Keyboard: Alt+Left or Alt+Right." aria-label="Move the Reader panel" onDragStart={onGripDragStart('reader')} onDragEnd={onGripDragEnd} onKeyDown={onGripKeyDown('reader')} />
             <span className="panel-title">Reader</span>
+            <span className="now" style={{color:"var(--accent)"}}>{settings.voice || provider.label}</span>
           </div>
           <div className="chunk-list">
             {chunks.map((c, i) => {
@@ -639,7 +640,11 @@ export default function App() {
           </div>
           <div>{keySet ? 'Key set' : 'No key'}</div>
           <label>Voice ({provider.label})</label>
-          <input type="text" value={voiceInput} onChange={(e) => setVoiceInput(e.target.value)} />
+          {Array.isArray(provider.voices) && provider.voices.length ? (
+            <select value={voiceInput} onChange={(e) => setVoiceInput(e.target.value)} aria-label="Voice">
+              {provider.voices.map((v) => (<option key={v} value={v}>{v}</option>))}
+            </select>
+          ) : null}
           <small>{provider.voiceHint}</small>
           <small>Model: {provider.model} - audio: {provider.format}</small>
           <label>Chunk size</label>
