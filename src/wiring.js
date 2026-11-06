@@ -6,16 +6,22 @@ import { MODEL } from './speechClient.js';
 
 // only file that imports readKey
 export function makeSpeak({ readKey, requestSpeech, storage }) {
-  return async function speak({ input, voice, signal }) {
+  return async function speak({ input, voice, provider, signal }) {
     const key = readKey(storage);
-    return requestSpeech({ apiKey: key, input, voice, signal });
+    const args = { apiKey: key, input, voice, signal };
+    if (provider) args.provider = provider;
+    return requestSpeech(args);
   };
+}
+
+export function keyArgs({ text, voice, provider }) {
+  return { model: provider && provider.model ? provider.model : MODEL, voice, text };
 }
 
 export function createServices({ storage }) {
   const cache = createAudioCache(createIdbStore());
   const speak = makeSpeak({ readKey, requestSpeech, storage });
   const counter = createRequestCounter(storage);
-  const makeKey = ({ text, voice }) => makeCacheKey({ model: MODEL, voice, text });
+  const makeKey = (a) => makeCacheKey(keyArgs(a));
   return { cache, speak, counter, makeKey };
 }

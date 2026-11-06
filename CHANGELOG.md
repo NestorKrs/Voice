@@ -1,3 +1,9 @@
+## 0.1.33-alpha - 2026-11-06
+- provider switch: Fish Audio and HeyGen
+
+## 0.1.32-alpha - 2026-11-06
+- Add provider registry, PCM/WAV support, and provider-aware settings.
+
 ## 0.1.31-alpha - 2026-11-06
 - middle panel may grow up to 80 percent
 

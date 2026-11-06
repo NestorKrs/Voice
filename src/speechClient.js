@@ -1,5 +1,9 @@
+import { isFreeModel } from './providers.js';
+import { pcmToWav, parsePcmFormat } from './audioFormat.js';
+
 export const MODEL = 'fish-audio/s2.1-pro-free:free';
 export const ENDPOINT = 'https://openrouter.ai/api/v1/audio/speech';
+const DEFAULT_PROVIDER = { model: MODEL, format: 'mp3' };
 
 export function classifyError(status, bodyMessage, resetHeader) {
   const msg = (bodyMessage || '').slice(0, 300);
@@ -44,10 +48,11 @@ export function classifyError(status, bodyMessage, resetHeader) {
   return { kind, status, message, resetAt: kind === 'daily_cap' ? resetAt : (kind === 'rate_limit' ? resetAt : resetAt), retryable };
 }
 
-export async function requestSpeech({ apiKey, input, voice, fetchImpl, signal, sleep, retryDelayMs } = {}) {
+export async function requestSpeech({ apiKey, input, voice, provider, fetchImpl, signal, sleep, retryDelayMs } = {}) {
   const f = fetchImpl || globalThis.fetch;
   const sl = sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
   const delay = retryDelayMs == null ? 1500 : retryDelayMs;
+  const prov = provider && provider.model ? provider : DEFAULT_PROVIDER;
 
   const key = (apiKey || '').trim();
   if (!key) {
@@ -57,8 +62,11 @@ export async function requestSpeech({ apiKey, input, voice, fetchImpl, signal, s
   if (!trimmedInput) {
     return { ok: false, error: { kind: 'bad_input', message: 'Empty input.' }, attempts: 0 };
   }
+  if (!isFreeModel(prov.model)) {
+    return { ok: false, error: { kind: 'bad_provider', message: 'Only free models (ending in :free) may be used.' }, attempts: 0 };
+  }
 
-  const body = { model: MODEL, input: trimmedInput, response_format: 'mp3' };
+  const body = { model: prov.model, input: trimmedInput, response_format: prov.format === 'pcm' ? 'pcm' : 'mp3' };
   if (typeof voice === 'string' && voice.trim() !== '') {
     body.voice = voice.trim();
   }
@@ -80,6 +88,10 @@ export async function requestSpeech({ apiKey, input, voice, fetchImpl, signal, s
       const bytes = new Uint8Array(buf);
       if (bytes.byteLength === 0) {
         return { kind: 'empty', latencyMs };
+      }
+      if (prov.format === 'pcm') {
+        const fmt = parsePcmFormat(res.headers && res.headers.get ? res.headers.get('Content-Type') : '');
+        return { kind: 'success', bytes: pcmToWav(bytes, fmt.sampleRate, fmt.channels), latencyMs };
       }
       return { kind: 'success', bytes, latencyMs };
     }

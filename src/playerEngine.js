@@ -1,11 +1,12 @@
 import { reduce, createInitialState, RATES } from './playerCore.js';
+import { audioMime } from './audioFormat.js';
 
 export function createPlayerEngine({ getBytes, createAudio, makeUrl, revokeUrl, onChange = () => {}, onEvent = () => {} } = {}) {
   if (!createAudio) createAudio = () => new Audio();
   if (!makeUrl) makeUrl = (bytes) => {
     const BlobCtor = globalThis.Blob;
     const urlCtor = globalThis.URL;
-    return urlCtor.createObjectURL(new BlobCtor([bytes], { type: 'audio/mpeg' }));
+    return urlCtor.createObjectURL(new BlobCtor([bytes], { type: audioMime(bytes) }));
   };
   if (!revokeUrl) revokeUrl = (u) => { globalThis.URL.revokeObjectURL(u); };
 

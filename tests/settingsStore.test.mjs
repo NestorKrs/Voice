@@ -19,7 +19,7 @@ test('defaults', () => {
 test('round trip', () => {
   const s = makeStorage();
   saveSettings(s, { voice: 'v', chunkSize: 500, lookahead: 3 });
-  assert.deepEqual(loadSettings(s), { voice: 'v', chunkSize: 500, lookahead: 3, dailyLimit: 50 });
+  assert.deepEqual(loadSettings(s), { voice: 'v', provider: 'fish', voices: { fish: 'v' }, chunkSize: 500, lookahead: 3, dailyLimit: 50 });
 });
 
 test('broken JSON', () => {

@@ -6,6 +6,8 @@ import { chunkText } from './textPipeline.js';
 import { createScheduler } from './scheduler.js';
 import { createServices } from './wiring.js';
 import { createPlayerEngine } from './playerEngine.js';
+import { allProviders, loadCustomProviders, getProvider, providerLabel } from './providers.js';
+import { audioMime } from './audioFormat.js';
 import { DEFAULT_ORDER, movePanel, stepPanel, loadOrder, saveOrder, resetOrder } from './panelLayout.js';
 import { DEFAULT_WIDTHS, clampWidths, usableWidth, resizeFromHandle, columnsTemplate, loadWidths, saveWidths, resetWidths } from './panelWidths.js';
 
@@ -45,6 +47,7 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [showEvents, setShowEvents] = useState(false);
   const [order, setOrder] = useState(() => (storage ? loadOrder(storage) : [...DEFAULT_ORDER]));
+  const [customProviders] = useState(() => (storage ? loadCustomProviders(storage) : []));
   const [dragId, setDragId] = useState(null);
   const [drop, setDrop] = useState(null);
   const [widths, setWidths] = useState(() => (storage ? loadWidths(storage) : { ...DEFAULT_WIDTHS }));
@@ -104,6 +107,9 @@ export default function App() {
   }, []);
 
   const stats = computeStats({ text, chunkSize: settings.chunkSize, usedToday, dailyLimit: settings.dailyLimit });
+  const providers = allProviders(customProviders);
+  const provider = getProvider(providers, settings.provider);
+  const switchLocked = schedState.state === 'generating' || schedState.state === 'waiting_reset' || schedState.state === 'error';
 
   const canStart = text.trim() !== '' && keySet && usedToday < settings.dailyLimit;
   const startReason = !text.trim()
@@ -120,23 +126,52 @@ export default function App() {
     if (schedulerRef.current) {
             try { schedulerRef.current.cancel(); } catch {}
     }
-    const chunks = chunkText(text, settings.chunkSize);
+    const handleProviderChange = (id) => {
+    if (id === provider.id) return;
+    const next = getProvider(providers, id);
+    logEvent('Provider switched to ' + providerLabel(next));
+    try {
+      if (!storage) return;
+      if (!saveSettings(storage, { ...settings, provider: next.id, voice: undefined })) {
+        logEvent('Could not save the provider');
+        setNotice('Could not save the provider in this browser.');
+        return;
+      }
+      const loaded = loadSettings(storage);
+      setSettings(loaded);
+      setVoiceInput(loaded.voice);
+      if (schedulerRef.current) {
+        try { schedulerRef.current.cancel(); } catch {}
+        schedulerRef.current = null;
+      }
+      setSchedState({ state: 'idle', resetAt: null, playhead: 0, chunks: [] });
+      if (playerEngineRef.current) playerEngineRef.current.stop();
+      setJobError('');
+      setNotice('Provider: ' + providerLabel(next) + '. Press Start Reading to continue.');
+    } catch (e) {
+      const m = e && e.message ? e.message : 'error';
+      setJobError(m);
+      logEvent(m);
+    }
+  };
+
+  const chunks = chunkText(text, settings.chunkSize);
     logEvent(`Split into ${chunks.length} chunks`);
     const sched = createScheduler({
       chunks,
       voice: settings.voice,
       lookahead: settings.lookahead,
       cache: services.cache,
-      speak: services.speak,
+      speak: (a) => services.speak({ ...a, provider }),
       counter: services.counter,
-      makeKey: services.makeKey,
+      makeKey: (a) => services.makeKey({ ...a, provider }),
       onChange: (p) => {
         setSchedState((prev) => {
           // detect newly ready
           const prevStatuses = prev.chunks.map((c) => c.status);
           p.chunks.forEach((c, i) => {
             if (c.status === 'ready' && prevStatuses[i] !== 'ready') {
-              const key = services.makeKey({ text: chunkText(text, settings.chunkSize)[i], voice: settings.voice });
+              const key = services.makeKey({ text: chunkText(text, settings.chunkSize)[i], voice: settings.voice, provider });
               key.then((k) => {
                 services.cache.has(k).then((stored) => {
                   logEvent(`Chunk ${i + 1} ready, key ${k.slice(0, 8)}, stored: ${stored ? 'yes' : 'NO'}`);
@@ -208,7 +243,7 @@ export default function App() {
     setPlayingChunk(index);
     try {
       const chunkList = chunkText(text, settings.chunkSize);
-      const key = await services.makeKey({ text: chunkList[index], voice: settings.voice });
+      const key = await services.makeKey({ text: chunkList[index], voice: settings.voice, provider });
       logEvent(`Chunk ${index + 1} requested`);
       const bytes = await services.cache.get(key);
       if (!bytes) {
@@ -217,7 +252,7 @@ export default function App() {
         return;
       }
       logEvent(`Play chunk ${index + 1}: key ${key.slice(0, 8)}, ${bytes.byteLength} bytes from cache`);
-      const blob = new Blob([bytes], { type: 'audio/mpeg' });
+      const blob = new Blob([bytes], { type: audioMime(bytes) });
       logEvent(`Play chunk ${index + 1}: blob ${blob.size} bytes, type ${blob.type}`);
       const url = URL.createObjectURL(blob);
       if (audioRef.current) {
@@ -287,7 +322,7 @@ export default function App() {
     logEvent('Save settings pressed');
     try {
       if (!storage) return;
-      const next = { voice: voiceInput, chunkSize: Number(chunkInput), lookahead: Number(lookInput), dailyLimit: Number(dailyInput) };
+      const next = { ...settings, voice: voiceInput, chunkSize: Number(chunkInput), lookahead: Number(lookInput), dailyLimit: Number(dailyInput) };
       saveSettings(storage, next);
       const loaded = loadSettings(storage);
       setSettings(loaded);
@@ -327,7 +362,7 @@ export default function App() {
   };
 
   const chunks = chunkText(text, settings.chunkSize);
-  playerDataRef.current = { text, settings, chunks };
+  playerDataRef.current = { text, settings, chunks, provider };
 
   useEffect(() => {
     if (!services) return undefined;
@@ -336,7 +371,7 @@ export default function App() {
         const data = playerDataRef.current;
         const chunk = data.chunks[index];
         if (chunk == null) return null;
-        const key = await services.makeKey({ text: chunk, voice: data.settings.voice });
+        const key = await services.makeKey({ text: chunk, voice: data.settings.voice, provider: data.provider });
         return services.cache.get(key);
       },
       onChange: (next) => setPlayerState(next),
@@ -490,6 +525,10 @@ export default function App() {
       <header className="topbar">
         <span className="title">Voice</span>
         <span className="version">v{APP_VERSION}</span>
+        <select className="provider-select" value={provider.id} onChange={(e) => handleProviderChange(e.target.value)} disabled={switchLocked} title={switchLocked ? 'Finish or cancel the current job first.' : 'Choose the voice provider (free models only).'} aria-label="Voice provider">
+          {providers.map((p) => (<option key={p.id} value={p.id}>{providerLabel(p)}</option>))}
+        </select>
+        {switchLocked ? <span className="provider-reason">Finish or cancel the job to switch.</span> : null}
         <span className="requests" title={services ? new Date(services.counter.resetAt()).toLocaleString() : ''}>
           Requests today: {usedToday} / {settings.dailyLimit} (estimate)
         </span>
@@ -565,12 +604,12 @@ export default function App() {
         <div className="col-handle" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Resize the middle and right panels" title="Drag to resize. Keyboard: Left or Right arrow, Shift for bigger steps." style={{ gridColumn: 4, gridRow: 1 }} onPointerDown={onHandlePointerDown(1)} onPointerMove={onHandlePointerMove} onPointerUp={onHandlePointerUp} onPointerCancel={onHandlePointerUp} onKeyDown={onHandleKeyDown(1)} />
       </div>
       <footer className="playerbar">
-        <button onClick={() => playerEngineRef.current && playerEngineRef.current.prev()} disabled={!playerState.total || playerState.index === 0}>Previous</button>
+        <button onClick={() => playerEngineRef.current && playerEngineRef.current.prev()} disabled={!playerState.total || playerState.index === 0}><svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M6 6h2v12H6zM9.5 12l8.5 6V6z'/></svg></button>
         {playerState.status === 'playing'
-          ? <button className="play-primary play-active" onClick={() => playerEngineRef.current && playerEngineRef.current.pause()}>Pause</button>
-          : <button className="play-primary" onClick={() => { if (audioRef.current) { audioRef.current.pause(); if (audioUrl) { URL.revokeObjectURL(audioUrl); setAudioUrl(null); } } playerEngineRef.current && playerEngineRef.current.play(); }} disabled={!playerState.total}>Play</button>}
-        <button onClick={() => playerEngineRef.current && playerEngineRef.current.stop()} disabled={!playerState.total}>Stop</button>
-        <button onClick={() => playerEngineRef.current && playerEngineRef.current.next()} disabled={!playerState.total || playerState.index >= playerState.total - 1}>Next</button>
+          ? <button className="play-primary play-active" onClick={() => playerEngineRef.current && playerEngineRef.current.pause()}><svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M6 5h4v14H6zM14 5h4v14h-4z'/></svg></button>
+          : <button className="play-primary" onClick={() => { if (audioRef.current) { audioRef.current.pause(); if (audioUrl) { URL.revokeObjectURL(audioUrl); setAudioUrl(null); } } playerEngineRef.current && playerEngineRef.current.play(); }} disabled={!playerState.total}><svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M8 5v14l11-7z'/></svg></button>}
+        <button onClick={() => playerEngineRef.current && playerEngineRef.current.stop()} disabled={!playerState.total}><svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M6 6h12v12H6z'/></svg></button>
+        <button onClick={() => playerEngineRef.current && playerEngineRef.current.next()} disabled={!playerState.total || playerState.index >= playerState.total - 1}><svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M6 6l8.5 6L6 18zM16 6h2v12h-2z'/></svg></button>
         <input className="seek" type="range" min="0" max={playerState.duration || 0} step="0.1" value={Math.min(playerState.position, playerState.duration || 0)} onChange={(e) => playerEngineRef.current && playerEngineRef.current.seek(Number(e.target.value))} disabled={!playerState.duration} aria-label="Seek" />
         <select value={playerState.rate} onChange={(e) => playerEngineRef.current && playerEngineRef.current.setRate(Number(e.target.value))} disabled={!playerState.total} aria-label="Playback speed">
           <option value="0.75">0.75x</option>
@@ -593,8 +632,10 @@ export default function App() {
             <button onClick={handleClearKey}>Clear key</button>
           </div>
           <div>{keySet ? 'Key set' : 'No key'}</div>
-          <label>Voice ID</label>
+          <label>Voice ({provider.label})</label>
           <input type="text" value={voiceInput} onChange={(e) => setVoiceInput(e.target.value)} />
+          <small>{provider.voiceHint}</small>
+          <small>Model: {provider.model} - audio: {provider.format}</small>
           <label>Chunk size</label>
           <input type="number" value={chunkInput} onChange={(e) => setChunkInput(e.target.value)} />
           <label>Lookahead</label>
