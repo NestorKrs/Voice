@@ -48,6 +48,7 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [showEvents, setShowEvents] = useState(false);
   const [order, setOrder] = useState(() => (storage ? loadOrder(storage) : [...DEFAULT_ORDER]));
+  const fileInputRef = useRef(null);
   const [customProviders] = useState(() => (storage ? loadCustomProviders(storage) : []));
   const [dragId, setDragId] = useState(null);
   const [drop, setDrop] = useState(null);
@@ -156,7 +157,7 @@ export default function App() {
     if (schedulerRef.current) {
             try { schedulerRef.current.cancel(); } catch {}
     }
-    const chunks = chunkText(text, settings.chunkSize);
+  const chunks = chunkText(text, settings.chunkSize);
     logEvent(`Split into ${chunks.length} chunks`);
     const sched = createScheduler({
       chunks,
@@ -372,6 +373,15 @@ export default function App() {
     }
   };
 
+  const handleLoadFile = (e) => {
+    const file = e && e.target && e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { setText(String(reader.result || '')); };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   const chunks = chunkText(text, settings.chunkSize);
   playerDataRef.current = { text, settings, chunks, provider };
 
@@ -565,7 +575,8 @@ export default function App() {
           <div className="row">
             <button onClick={handleClearText}>Clear</button>
             <button onClick={handleStart} disabled={!canStart}>Start Reading</button>
-            <button disabled title="File loading comes later.">Load file</button>
+            <button onClick={() => fileInputRef.current && fileInputRef.current.click()}>Load file</button>
+          <input ref={fileInputRef} type="file" accept=".txt,text/plain" style={{display:"none"}} onChange={handleLoadFile} />
           </div>
           {startReason ? <div className="reason">{startReason}</div> : null}
         </section>
