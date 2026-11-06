@@ -381,7 +381,27 @@ export default function App() {
     e.preventDefault();
     setTextDropActive(false);
     const reader = new FileReader();
-    reader.onload = () => { setText(String(reader.result || '')); setNotice('File loaded. Press Start Reading to analyze it.'); };
+    reader.onload = () => {
+      setText(String(reader.result || ''));
+      if (schedulerRef.current) {
+        try { schedulerRef.current.cancel(); } catch {}
+        schedulerRef.current = null;
+      }
+      setSchedState({ state: 'idle', resetAt: null, playhead: 0, chunks: [] });
+      setJobError('');
+      if (playerEngineRef.current) playerEngineRef.current.reset();
+      if (services) {
+        services.cache.clear()
+          .then(() => services.cache.totalBytes())
+          .then((n) => setCacheSize(n))
+          .catch((err) => {
+            const m = err && err.message ? err.message : 'error';
+            setJobError(m);
+            logEvent(m);
+          });
+      }
+      setNotice('File loaded. Cache cleared. Press Start Reading to analyze it.');
+    };
     reader.readAsText(file);
   };
 
