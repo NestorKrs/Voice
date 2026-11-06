@@ -564,8 +564,6 @@ export default function App() {
             <button disabled title="File loading comes later.">Load file</button>
           </div>
           {startReason ? <div className="reason">{startReason}</div> : null}
-          <div className="privacy">Your text is sent to OpenRouter and Fish Audio to make the speech.</div>
-          {notice ? <div className="notice">{notice}</div> : null}
         </section>
         <section className={panelClass('reader', 'reader-panel')} style={{ gridColumn: order.indexOf('reader') * 2 + 1, gridRow: 1 }} onDragOver={onPanelDragOver('reader')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('reader')}>
           <div className="panel-head">
@@ -629,6 +627,7 @@ export default function App() {
         </select>
         <input type="range" min="0" max="1" step="0.01" value={playerState.volume} onChange={(e) => playerEngineRef.current && playerEngineRef.current.setVolume(Number(e.target.value))} aria-label="Volume" />
         <span className="now">{playerState.buffering ? `Buffering chunk ${playerState.index + 1}` : `Chunk ${playerState.total ? playerState.index + 1 : 0} / ${playerState.total}`}</span>
+        <span style={{flex:1,textAlign:'center'}}>{notice}</span>
       </footer>
       {drawerOpen ? (
         <aside className="drawer">
@@ -662,6 +661,7 @@ export default function App() {
             <option value="700">Bold</option>
             <option value="800">Extra Bold</option>
           </select>
+          <div className="privacy">Your text is sent to OpenRouter.</div>
           <button onClick={handleResetLayout} disabled={isDefaultOrder && isDefaultWidths} title={isDefaultOrder && isDefaultWidths ? 'The panels are already in the default order and size.' : 'Put the panels back in the default order and size.'}>Reset layout</button>
           <button onClick={handleSaveSettings}>Save settings</button>
           <div>Audio cache: {(cacheSize / 1024 / 1024).toFixed(2)} MB</div>
