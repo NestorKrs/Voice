@@ -1,3 +1,6 @@
+## 0.1.30-alpha - 2026-11-06
+- panels resize by drag and keyboard, always fill the window
+
 # Changelog
 
 ## 0.1.29-alpha - 2026-11-06

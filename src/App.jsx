@@ -7,7 +7,7 @@ import { createScheduler } from './scheduler.js';
 import { createServices } from './wiring.js';
 import { createPlayerEngine } from './playerEngine.js';
 import { DEFAULT_ORDER, movePanel, stepPanel, loadOrder, saveOrder, resetOrder } from './panelLayout.js';
-import { DEFAULT_WIDTHS, WIDTHS_KEY, loadWidths, saveWidths, resetWidths, usableWidth, resizeFromHandle, columnsTemplate, clampWidths } from './panelWidths.js';
+import { DEFAULT_WIDTHS, clampWidths, usableWidth, resizeFromHandle, columnsTemplate, loadWidths, saveWidths, resetWidths } from './panelWidths.js';
 
 const storage = typeof localStorage !== 'undefined' ? localStorage : null;
 const services = storage ? createServices({ storage }) : null;
@@ -37,7 +37,10 @@ export default function App() {
   const [dragId, setDragId] = useState(null);
   const [drop, setDrop] = useState(null);
   const [widths, setWidths] = useState(() => (storage ? loadWidths(storage) : { ...DEFAULT_WIDTHS }));
-  const [dragGhost, setDragGhost] = useState(null);
+  const [boxWidth, setBoxWidth] = useState(0);
+  const [resizing, setResizing] = useState(false);
+  const columnsRef = useRef(null);
+  const resizeRef = useRef(null);
   const [playerState, setPlayerState] = useState({ total: 0, index: 0, status: 'stopped', rate: 1, volume: 1, buffering: false, position: 0, duration: 0 });
   const audioRef = useRef(null);
   const playerEngineRef = useRef(null);
@@ -74,6 +77,20 @@ export default function App() {
       services.cache.totalBytes().then((n) => setCacheSize(n)).catch((e) => { const m = e && e.message ? e.message : 'error'; setJobError(m); logEvent(m); });
     }
   }, [drawerOpen]);
+
+  useEffect(() => {
+    const el = columnsRef.current;
+    if (!el) return undefined;
+    const measure = () => setBoxWidth(el.clientWidth);
+    measure();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', measure);
+      return () => window.removeEventListener('resize', measure);
+    }
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const stats = computeStats({ text, chunkSize: settings.chunkSize, usedToday, dailyLimit: settings.dailyLimit });
 
@@ -323,6 +340,54 @@ export default function App() {
   }, [chunks.length]);
 
   const isDefaultOrder = order.join() === DEFAULT_ORDER.join();
+  const usablePx = usableWidth(boxWidth);
+  const shown = boxWidth ? clampWidths(widths, usablePx) : widths;
+  const isDefaultWidths = widths.left === DEFAULT_WIDTHS.left && widths.right === DEFAULT_WIDTHS.right;
+
+  const commitWidths = (next) => {
+    setWidths(next);
+    if (storage && !saveWidths(storage, next)) {
+      logEvent('Could not save the panel widths');
+      setNotice('Could not save the panel widths in this browser.');
+    }
+  };
+
+  const onHandlePointerDown = (index) => (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    resizeRef.current = { index, startX: e.clientX, start: shown, usable: usablePx, last: shown, moved: false };
+    setResizing(true);
+  };
+
+  const onHandlePointerMove = (e) => {
+    const r = resizeRef.current;
+    if (!r) return;
+    const next = resizeFromHandle(r.start, r.index, e.clientX - r.startX, r.usable);
+    r.last = next;
+    r.moved = true;
+    setWidths(next);
+  };
+
+  const onHandlePointerUp = (e) => {
+    const r = resizeRef.current;
+    if (!r) return;
+    resizeRef.current = null;
+    setResizing(false);
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+    if (r.moved) {
+      commitWidths(r.last);
+      logEvent('Resized panels');
+    }
+  };
+
+  const onHandleKeyDown = (index) => (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const step = e.shiftKey ? 64 : 16;
+    commitWidths(resizeFromHandle(shown, index, e.key === 'ArrowLeft' ? -step : step, usablePx));
+  };
+
 
   const applyOrder = (next, message) => {
     setOrder(next);
@@ -339,14 +404,12 @@ export default function App() {
     e.dataTransfer.setData('text/plain', id);
     const panel = e.currentTarget.closest('.panel');
     if (panel) e.dataTransfer.setDragImage(panel, 16, 16);
-    setDragGhost({ x: e.clientX, y: e.clientY, id });
     logEvent('Drag panel ' + id);
   };
 
   const onGripDragEnd = () => {
     setDragId(null);
     setDrop(null);
-    setDragGhost(null);
   };
 
   const onPanelDragOver = (id) => (e) => {
@@ -386,6 +449,8 @@ export default function App() {
     try {
       if (storage) resetOrder(storage);
       setOrder([...DEFAULT_ORDER]);
+      if (storage) resetWidths(storage);
+      setWidths({ ...DEFAULT_WIDTHS });
       setNotice('Panel layout reset.');
     } catch (e) {
       const m = e && e.message ? e.message : 'error';
@@ -396,31 +461,6 @@ export default function App() {
 
   const panelClass = (id, extra) =>
     'panel ' + extra + (dragId === id ? ' dragging' : '') + (drop && drop.id === id ? ' drop-' + drop.side : '');
-
-  const usable = usableWidth(typeof window !== 'undefined' ? window.innerWidth : 1200);
-
-  const panelStyle = () => ({});
-
-  const onResizeStart = (handle) => (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const startX = e.clientX;
-    const startWidths = widths;
-    const move = (event) => {
-      const delta = event.clientX - startX;
-      const next = resizeFromHandle(startWidths, handle, delta, usable);
-      setWidths(next);
-    };
-    const stop = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', stop);
-      saveWidths(storage, widths);
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', stop, { once: true });
-  };
-
-  const columnsStyle = { gridTemplateColumns: columnsTemplate(widths, 12), display: 'grid', gap: '12px', padding: '12px', flex: 1, minHeight: 0, overflow: 'hidden', width: '100%', boxSizing: 'border-box' };
 
   const stateWord = {
     idle: 'Idle',
@@ -439,16 +479,14 @@ export default function App() {
         <span className="requests" title={services ? new Date(services.counter.resetAt()).toLocaleString() : ''}>
           Requests today: {usedToday} / {settings.dailyLimit} (estimate)
         </span>
-        <button onClick={handleResetLayout} disabled={isDefaultOrder} title={isDefaultOrder ? 'The panels are already in the default order.' : 'Put the panels back in the default order.'}>Reset layout</button>
+        <button onClick={handleResetLayout} disabled={isDefaultOrder && isDefaultWidths} title={isDefaultOrder && isDefaultWidths ? 'The panels are already in the default order and size.' : 'Put the panels back in the default order and size.'}>Reset layout</button>
         <button className="settings-btn" onClick={() => setDrawerOpen((o) => !o)}>Settings</button>
       </header>
-      <div className="columns" style={columnsStyle}>
-        <section className={panelClass('text', 'text-panel')} onDragOver={onPanelDragOver('text')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('text')}>
+      <div className={'columns' + (resizing ? ' resizing' : '')} ref={columnsRef} style={{ gridTemplateColumns: columnsTemplate(shown) }}>
+        <section className={panelClass('text', 'text-panel')} style={{ gridColumn: order.indexOf('text') * 2 + 1, gridRow: 1 }} onDragOver={onPanelDragOver('text')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('text')}>
           <div className="panel-head">
             <span className="grip" role="button" tabIndex={0} draggable="true" title="Drag to move this panel. Keyboard: Alt+Left or Alt+Right." aria-label="Move the Text panel" onDragStart={onGripDragStart('text')} onDragEnd={onGripDragEnd} onKeyDown={onGripKeyDown('text')} />
             <span className="panel-title">Text</span>
-            <span className="resize-handle" role="separator" tabIndex={0} title="Drag to resize this panel." aria-label="Resize the Text panel" onPointerDown={onResizeStart(0)} />
-
           </div>
           <textarea value={text} onChange={(e) => setText(e.target.value)} />
           <div className="stats">
@@ -467,11 +505,10 @@ export default function App() {
           <div className="privacy">Your text is sent to OpenRouter and Fish Audio to make the speech.</div>
           {notice ? <div className="notice">{notice}</div> : null}
         </section>
-        <section className={panelClass('reader', 'reader-panel')} onDragOver={onPanelDragOver('reader')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('reader')}>
+        <section className={panelClass('reader', 'reader-panel')} style={{ gridColumn: order.indexOf('reader') * 2 + 1, gridRow: 1 }} onDragOver={onPanelDragOver('reader')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('reader')}>
           <div className="panel-head">
             <span className="grip" role="button" tabIndex={0} draggable="true" title="Drag to move this panel. Keyboard: Alt+Left or Alt+Right." aria-label="Move the Reader panel" onDragStart={onGripDragStart('reader')} onDragEnd={onGripDragEnd} onKeyDown={onGripKeyDown('reader')} />
             <span className="panel-title">Reader</span>
-            <span className="resize-handle" role="separator" tabIndex={0} title="Drag to resize this panel." aria-label="Resize the Reader panel" onPointerDown={onResizeStart('reader')} />
           </div>
           <div className="chunk-list">
             {chunks.map((c, i) => {
@@ -494,11 +531,10 @@ export default function App() {
             })}
           </div>
         </section>
-        <section className={panelClass('job', 'job-panel')} onDragOver={onPanelDragOver('job')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('job')}>
+        <section className={panelClass('job', 'job-panel')} style={{ gridColumn: order.indexOf('job') * 2 + 1, gridRow: 1 }} onDragOver={onPanelDragOver('job')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('job')}>
           <div className="panel-head">
             <span className="grip" role="button" tabIndex={0} draggable="true" title="Drag to move this panel. Keyboard: Alt+Left or Alt+Right." aria-label="Move the Job panel" onDragStart={onGripDragStart('job')} onDragEnd={onGripDragEnd} onKeyDown={onGripKeyDown('job')} />
             <span className="panel-title">Job</span>
-            <span className="resize-handle" role="separator" tabIndex={0} title="Drag to resize this panel." aria-label="Resize the Job panel" onPointerDown={onResizeStart(1)} />
           </div>
           <div className="state">{stateWord}{schedState.state === 'idle' && schedState.chunks.some((c) => c.status === 'ready') ? ' - window filled' : ''}</div>
           <div>Chunks ready {schedState.chunks.filter((c) => c.status === 'ready').length} / {chunks.length}</div>
@@ -511,8 +547,9 @@ export default function App() {
             <button onClick={handleCancel} disabled={schedState.state !== 'generating'}>Cancel</button>
           </div>
         </section>
+        <div className="col-handle" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Resize the left and middle panels" title="Drag to resize. Keyboard: Left or Right arrow, Shift for bigger steps." style={{ gridColumn: 2, gridRow: 1 }} onPointerDown={onHandlePointerDown(0)} onPointerMove={onHandlePointerMove} onPointerUp={onHandlePointerUp} onPointerCancel={onHandlePointerUp} onKeyDown={onHandleKeyDown(0)} />
+        <div className="col-handle" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Resize the middle and right panels" title="Drag to resize. Keyboard: Left or Right arrow, Shift for bigger steps." style={{ gridColumn: 4, gridRow: 1 }} onPointerDown={onHandlePointerDown(1)} onPointerMove={onHandlePointerMove} onPointerUp={onHandlePointerUp} onPointerCancel={onHandlePointerUp} onKeyDown={onHandleKeyDown(1)} />
       </div>
-      {dragGhost ? <div className="drag-ghost">⋮⋮</div> : null}
       <footer className="playerbar">
         <button onClick={() => playerEngineRef.current && playerEngineRef.current.prev()} disabled={!playerState.total || playerState.index === 0}>Previous</button>
         {playerState.status === 'playing'
