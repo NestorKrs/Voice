@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.19-alpha - 2026-11-06
+- Add functional panel width resize handles with minimum widths and flex reflow.
+
 ## 0.1.18-alpha - 2026-11-06
 - Implement functional player controls: play, pause, stop, previous, next, seek, speed, volume, and playback state.
 

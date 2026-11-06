@@ -35,6 +35,7 @@ export default function App() {
   const [order, setOrder] = useState(() => (storage ? loadOrder(storage) : [...DEFAULT_ORDER]));
   const [dragId, setDragId] = useState(null);
   const [drop, setDrop] = useState(null);
+  const [panelWidths, setPanelWidths] = useState({});
   const [playerState, setPlayerState] = useState({ total: 0, index: 0, status: 'stopped', rate: 1, volume: 1, buffering: false, position: 0, duration: 0 });
   const audioRef = useRef(null);
   const playerEngineRef = useRef(null);
@@ -392,6 +393,27 @@ export default function App() {
   const panelClass = (id, extra) =>
     'panel ' + extra + (dragId === id ? ' dragging' : '') + (drop && drop.id === id ? ' drop-' + drop.side : '');
 
+  const panelStyle = (id) => (panelWidths[id] ? { order: order.indexOf(id), width: panelWidths[id], flex: `0 1 ${panelWidths[id]}px` } : { order: order.indexOf(id) });
+
+  const onResizeStart = (id) => (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const panel = e.currentTarget.closest('.panel');
+    if (!panel) return;
+    const startX = e.clientX;
+    const startWidth = panel.getBoundingClientRect().width;
+    const move = (event) => {
+      const nextWidth = Math.max(160, Math.round(startWidth + event.clientX - startX));
+      setPanelWidths((current) => ({ ...current, [id]: nextWidth }));
+    };
+    const stop = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', stop);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', stop, { once: true });
+  };
+
   const stateWord = {
     idle: 'Idle',
     generating: 'Generating',
@@ -413,10 +435,11 @@ export default function App() {
         <button className="settings-btn" onClick={() => setDrawerOpen((o) => !o)}>Settings</button>
       </header>
       <div className="columns">
-        <section className={panelClass('text', 'text-panel')} style={{ order: order.indexOf('text') }} onDragOver={onPanelDragOver('text')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('text')}>
+        <section className={panelClass('text', 'text-panel')} style={panelStyle('text')} onDragOver={onPanelDragOver('text')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('text')}>
           <div className="panel-head">
             <span className="grip" role="button" tabIndex={0} draggable="true" title="Drag to move this panel. Keyboard: Alt+Left or Alt+Right." aria-label="Move the Text panel" onDragStart={onGripDragStart('text')} onDragEnd={onGripDragEnd} onKeyDown={onGripKeyDown('text')} />
             <span className="panel-title">Text</span>
+            <span className="resize-handle" role="separator" tabIndex={0} title="Drag to resize this panel." aria-label="Resize the Text panel" onPointerDown={onResizeStart('text')} />
           </div>
           <textarea value={text} onChange={(e) => setText(e.target.value)} />
           <div className="stats">
@@ -435,10 +458,11 @@ export default function App() {
           <div className="privacy">Your text is sent to OpenRouter and Fish Audio to make the speech.</div>
           {notice ? <div className="notice">{notice}</div> : null}
         </section>
-        <section className={panelClass('reader', 'reader-panel')} style={{ order: order.indexOf('reader') }} onDragOver={onPanelDragOver('reader')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('reader')}>
+        <section className={panelClass('reader', 'reader-panel')} style={panelStyle('reader')} onDragOver={onPanelDragOver('reader')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('reader')}>
           <div className="panel-head">
             <span className="grip" role="button" tabIndex={0} draggable="true" title="Drag to move this panel. Keyboard: Alt+Left or Alt+Right." aria-label="Move the Reader panel" onDragStart={onGripDragStart('reader')} onDragEnd={onGripDragEnd} onKeyDown={onGripKeyDown('reader')} />
             <span className="panel-title">Reader</span>
+            <span className="resize-handle" role="separator" tabIndex={0} title="Drag to resize this panel." aria-label="Resize the Reader panel" onPointerDown={onResizeStart('reader')} />
           </div>
           <div className="chunk-list">
             {chunks.map((c, i) => {
@@ -461,10 +485,11 @@ export default function App() {
             })}
           </div>
         </section>
-        <section className={panelClass('job', 'job-panel')} style={{ order: order.indexOf('job') }} onDragOver={onPanelDragOver('job')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('job')}>
+        <section className={panelClass('job', 'job-panel')} style={panelStyle('job')} onDragOver={onPanelDragOver('job')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('job')}>
           <div className="panel-head">
             <span className="grip" role="button" tabIndex={0} draggable="true" title="Drag to move this panel. Keyboard: Alt+Left or Alt+Right." aria-label="Move the Job panel" onDragStart={onGripDragStart('job')} onDragEnd={onGripDragEnd} onKeyDown={onGripKeyDown('job')} />
             <span className="panel-title">Job</span>
+            <span className="resize-handle" role="separator" tabIndex={0} title="Drag to resize this panel." aria-label="Resize the Job panel" onPointerDown={onResizeStart('job')} />
           </div>
           <div className="state">{stateWord}{schedState.state === 'idle' && schedState.chunks.some((c) => c.status === 'ready') ? ' - window filled' : ''}</div>
           <div>Chunks ready {schedState.chunks.filter((c) => c.status === 'ready').length} / {chunks.length}</div>
