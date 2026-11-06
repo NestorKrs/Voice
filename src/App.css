@@ -71,3 +71,7 @@
 .row button:hover:not(:disabled) { background: var(--accent); color: var(--bg); border-color: var(--accent); }
 
 .settings-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; }
+
+.playerbar input[type="range"]:not(.seek) { accent-color: var(--accent); }
+
+.playerbar input[aria-label="Playback speed"] { width: 80px; }

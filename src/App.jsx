@@ -620,16 +620,11 @@ export default function App() {
           : <button className="play-primary" onClick={() => { if (audioRef.current) { audioRef.current.pause(); if (audioUrl) { URL.revokeObjectURL(audioUrl); setAudioUrl(null); } } playerEngineRef.current && playerEngineRef.current.play(); }} disabled={!playerState.total}><svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M8 5v14l11-7z'/></svg></button>}
         <button onClick={() => playerEngineRef.current && playerEngineRef.current.stop()} disabled={!playerState.total}><svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M6 6h12v12H6z'/></svg></button>
         <button onClick={() => playerEngineRef.current && playerEngineRef.current.next()} disabled={!playerState.total || playerState.index >= playerState.total - 1}><svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M6 6l8.5 6L6 18zM16 6h2v12h-2z'/></svg></button>
-        <input className="seek" type="range" min="0" max={playerState.duration || 0} step="0.1" value={Math.min(playerState.position, playerState.duration || 0)} onChange={(e) => playerEngineRef.current && playerEngineRef.current.seek(Number(e.target.value))} disabled={!playerState.duration} aria-label="Seek" />
-        <select value={playerState.rate} onChange={(e) => playerEngineRef.current && playerEngineRef.current.setRate(Number(e.target.value))} disabled={!playerState.total} aria-label="Playback speed">
-          <option value="0.75">0.75x</option>
-          <option value="1">1x</option>
-          <option value="1.25">1.25x</option>
-          <option value="1.5">1.5x</option>
-          <option value="2">2x</option>
-        </select>
+        <input className="seek" type="range" min="0" max={playerState.duration || 0} step="any" value={Math.min(playerState.position, playerState.duration || 0)} onChange={(e) => playerEngineRef.current && playerEngineRef.current.seek(Number(e.target.value))} disabled={!playerState.duration} aria-label="Seek" />
+        <input type="range" min="0.5" max="2" step="0.25" value={playerState.rate} onChange={(e) => playerEngineRef.current && playerEngineRef.current.setRate(Number(e.target.value))} disabled={!playerState.total} aria-label="Playback speed" />
+<span className="now">{playerState.rate}x</span>
         <input type="range" min="0" max="1" step="0.01" value={playerState.volume} onChange={(e) => playerEngineRef.current && playerEngineRef.current.setVolume(Number(e.target.value))} aria-label="Volume" />
-        <span className="now">{playerState.buffering ? `Buffering chunk ${playerState.index + 1}` : `Chunk ${playerState.total ? playerState.index + 1 : 0} / ${playerState.total}`}</span>
+
         <span style={{flex:1,textAlign:'center'}}>{notice}</span>
       </footer>
       {drawerOpen ? (

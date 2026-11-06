@@ -45,7 +45,7 @@ export function createPlayerEngine({ getBytes, createAudio, makeUrl, revokeUrl, 
       rate: state.rate,
       volume,
       buffering: /* tracked */ (state.status === 'playing' && !(a && a.loaded && a.index === state.index)),
-      position: audio ? (audio.currentTime || 0) : 0,
+      position: state.status === 'finished' ? 0 : (audio ? (audio.currentTime || 0) : 0),
       duration: audio ? (audio.duration || 0) : 0,
     };
   }
@@ -63,7 +63,7 @@ export function createPlayerEngine({ getBytes, createAudio, makeUrl, revokeUrl, 
       rate: state.rate,
       volume,
       buffering: bufferingFlag,
-      position: audio ? (audio.currentTime || 0) : 0,
+      position: state.status === 'finished' ? 0 : (audio ? (audio.currentTime || 0) : 0),
       duration: audio ? (audio.duration || 0) : 0,
     };
   }
@@ -186,6 +186,7 @@ export function createPlayerEngine({ getBytes, createAudio, makeUrl, revokeUrl, 
     // revoke url of ended slot
     if (oldSlot.url) { revokeUrl(oldSlot.url); oldSlot.url = null; oldSlot.loaded = false; }
     if (state.status === 'finished') {
+      try { active().audio.currentTime = 0; } catch {}
       emitEvent('Player: finished');
       bufferingFlag = false;
       emitChange();
