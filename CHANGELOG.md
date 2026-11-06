@@ -1,3 +1,6 @@
+## 0.1.37-alpha - 2026-11-06
+- Fix jumpy speed slider.
+
 ## 0.1.36-alpha - 2026-11-06
 - player forgets loaded audio when provider or voice changes
 

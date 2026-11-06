@@ -6,6 +6,7 @@ import { chunkText } from './textPipeline.js';
 import { createScheduler } from './scheduler.js';
 import { createServices } from './wiring.js';
 import { createPlayerEngine } from './playerEngine.js';
+import { RATES } from './playerCore.js';
 import { allProviders, loadCustomProviders, getProvider, providerLabel } from './providers.js';
 import { audioMime } from './audioFormat.js';
 import { DEFAULT_ORDER, movePanel, stepPanel, loadOrder, saveOrder, resetOrder } from './panelLayout.js';
@@ -622,9 +623,10 @@ export default function App() {
         <button onClick={() => playerEngineRef.current && playerEngineRef.current.stop()} disabled={!playerState.total}><svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M6 6h12v12H6z'/></svg></button>
         <button onClick={() => playerEngineRef.current && playerEngineRef.current.next()} disabled={!playerState.total || playerState.index >= playerState.total - 1}><svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M6 6l8.5 6L6 18zM16 6h2v12h-2z'/></svg></button>
         <input className="seek" type="range" min="0" max={playerState.duration || 0} step="any" value={Math.min(playerState.position, playerState.duration || 0)} onChange={(e) => playerEngineRef.current && playerEngineRef.current.seek(Number(e.target.value))} disabled={!playerState.duration} aria-label="Seek" />
-        <input type="range" min="0.5" max="2" step="0.25" value={playerState.rate} onChange={(e) => playerEngineRef.current && playerEngineRef.current.setRate(Number(e.target.value))} disabled={!playerState.total} aria-label="Playback speed" />
-<span className="now">{playerState.rate}x</span>
         <input type="range" min="0" max="1" step="0.01" value={playerState.volume} onChange={(e) => playerEngineRef.current && playerEngineRef.current.setVolume(Number(e.target.value))} aria-label="Volume" />
+<span className="now rate-label">{Math.round(playerState.volume * 100)}%</span>
+        <input type="range" min="0" max={RATES.length - 1} step="1" value={Math.max(0, RATES.indexOf(playerState.rate))} onChange={(e) => { const next = RATES[Number(e.target.value)]; if (next !== playerState.rate) logEvent(`Speed ${next}x`); if (playerEngineRef.current) playerEngineRef.current.setRate(next); }} disabled={!playerState.total} aria-label="Playback speed" />
+<span className="now rate-label">{playerState.rate}x</span>
 
         <span style={{flex:1,textAlign:'center'}}>{notice}</span>
       </footer>
