@@ -21,7 +21,7 @@
 .chunk-row.failed { border-left-color: #c9605f; }
 .chunk-head { display: flex; align-items: center; gap: 8px; }
 .chunk-actions { margin-left: auto; display: flex; gap: 6px; }
-.chunk-row button { padding: 3px 10px; font-size: 12px; }
+.chunk-row button { padding: 3px 10px; font-size: 12px; min-width: 58px; }
 .chunk-num { color: var(--muted); font-size: 12px; }
 .chunk-preview { font-size: 12px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .badge { font-size: 11px; padding: 1px 8px; border-radius: 10px; background: #2c3036; color: var(--muted); }
@@ -34,6 +34,9 @@
 .progress { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
 .bar { height: 100%; background: var(--accent); transition: width var(--ease); }
 .playerbar { display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: var(--panel); border-top: 1px solid var(--line); }
+.playerbar button { min-width: 64px; }
+.playerbar button.play-active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.playerbar button.play-primary:hover:not(:disabled) { background: var(--accent); color: var(--bg); border-color: var(--accent); }
 .playerbar .seek { flex: 1; accent-color: var(--accent); }
 .playerbar .now { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .statusbar { position: fixed; bottom: 0; left: 0; right: 0; height: 28px; display: flex; align-items: center; background: var(--panel); border-top: 1px solid var(--line); padding: 0 12px; font-size: 12px; cursor: pointer; z-index: 20; }

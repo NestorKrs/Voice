@@ -26,6 +26,7 @@ export default function App() {
   const [dailyInput, setDailyInput] = useState(settings.dailyLimit);
   const [fontInput, setFontInput] = useState('400');
   const [textZoom, setTextZoom] = useState(100);
+  const [playingChunk, setPlayingChunk] = useState(null);
   useEffect(() => {
     const preventBrowserZoom = (e) => { if (e.ctrlKey) e.preventDefault(); };
     window.addEventListener('wheel', preventBrowserZoom, { passive: false });
@@ -202,6 +203,9 @@ export default function App() {
   const playChunk = async (index) => {
     logEvent(`Play chunk ${index + 1} pressed`);
     if (!services || !schedulerRef.current) return;
+    if (playerEngineRef.current && playerState.status === 'playing') playerEngineRef.current.pause();
+    if (audioRef.current) { audioRef.current.pause(); }
+    setPlayingChunk(index);
     try {
       const chunkList = chunkText(text, settings.chunkSize);
       const key = await services.makeKey({ text: chunkList[index], voice: settings.voice });
@@ -226,7 +230,7 @@ export default function App() {
       audio.onloadedmetadata = () => logEvent(`duration ${audio.duration} s`);
       audio.oncanplay = () => logEvent('canplay');
       audio.onplaying = () => logEvent('playing');
-      audio.onended = () => { URL.revokeObjectURL(url); setAudioUrl(null); logEvent('ended'); };
+      audio.onended = () => { URL.revokeObjectURL(url); setAudioUrl(null); setPlayingChunk(null); logEvent('ended'); };
       audio.onerror = () => {
         const code = audio.error ? audio.error.code : 0;
         const msg = audio.error ? audio.error.message : 'error';
@@ -531,7 +535,7 @@ export default function App() {
                     <span className="chunk-num">#{i + 1}</span>
                     <span className="chunk-actions">
                       {st === 'failed' ? <button onClick={() => handleRetry(i)}>Retry</button> : null}
-                      <button disabled={st !== 'ready'} onClick={() => playChunk(i)}>Play</button>
+                      {playingChunk === i ? <button onClick={() => { if (audioRef.current) audioRef.current.pause(); setPlayingChunk(null); }}>Pause</button> : <button disabled={st !== 'ready'} onClick={() => playChunk(i)}>Play</button>}
                     </span>
                   </div>
                   <div className="chunk-preview">{c.slice(0, 400)}</div>
@@ -563,8 +567,8 @@ export default function App() {
       <footer className="playerbar">
         <button onClick={() => playerEngineRef.current && playerEngineRef.current.prev()} disabled={!playerState.total || playerState.index === 0}>Previous</button>
         {playerState.status === 'playing'
-          ? <button onClick={() => playerEngineRef.current && playerEngineRef.current.pause()}>Pause</button>
-          : <button onClick={() => playerEngineRef.current && playerEngineRef.current.play()} disabled={!playerState.total}>Play</button>}
+          ? <button className="play-primary play-active" onClick={() => playerEngineRef.current && playerEngineRef.current.pause()}>Pause</button>
+          : <button className="play-primary" onClick={() => { if (audioRef.current) { audioRef.current.pause(); if (audioUrl) { URL.revokeObjectURL(audioUrl); setAudioUrl(null); } } playerEngineRef.current && playerEngineRef.current.play(); }} disabled={!playerState.total}>Play</button>}
         <button onClick={() => playerEngineRef.current && playerEngineRef.current.stop()} disabled={!playerState.total}>Stop</button>
         <button onClick={() => playerEngineRef.current && playerEngineRef.current.next()} disabled={!playerState.total || playerState.index >= playerState.total - 1}>Next</button>
         <input className="seek" type="range" min="0" max={playerState.duration || 0} step="0.1" value={Math.min(playerState.position, playerState.duration || 0)} onChange={(e) => playerEngineRef.current && playerEngineRef.current.seek(Number(e.target.value))} disabled={!playerState.duration} aria-label="Seek" />
@@ -576,7 +580,7 @@ export default function App() {
           <option value="2">2x</option>
         </select>
         <input type="range" min="0" max="1" step="0.01" value={playerState.volume} onChange={(e) => playerEngineRef.current && playerEngineRef.current.setVolume(Number(e.target.value))} aria-label="Volume" />
-        <span className="now">{playerState.buffering ? `Buffering chunk ${playerState.index + 1}` : `Chunk ${playerState.total ? playerState.index + 1 : 0} / ${playerState.total} · ${playerState.status}`}</span>
+        <span className="now">{playerState.buffering ? `Buffering chunk ${playerState.index + 1}` : `Chunk ${playerState.total ? playerState.index + 1 : 0} / ${playerState.total}`}</span>
       </footer>
       {drawerOpen ? (
         <aside className="drawer">
