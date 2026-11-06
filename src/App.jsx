@@ -9,6 +9,8 @@ import { createServices } from './wiring.js';
 const storage = typeof localStorage !== 'undefined' ? localStorage : null;
 const services = storage ? createServices({ storage }) : null;
 
+const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
+
 export default function App() {
   const [text, setText] = useState(() => (storage ? loadText(storage) : ''));
   const [settings, setSettings] = useState(() => (storage ? loadSettings(storage) : { voice: '', chunkSize: 2000, lookahead: 2, dailyLimit: 50 }));
@@ -19,6 +21,7 @@ export default function App() {
   const [chunkInput, setChunkInput] = useState(settings.chunkSize);
   const [lookInput, setLookInput] = useState(settings.lookahead);
   const [dailyInput, setDailyInput] = useState(settings.dailyLimit);
+  const [fontInput, setFontInput] = useState('400');
   const [schedState, setSchedState] = useState({ state: 'idle', resetAt: null, playhead: 0, chunks: [] });
   const [usedToday, setUsedToday] = useState(() => (services ? services.counter.count() : 0));
   const [jobError, setJobError] = useState('');
@@ -303,12 +306,13 @@ export default function App() {
       </header>
       <div className="columns">
         <section className="panel text-panel">
+          <div className="panel-head"><span className="panel-title">Text</span></div>
           <textarea value={text} onChange={(e) => setText(e.target.value)} />
           <div className="stats">
-            <span>{stats.characters} characters</span>
-            <span>{stats.pages} pages (about)</span>
-            <span>{stats.chunks} chunks</span>
-            <span>{stats.requestsNeeded} requests needed</span>
+            <span>{plural(stats.characters, 'character')}</span>
+            <span>{plural(stats.pages, 'page')} (about)</span>
+            <span>{plural(stats.chunks, 'chunk')}</span>
+            <span>{plural(stats.requestsNeeded, 'request')} needed</span>
             <span>{stats.fitsToday ? 'Fits today' : `Needs ${stats.daysNeeded} days`}</span>
           </div>
           <div className="row">
@@ -321,24 +325,30 @@ export default function App() {
           {notice ? <div className="notice">{notice}</div> : null}
         </section>
         <section className="panel reader-panel">
+          <div className="panel-head"><span className="panel-title">Reader</span></div>
           <div className="chunk-list">
             {chunks.map((c, i) => {
               const st = schedState.chunks[i] ? schedState.chunks[i].status : 'queued';
               const err = schedState.chunks[i] ? schedState.chunks[i].error : null;
               return (
                 <div key={i} className={`chunk-row ${st}`}>
-                  <span className="badge">{st}</span>
-                  <span className="chunk-num">#{i + 1}</span>
-                  <span className="chunk-preview">{c.slice(0, 160)}</span>
-                  <button disabled={st !== 'ready'} onClick={() => playChunk(i)}>Play</button>
-                  {err ? <span className="err">{err.message}</span> : null}
-                  {st === 'failed' ? <button onClick={() => handleRetry(i)}>Retry</button> : null}
+                  <div className="chunk-head">
+                    <span className={`badge ${st}`}>{st}</span>
+                    <span className="chunk-num">#{i + 1}</span>
+                    <span className="chunk-actions">
+                      {st === 'failed' ? <button onClick={() => handleRetry(i)}>Retry</button> : null}
+                      <button disabled={st !== 'ready'} onClick={() => playChunk(i)}>Play</button>
+                    </span>
+                  </div>
+                  <div className="chunk-preview">{c.slice(0, 400)}</div>
+                  {err ? <div className="err">{err.message}</div> : null}
                 </div>
               );
             })}
           </div>
         </section>
         <section className="panel job-panel">
+          <div className="panel-head"><span className="panel-title">Job</span></div>
           <div className="state">{stateWord}{schedState.state === 'idle' && schedState.chunks.some((c) => c.status === 'ready') ? ' - window filled' : ''}</div>
           <div>Chunks ready {schedState.chunks.filter((c) => c.status === 'ready').length} / {chunks.length}</div>
           <div className="progress"><div className="bar" style={{ width: chunks.length ? `${(schedState.chunks.filter((c) => c.status === 'ready').length / chunks.length) * 100}%` : '0%' }} /></div>
@@ -351,6 +361,21 @@ export default function App() {
           </div>
         </section>
       </div>
+      <footer className="playerbar">
+        <button disabled title="The player arrives in the next update.">Previous</button>
+        <button disabled title="The player arrives in the next update.">Play</button>
+        <button disabled title="The player arrives in the next update.">Stop</button>
+        <button disabled title="The player arrives in the next update.">Next</button>
+        <input className="seek" type="range" min="0" max="100" defaultValue="0" disabled title="The player arrives in the next update." />
+        <select disabled title="The player arrives in the next update." defaultValue="1">
+          <option value="0.75">0.75x</option>
+          <option value="1">1x</option>
+          <option value="1.25">1.25x</option>
+          <option value="1.5">1.5x</option>
+          <option value="2">2x</option>
+        </select>
+        <span className="now">Player controls arrive in the next update.</span>
+      </footer>
       {drawerOpen ? (
         <aside className="drawer">
           <h3>Settings</h3>
@@ -374,6 +399,13 @@ export default function App() {
             <option value={1000}>1000</option>
           </select>
           <small>1000 needs $10 of lifetime credit purchases on OpenRouter. The app cannot check this.</small>
+          <label>Font weight</label>
+          <select value={fontInput} onChange={(e) => { setFontInput(e.target.value); document.body.style.fontWeight = e.target.value; }}>
+            <option value="100">Thin</option>
+            <option value="400">Regular</option>
+            <option value="700">Bold</option>
+            <option value="800">Extra Bold</option>
+          </select>
           <button onClick={handleSaveSettings}>Save settings</button>
           <div>Audio cache: {(cacheSize / 1024 / 1024).toFixed(2)} MB</div>
           <button onClick={handleClearCache}>Clear audio cache</button>

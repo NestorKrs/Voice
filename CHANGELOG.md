@@ -1,3 +1,6 @@
+## 0.1.16-alpha - 2026-11-06
+- Layout polish: panel headers, wrapped chunk rows with status badges, player bar placeholder, JetBrains Mono, no overlap with the status bar.
+
 ## 0.1.15-alpha - 2026-11-06
 - Fix catch blocks that used an undefined e and hid the real error; add a source-scan test.
 
