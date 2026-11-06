@@ -75,5 +75,7 @@
 .playerbar input[type="range"]:not(.seek) { accent-color: var(--accent); }
 
 .playerbar input[aria-label="Playback speed"] { width: 80px; }
-.rate-label { width: 5ch; text-align: right; font-variant-numeric: tabular-nums; flex: none; margin-left: 4px; color: var(--accent); }
+.playerbar .rate-label { width: 5ch; text-align: right; font-variant-numeric: tabular-nums; flex: none; margin-left: 4px; color: var(--accent); }
 .playerbar input[aria-label="Playback speed"] { margin-left: 16px; }
+
+.playerbar .notice { color: var(--accent); }
