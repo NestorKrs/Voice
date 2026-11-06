@@ -4,7 +4,7 @@
 .title { font-weight: 700; font-size: 15px; letter-spacing: 0.02em; }
 .version { color: var(--muted); font-size: 12px; }
 .requests { color: var(--muted); font-size: 12px; margin-left: auto; }
-.columns { display: flex; gap: 12px; padding: 12px; flex: 1; min-height: 0; }
+.columns { display: flex; gap: 12px; padding: 12px; flex: 1; min-height: 0; overflow: hidden; width: 100%; box-sizing: border-box; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: auto; min-width: 220px; transition: border-color var(--ease), opacity var(--ease); }
 .panel-head { position: relative; display: flex; align-items: center; gap: 8px; min-height: 20px; }
 .panel-title { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
