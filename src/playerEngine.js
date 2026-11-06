@@ -285,6 +285,22 @@ export function createPlayerEngine({ getBytes, createAudio, makeUrl, revokeUrl, 
       bufferingFlag = false;
       emitChange();
     },
+    reset() {
+      if (destroyed) return;
+      loadToken++;
+      for (const key of ['A', 'B']) {
+        const s = slots[key];
+        s.audio.pause();
+        s.audio.currentTime = 0;
+        if (s.url) { revokeUrl(s.url); s.url = null; }
+        s.index = null;
+        s.loaded = false;
+      }
+      state = reduce(state, { type: 'STOP' });
+      bufferingFlag = false;
+      emitEvent('Player: audio cleared');
+      emitChange();
+    },
     next() {
       if (destroyed) return;
       const before = state.index;

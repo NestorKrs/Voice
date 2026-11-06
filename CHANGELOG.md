@@ -1,3 +1,6 @@
+## 0.1.36-alpha - 2026-11-06
+- player forgets loaded audio when provider or voice changes
+
 ## 0.1.35-alpha - 2026-11-06
 - Move Reset layout button into Settings drawer.
 

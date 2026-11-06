@@ -397,6 +397,9 @@ export default function App() {
   useEffect(() => {
     if (playerEngineRef.current) playerEngineRef.current.setTotal(chunks.length);
   }, [chunks.length]);
+  useEffect(() => {
+    if (playerEngineRef.current) playerEngineRef.current.reset();
+  }, [provider.id, settings.voice, settings.chunkSize]);
 
   const isDefaultOrder = order.join() === DEFAULT_ORDER.join();
   const usablePx = usableWidth(boxWidth);
