@@ -575,7 +575,7 @@ export default function App() {
           <div className="row">
             <button onClick={handleClearText}>Clear</button>
             <button onClick={handleStart} disabled={!canStart}>Start Reading</button>
-            <button onClick={() => fileInputRef.current && fileInputRef.current.click()}>Load file</button>
+            <button title="Supported: .txt .md" onClick={() => fileInputRef.current && fileInputRef.current.click()}>Load file</button>
           <input ref={fileInputRef} type="file" accept=".txt,text/plain" style={{display:"none"}} onChange={handleLoadFile} />
           </div>
           {startReason ? <div className="reason">{startReason}</div> : null}
