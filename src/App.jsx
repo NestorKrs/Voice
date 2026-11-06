@@ -6,7 +6,7 @@ import { chunkText } from './textPipeline.js';
 import { createScheduler } from './scheduler.js';
 import { createServices } from './wiring.js';
 import { createPlayerEngine } from './playerEngine.js';
-import { RATES } from './playerCore.js';
+import { RATES, activeRowIndex } from './playerCore.js';
 import { allProviders, loadCustomProviders, getProvider, providerLabel } from './providers.js';
 import { audioMime } from './audioFormat.js';
 import { DEFAULT_ORDER, movePanel, stepPanel, loadOrder, saveOrder, resetOrder } from './panelLayout.js';
@@ -29,7 +29,7 @@ export default function App() {
   const [dailyInput, setDailyInput] = useState(settings.dailyLimit);
   const [fontInput, setFontInput] = useState('400');
   const [textZoom, setTextZoom] = useState(100);
-  const [playingChunk, setPlayingChunk] = useState(null);
+
   useEffect(() => {
     const preventBrowserZoom = (e) => { if (e.ctrlKey) e.preventDefault(); };
     window.addEventListener('wheel', preventBrowserZoom, { passive: false });
@@ -243,7 +243,7 @@ export default function App() {
     if (!services || !schedulerRef.current) return;
     if (playerEngineRef.current && playerState.status === 'playing') playerEngineRef.current.pause();
     if (audioRef.current) { audioRef.current.pause(); }
-    setPlayingChunk(index);
+
     try {
       const chunkList = chunkText(text, settings.chunkSize);
       const key = await services.makeKey({ text: chunkList[index], voice: settings.voice, provider });
@@ -268,7 +268,7 @@ export default function App() {
       audio.onloadedmetadata = () => logEvent(`duration ${audio.duration} s`);
       audio.oncanplay = () => logEvent('canplay');
       audio.onplaying = () => logEvent('playing');
-      audio.onended = () => { URL.revokeObjectURL(url); setAudioUrl(null); setPlayingChunk(null); logEvent('ended'); };
+      audio.onended = () => {    URL.revokeObjectURL(url); setAudioUrl(null); logEvent('ended'); };
       audio.onerror = () => {
         const code = audio.error ? audio.error.code : 0;
         const msg = audio.error ? audio.error.message : 'error';
@@ -592,13 +592,13 @@ export default function App() {
               const st = schedState.chunks[i] ? schedState.chunks[i].status : 'queued';
               const err = schedState.chunks[i] ? schedState.chunks[i].error : null;
               return (
-                <div key={i} className={`chunk-row ${st} ${playingChunk === i ? "playing" : ""}`}>
+                <div key={i} className={`chunk-row ${st} ${i === activeRowIndex(playerState) ? "playing" : ""}`} aria-current={i === activeRowIndex(playerState) ? "true" : undefined}>
                   <div className="chunk-head">
                     <span className={`badge ${st}`}>{st}</span>
                     <span className="chunk-num">#{i + 1}</span>
                     <span className="chunk-actions">
                       {st === 'failed' ? <button onClick={() => handleRetry(i)}>Retry</button> : null}
-                      {playingChunk === i ? <button onClick={() => { if (audioRef.current) audioRef.current.pause(); setPlayingChunk(null); }}>Pause</button> : <button disabled={st !== 'ready'} onClick={() => playChunk(i)}>Play</button>}
+                      <button disabled={st !== 'ready'} onClick={() => playChunk(i)}>Play</button>
                     </span>
                   </div>
                   <div className="chunk-preview">{c.slice(0, 400)}</div>

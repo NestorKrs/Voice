@@ -113,3 +113,9 @@ export function estimateTimes({ chars = [], durations = [], index = 0, positionS
   const remaining = Math.max(0, total - elapsed) / rate;
   return { elapsed, remaining, total, estimated };
 }
+
+export function activeRowIndex(state) {
+  if (!state || state.total <= 0) return -1;
+  if (state.status === 'playing' || state.status === 'paused') return state.index;
+  return -1;
+}

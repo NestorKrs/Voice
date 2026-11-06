@@ -19,7 +19,7 @@
 .chunk-row.ready { border-left-color: #3f8f6a; }
 .chunk-row.generating { border-left-color: #c9ad5b; }
 .chunk-row.failed { border-left-color: #c9605f; }
-.chunk-row.playing { outline: 2px solid var(--accent); }
+.chunk-row.playing { outline: 2px solid #4fa9a2; outline-offset: -2px; border-color: #4fa9a2; background: #182322; }
 .chunk-head { display: flex; align-items: center; gap: 8px; }
 .chunk-actions { margin-left: auto; display: flex; gap: 6px; }
 .chunk-row button { padding: 3px 10px; font-size: 12px; min-width: 58px; }

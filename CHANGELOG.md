@@ -1,3 +1,6 @@
+## 0.1.38-alpha - 2026-11-06
+- Highlight playing chunk row via activeRowIndex.
+
 ## 0.1.37-alpha - 2026-11-06
 - Fix jumpy speed slider.
 

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { RATES, createInitialState, reduce, getView, wantedWindow, estimateTimes } from '../src/playerCore.js';
+import { RATES, createInitialState, reduce, getView, wantedWindow, estimateTimes, activeRowIndex } from '../src/playerCore.js';
 
 test('initial state and immutability', () => {
   const s = createInitialState({ total: 3 });
@@ -168,4 +168,30 @@ test('estimateTimes', () => {
 test('unknown action returns same object', () => {
   const s = createInitialState({ total: 2 });
   assert.equal(reduce(s, { type: 'NOPE' }), s);
+});
+
+test('activeRowIndex basics', () => {
+  const playing = createInitialState({ total: 3 });
+  const p = reduce(playing, { type: 'PLAY' });
+  assert.equal(activeRowIndex(p), 0);
+  const paused = reduce(p, { type: 'PAUSE' });
+  assert.equal(activeRowIndex(paused), 0);
+  const stopped = createInitialState({ total: 3 });
+  assert.equal(activeRowIndex(stopped), -1);
+  const finished = reduce(reduce(reduce(createInitialState({ total: 2 }), { type: 'PLAY' }), { type: 'ENDED' }), { type: 'ENDED' });
+  assert.equal(activeRowIndex(finished), -1);
+  assert.equal(activeRowIndex(createInitialState({ total: 0 })), -1);
+});
+
+test('activeRowIndex follows NEXT/PREV/JUMP/ENDED', () => {
+  let s = createInitialState({ total: 4 });
+  s = reduce(s, { type: 'PLAY' });
+  s = reduce(s, { type: 'NEXT' });
+  assert.equal(activeRowIndex(s), 1);
+  s = reduce(s, { type: 'PREV' });
+  assert.equal(activeRowIndex(s), 0);
+  s = reduce(s, { type: 'JUMP', index: 2 });
+  assert.equal(activeRowIndex(s), 2);
+  s = reduce(s, { type: 'ENDED' });
+  assert.equal(activeRowIndex(s), 3);
 });
