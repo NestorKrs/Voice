@@ -1,3 +1,6 @@
+## 0.1.31-alpha - 2026-11-06
+- middle panel may grow up to 80 percent
+
 ## 0.1.30-alpha - 2026-11-06
 - panels resize by drag and keyboard, always fill the window
 

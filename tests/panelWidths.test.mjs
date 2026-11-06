@@ -48,11 +48,17 @@ test('clampWidths: side maximum', () => {
   assert.deepEqual(clampWidths({ left: 50, right: 25 }, 1200), { left: 30, right: 25 });
 });
 
-test('clampWidths: small sides grow so the middle stays at 60 percent at most', () => {
+test('clampWidths: small sides grow to their pixel minimum', () => {
   const r = clampWidths({ left: 5, right: 5 }, 1200);
-  assert.ok(near(r.left, 20));
-  assert.ok(near(r.right, 20));
-  assert.ok(near(middlePct(r), 60));
+  assert.ok(near(r.left, (SIDE_MIN_PX / 1200) * 100));
+  assert.ok(near(r.right, (SIDE_MIN_PX / 1200) * 100));
+});
+
+test('clampWidths: on a wide window the middle may reach 80 percent but not more', () => {
+  const r = clampWidths({ left: 5, right: 5 }, 3000);
+  assert.ok(near(r.left, 10));
+  assert.ok(near(r.right, 10));
+  assert.ok(near(middlePct(r), 80));
 });
 
 test('clampWidths: missing or invalid values use the defaults', () => {
@@ -98,9 +104,9 @@ test('resizeFromHandle: right handle moves the right panel the other way', () =>
 });
 
 test('resizeFromHandle: the middle may not grow past its maximum', () => {
-  const r = resizeFromHandle({ left: 20, right: 20 }, 0, -50, 1200);
-  assert.ok(near(r.left, 20));
-  assert.equal(r.right, 20);
+  const r = resizeFromHandle({ left: 10, right: 10 }, 0, -50, 3000);
+  assert.ok(near(r.left, 10));
+  assert.equal(r.right, 10);
 });
 
 test('resizeFromHandle: zero move keeps the widths, input is not changed, narrow gives the default', () => {

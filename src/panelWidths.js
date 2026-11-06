@@ -1,7 +1,7 @@
 export const SIDE_MIN_PX = 220;
 export const SIDE_MAX_PCT = 30;
 export const MID_MIN_PX = 280;
-export const MID_MAX_PCT = 60;
+export const MID_MAX_PCT = 80;
 export const DEFAULT_WIDTHS = { left: 25, right: 25 };
 export const WIDTHS_KEY = 'voice.panelWidths';
 
