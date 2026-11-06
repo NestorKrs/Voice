@@ -542,7 +542,6 @@ export default function App() {
         <span className="requests" title={services ? new Date(services.counter.resetAt()).toLocaleString() : ''}>
           Requests today: {usedToday} / {settings.dailyLimit} (estimate)
         </span>
-        <button onClick={handleResetLayout} disabled={isDefaultOrder && isDefaultWidths} title={isDefaultOrder && isDefaultWidths ? 'The panels are already in the default order and size.' : 'Put the panels back in the default order and size.'}>Reset layout</button>
         <button className="settings-btn" onClick={() => setDrawerOpen((o) => !o)}>Settings</button>
       </header>
       <div className={'columns' + (resizing ? ' resizing' : '')} ref={columnsRef} style={{ gridTemplateColumns: columnsTemplate(shown) }}>
@@ -663,6 +662,7 @@ export default function App() {
             <option value="700">Bold</option>
             <option value="800">Extra Bold</option>
           </select>
+          <button onClick={handleResetLayout} disabled={isDefaultOrder && isDefaultWidths} title={isDefaultOrder && isDefaultWidths ? 'The panels are already in the default order and size.' : 'Put the panels back in the default order and size.'}>Reset layout</button>
           <button onClick={handleSaveSettings}>Save settings</button>
           <div>Audio cache: {(cacheSize / 1024 / 1024).toFixed(2)} MB</div>
           <button onClick={handleClearCache}>Clear audio cache</button>

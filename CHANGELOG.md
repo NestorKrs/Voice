@@ -1,3 +1,6 @@
+## 0.1.35-alpha - 2026-11-06
+- Move Reset layout button into Settings drawer.
+
 ## 0.1.34-alpha - 2026-11-06
 - Fix provider handler and switch lock.
 
