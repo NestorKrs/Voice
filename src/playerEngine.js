@@ -289,6 +289,7 @@ export function createPlayerEngine({ getBytes, createAudio, makeUrl, revokeUrl, 
       const before = state.index;
       state = reduce(state, { type: 'NEXT' });
       if (state.index === before) { emitChange(); return; }
+      state = reduce(state, { type: 'JUMP', index: state.index });
       // load new
       loadToken++;
       const token = loadToken;
@@ -302,6 +303,7 @@ export function createPlayerEngine({ getBytes, createAudio, makeUrl, revokeUrl, 
       const before = state.index;
       state = reduce(state, { type: 'PREV' });
       if (state.index === before) { emitChange(); return; }
+      state = reduce(state, { type: 'JUMP', index: state.index });
       loadToken++;
       const token = loadToken;
       const oldSlot = active();
@@ -320,6 +322,14 @@ export function createPlayerEngine({ getBytes, createAudio, makeUrl, revokeUrl, 
       if (oldSlot.audio) { oldSlot.audio.pause(); }
       if (oldSlot.url) { revokeUrl(oldSlot.url); oldSlot.url = null; oldSlot.loaded = false; }
       loadAndPlay(state.index, token);
+    },
+    seek(position) {
+      if (destroyed) return;
+      const audio = active().audio;
+      if (!audio || !Number.isFinite(position)) return;
+      const duration = Number.isFinite(audio.duration) ? audio.duration : position;
+      audio.currentTime = Math.max(0, Math.min(position, duration));
+      emitChange();
     },
     setRate(r) {
       if (destroyed) return;

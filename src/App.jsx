@@ -5,6 +5,7 @@ import { computeStats } from './textStats.js';
 import { chunkText } from './textPipeline.js';
 import { createScheduler } from './scheduler.js';
 import { createServices } from './wiring.js';
+import { createPlayerEngine } from './playerEngine.js';
 import { DEFAULT_ORDER, movePanel, stepPanel, loadOrder, saveOrder, resetOrder } from './panelLayout.js';
 
 const storage = typeof localStorage !== 'undefined' ? localStorage : null;
@@ -34,7 +35,10 @@ export default function App() {
   const [order, setOrder] = useState(() => (storage ? loadOrder(storage) : [...DEFAULT_ORDER]));
   const [dragId, setDragId] = useState(null);
   const [drop, setDrop] = useState(null);
+  const [playerState, setPlayerState] = useState({ total: 0, index: 0, status: 'stopped', rate: 1, volume: 1, buffering: false, position: 0, duration: 0 });
   const audioRef = useRef(null);
+  const playerEngineRef = useRef(null);
+  const playerDataRef = useRef({ text, settings, chunks: [] });
   const schedulerRef = useRef(null);
   const timer = useRef(null);
 
@@ -289,6 +293,32 @@ export default function App() {
   };
 
   const chunks = chunkText(text, settings.chunkSize);
+  playerDataRef.current = { text, settings, chunks };
+
+  useEffect(() => {
+    if (!services) return undefined;
+    const engine = createPlayerEngine({
+      getBytes: async (index) => {
+        const data = playerDataRef.current;
+        const chunk = data.chunks[index];
+        if (chunk == null) return null;
+        const key = await services.makeKey({ text: chunk, voice: data.settings.voice });
+        return services.cache.get(key);
+      },
+      onChange: (next) => setPlayerState(next),
+      onEvent: (message) => logEvent(message),
+    });
+    playerEngineRef.current = engine;
+    return () => {
+      engine.destroy();
+      playerEngineRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (playerEngineRef.current) playerEngineRef.current.setTotal(chunks.length);
+  }, [chunks.length]);
+
   const isDefaultOrder = order.join() === DEFAULT_ORDER.join();
 
   const applyOrder = (next, message) => {
@@ -449,19 +479,22 @@ export default function App() {
         </section>
       </div>
       <footer className="playerbar">
-        <button disabled title="The player arrives in the next update.">Previous</button>
-        <button disabled title="The player arrives in the next update.">Play</button>
-        <button disabled title="The player arrives in the next update.">Stop</button>
-        <button disabled title="The player arrives in the next update.">Next</button>
-        <input className="seek" type="range" min="0" max="100" defaultValue="0" disabled title="The player arrives in the next update." />
-        <select disabled title="The player arrives in the next update." defaultValue="1">
+        <button onClick={() => playerEngineRef.current && playerEngineRef.current.prev()} disabled={!playerState.total || playerState.index === 0}>Previous</button>
+        {playerState.status === 'playing'
+          ? <button onClick={() => playerEngineRef.current && playerEngineRef.current.pause()}>Pause</button>
+          : <button onClick={() => playerEngineRef.current && playerEngineRef.current.play()} disabled={!playerState.total}>Play</button>}
+        <button onClick={() => playerEngineRef.current && playerEngineRef.current.stop()} disabled={!playerState.total}>Stop</button>
+        <button onClick={() => playerEngineRef.current && playerEngineRef.current.next()} disabled={!playerState.total || playerState.index >= playerState.total - 1}>Next</button>
+        <input className="seek" type="range" min="0" max={playerState.duration || 0} step="0.1" value={Math.min(playerState.position, playerState.duration || 0)} onChange={(e) => playerEngineRef.current && playerEngineRef.current.seek(Number(e.target.value))} disabled={!playerState.duration} aria-label="Seek" />
+        <select value={playerState.rate} onChange={(e) => playerEngineRef.current && playerEngineRef.current.setRate(Number(e.target.value))} disabled={!playerState.total} aria-label="Playback speed">
           <option value="0.75">0.75x</option>
           <option value="1">1x</option>
           <option value="1.25">1.25x</option>
           <option value="1.5">1.5x</option>
           <option value="2">2x</option>
         </select>
-        <span className="now">Player controls arrive in the next update.</span>
+        <input type="range" min="0" max="1" step="0.01" value={playerState.volume} onChange={(e) => playerEngineRef.current && playerEngineRef.current.setVolume(Number(e.target.value))} aria-label="Volume" />
+        <span className="now">{playerState.buffering ? `Buffering chunk ${playerState.index + 1}` : `Chunk ${playerState.total ? playerState.index + 1 : 0} / ${playerState.total} · ${playerState.status}`}</span>
       </footer>
       {drawerOpen ? (
         <aside className="drawer">

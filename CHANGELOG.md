@@ -1,3 +1,8 @@
+# Changelog
+
+## 0.1.18-alpha - 2026-11-06
+- Implement functional player controls: play, pause, stop, previous, next, seek, speed, volume, and playback state.
+
 ## 0.1.17-alpha - 2026-11-06
 - Draggable panels: grip in each panel header, teal drop marker, order saved in the browser, Reset layout button, Alt+Left and Alt+Right on a focused grip.
 
@@ -18,8 +23,6 @@
 
 ## 0.1.11-alpha - 2026-11-05
 - Daily limit setting (50 or 1000).
-
-# Changelog
 
 ## 0.1.10-alpha - 2026-11-05
 - Fix cache read path: store returns bytes, cache no double unwrap.
