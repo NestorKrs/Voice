@@ -29,6 +29,7 @@ export default function App() {
   const [dailyInput, setDailyInput] = useState(settings.dailyLimit);
   const [fontInput, setFontInput] = useState('400');
   const [textZoom, setTextZoom] = useState(100);
+  const [textDropActive, setTextDropActive] = useState(false);
 
   useEffect(() => {
     const preventBrowserZoom = (e) => { if (e.ctrlKey) e.preventDefault(); };
@@ -374,6 +375,16 @@ export default function App() {
     }
   };
 
+  const handleDropFile = (e) => {
+    const file = e && e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!file) return;
+    e.preventDefault();
+    setTextDropActive(false);
+    const reader = new FileReader();
+    reader.onload = () => { setText(String(reader.result || '')); };
+    reader.readAsText(file);
+  };
+
   const handleLoadFile = (e) => {
     const file = e && e.target && e.target.files && e.target.files[0];
     if (!file) return;
@@ -565,7 +576,7 @@ export default function App() {
             <span className="grip" role="button" tabIndex={0} draggable="true" title="Drag to move this panel. Keyboard: Alt+Left or Alt+Right." aria-label="Move the Text panel" onDragStart={onGripDragStart('text')} onDragEnd={onGripDragEnd} onKeyDown={onGripKeyDown('text')} />
             <span className="panel-title">Text</span>
           </div>
-          <textarea value={text} onChange={(e) => setText(e.target.value)} style={{ fontSize: `${textZoom}%` }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && e.key === '-') { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && e.key === '0') { e.preventDefault(); setTextZoom(100); } }} />
+          <textarea value={text} onChange={(e) => setText(e.target.value)} style={{ fontSize: `${textZoom}%` }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} className={textDropActive ? 'drop-active' : ''} />
           <div className="stats" style={{ justifyContent: 'flex-end' }}>
             <span>{plural(stats.characters, 'character')}</span>
             <span>{plural(stats.pages, 'page')} (about)</span>
@@ -576,9 +587,9 @@ export default function App() {
           <div className="row">
             <button onClick={handleStart} disabled={!canStart} style={{ minWidth: '300px' }}>Start Reading</button>
             <span style={{ flex: 1 }} />
-            <button className="icon-btn" title="Load file (.txt .md)" onClick={() => fileInputRef.current && fileInputRef.current.click()}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg></button>
+            <button className="icon-btn" title="Load file (.txt .md .doc)" onClick={() => fileInputRef.current && fileInputRef.current.click()}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg></button>
             <button className="icon-btn" title="Clear text" onClick={handleClearText}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-          <input ref={fileInputRef} type="file" accept=".txt,text/plain" style={{display:"none"}} onChange={handleLoadFile} />
+          <input ref={fileInputRef} type="file" accept=".txt,.md,.doc,text/plain" style={{display:"none"}} onChange={handleLoadFile} />
           </div>
           {startReason ? <div className="reason">{startReason}</div> : null}
         </section>

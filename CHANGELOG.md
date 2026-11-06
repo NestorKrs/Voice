@@ -1,3 +1,12 @@
+## 0.1.44-alpha - 2026-11-06
+- Lighter full-area tint while dragging a file over the text panel.
+
+## 0.1.43-alpha - 2026-11-06
+- Highlight text panel while a file is dragged over it.
+
+## 0.1.42-alpha - 2026-11-06
+- Drop .txt/.md/.doc files onto the text panel to load them.
+
 ## 0.1.40-alpha - 2026-11-06
 - Text panel clear/load moved to right as circular icons.
 
