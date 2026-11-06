@@ -635,7 +635,7 @@ export default function App() {
           <h3>Settings</h3>
           <button onClick={() => setDrawerOpen(false)}>Close</button>
           <label>API key</label>
-          <input type="password" value={keyInput} onChange={(e) => setKeyInput(e.target.value)} />
+          <input type="password" value={keyInput} onChange={(e) => setKeyInput(e.target.value)} placeholder="••••••••" />
           <div className="row">
             <button onClick={handleSaveKey}>Save key</button>
             <button onClick={handleClearKey}>Clear key</button>
