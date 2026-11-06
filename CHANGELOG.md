@@ -1,3 +1,6 @@
+## 0.1.39-alpha - 2026-11-06
+- Drag shows grip as drag image.
+
 ## 0.1.38-alpha - 2026-11-06
 - Highlight playing chunk row via activeRowIndex.
 

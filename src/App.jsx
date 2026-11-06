@@ -473,11 +473,11 @@ export default function App() {
   };
 
   const onGripDragStart = (id) => (e) => {
-    setDragId(id);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', id);
-    const panel = e.currentTarget.closest('.panel');
-    if (panel) e.dataTransfer.setDragImage(panel, 16, 16);
+    const grip = e.currentTarget;
+    if (grip) e.dataTransfer.setDragImage(grip, 12, 12);
+    setTimeout(() => setDragId(id), 0);
     logEvent('Drag panel ' + id);
   };
 
