@@ -65,3 +65,9 @@
 .provider-select:hover:not(:disabled), .provider-select:focus-visible { border-color: var(--accent); outline: none; }
 .provider-select:disabled { opacity: 0.5; cursor: not-allowed; }
 .provider-reason { color: var(--muted); font-size: 11px; }
+
+.settings-btn:hover:not(:disabled) { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+
+.row button:hover:not(:disabled) { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+
+.settings-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; }
