@@ -1,3 +1,6 @@
+## 0.1.40-alpha - 2026-11-06
+- Text panel clear/load moved to right as circular icons.
+
 ## 0.1.39-alpha - 2026-11-06
 - Drag shows grip as drag image.
 

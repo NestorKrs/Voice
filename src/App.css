@@ -20,6 +20,7 @@
 .chunk-row.generating { border-left-color: #c9ad5b; }
 .chunk-row.failed { border-left-color: #c9605f; }
 .chunk-row.playing { outline: 2px solid #4fa9a2; outline-offset: -2px; border-color: #4fa9a2; background: #182322; }
+.icon-btn { width: 28px; height: 28px; border-radius: 50%; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--bg); border: 1px solid var(--line); color: var(--muted); }
 .chunk-head { display: flex; align-items: center; gap: 8px; }
 .chunk-actions { margin-left: auto; display: flex; gap: 6px; }
 .chunk-row button { padding: 3px 10px; font-size: 12px; min-width: 58px; }
@@ -49,7 +50,7 @@
 .drawer label { display: block; margin-top: 6px; font-size: 12px; color: var(--muted); }
 .drawer input, .drawer select { width: 100%; background: var(--bg); }
 
-.grip { flex: none; width: 24px; height: 24px; cursor: grab; color: #79c7c0; opacity: 0.35; background-color: #171a1d; background-image: radial-gradient(circle, currentColor 1.5px, transparent 1.7px); background-size: 7px 6px; border: 1px solid #4fa9a2; border-radius: 4px; transition: opacity var(--ease), color var(--ease); }
+.grip { flex: none; width: 24px; height: 24px; cursor: grab; color: #79c7c0; opacity: 0.35; background-color: #171a1d; background-image: radial-gradient(circle, currentColor 2px, transparent 2.5px); background-size: 100% 100%; background-position: center; background-repeat: no-repeat; border: 1px solid #4fa9a2; border-radius: 4px; transition: opacity var(--ease), color var(--ease); }
 .grip:hover, .grip:focus-visible { opacity: 1; color: var(--accent); }
 .grip:active { cursor: grabbing; }
 .drag-ghost { position: fixed; left: 12px; top: 12px; padding: 4px 8px; background: var(--panel); border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); font-size: 12px; pointer-events: none; z-index: 100; opacity: 0.9; }

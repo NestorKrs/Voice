@@ -566,7 +566,7 @@ export default function App() {
             <span className="panel-title">Text</span>
           </div>
           <textarea value={text} onChange={(e) => setText(e.target.value)} style={{ fontSize: `${textZoom}%` }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && e.key === '-') { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && e.key === '0') { e.preventDefault(); setTextZoom(100); } }} />
-          <div className="stats">
+          <div className="stats" style={{ justifyContent: 'flex-end' }}>
             <span>{plural(stats.characters, 'character')}</span>
             <span>{plural(stats.pages, 'page')} (about)</span>
             <span>{plural(stats.chunks, 'chunk')}</span>
@@ -574,9 +574,10 @@ export default function App() {
             <span>{stats.fitsToday ? 'Fits today' : `Needs ${stats.daysNeeded} days`}</span>
           </div>
           <div className="row">
-            <button onClick={handleClearText}>Clear</button>
-            <button onClick={handleStart} disabled={!canStart}>Start Reading</button>
-            <button title="Supported: .txt .md" onClick={() => fileInputRef.current && fileInputRef.current.click()}>Load file</button>
+            <button onClick={handleStart} disabled={!canStart} style={{ minWidth: '480px' }}>Start Reading</button>
+            <span style={{ flex: 1 }} />
+            <button className="icon-btn" title="Load file (.txt .md)" onClick={() => fileInputRef.current && fileInputRef.current.click()}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg></button>
+            <button className="icon-btn" title="Clear text" onClick={handleClearText}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
           <input ref={fileInputRef} type="file" accept=".txt,text/plain" style={{display:"none"}} onChange={handleLoadFile} />
           </div>
           {startReason ? <div className="reason">{startReason}</div> : null}
