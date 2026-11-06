@@ -109,7 +109,7 @@ export default function App() {
   const stats = computeStats({ text, chunkSize: settings.chunkSize, usedToday, dailyLimit: settings.dailyLimit });
   const providers = allProviders(customProviders);
   const provider = getProvider(providers, settings.provider);
-  const switchLocked = schedState.state === 'generating' || schedState.state === 'waiting_reset' || schedState.state === 'error';
+  const switchLocked = schedState.state === 'generating';
 
   const canStart = text.trim() !== '' && keySet && usedToday < settings.dailyLimit;
   const startReason = !text.trim()
@@ -327,7 +327,17 @@ export default function App() {
       const loaded = loadSettings(storage);
       setSettings(loaded);
       setUsedToday(services ? services.counter.count() : 0);
-      setNotice('Settings saved.');
+      if (schedState.state === 'generating') {
+        setNotice('Settings saved. They apply on the next Start Reading.');
+      } else {
+        if (schedulerRef.current) {
+          try { schedulerRef.current.cancel(); } catch {}
+          schedulerRef.current = null;
+        }
+        setSchedState({ state: 'idle', resetAt: null, playhead: 0, chunks: [] });
+        setJobError('');
+        setNotice('Settings saved. Press Start Reading to use them.');
+      }
     } catch (e) {
       const m = e && e.message ? e.message : 'error';
       setJobError(m);
@@ -525,10 +535,10 @@ export default function App() {
       <header className="topbar">
         <span className="title">Voice</span>
         <span className="version">v{APP_VERSION}</span>
-        <select className="provider-select" value={provider.id} onChange={(e) => handleProviderChange(e.target.value)} disabled={switchLocked} title={switchLocked ? 'Finish or cancel the current job first.' : 'Choose the voice provider (free models only).'} aria-label="Voice provider">
+        <select className="provider-select" value={provider.id} onChange={(e) => handleProviderChange(e.target.value)} disabled={switchLocked} title={switchLocked ? 'Wait for the current request to finish, or press Cancel.' : 'Choose the voice provider (free models only).'} aria-label="Voice provider">
           {providers.map((p) => (<option key={p.id} value={p.id}>{providerLabel(p)}</option>))}
         </select>
-        {switchLocked ? <span className="provider-reason">Finish or cancel the job to switch.</span> : null}
+        {switchLocked ? <span className="provider-reason">Wait for the request or press Cancel.</span> : null}
         <span className="requests" title={services ? new Date(services.counter.resetAt()).toLocaleString() : ''}>
           Requests today: {usedToday} / {settings.dailyLimit} (estimate)
         </span>

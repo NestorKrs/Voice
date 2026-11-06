@@ -1,3 +1,6 @@
+## 0.1.34-alpha - 2026-11-06
+- Fix provider handler and switch lock.
+
 ## 0.1.33-alpha - 2026-11-06
 - provider switch: Fish Audio and HeyGen
 
