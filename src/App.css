@@ -51,6 +51,7 @@
 .grip:active { cursor: grabbing; }
 .resize-handle { flex: none; width: 8px; height: 20px; margin-left: auto; cursor: col-resize; border-right: 2px dotted var(--muted); opacity: 0.45; touch-action: none; transition: opacity var(--ease), border-color var(--ease); }
 .resize-handle:hover, .resize-handle:focus-visible { opacity: 1; border-color: var(--accent); }
+.drag-ghost { position: fixed; left: 12px; top: 12px; padding: 4px 8px; background: var(--panel); border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); font-size: 12px; pointer-events: none; z-index: 100; opacity: 0.9; }
 .panel.dragging { opacity: 0.15; transform: scale(0.98); }
 .panel.drop-before { box-shadow: inset 4px 0 0 var(--accent); }
 .panel.drop-after { box-shadow: inset -4px 0 0 var(--accent); }

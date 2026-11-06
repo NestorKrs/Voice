@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.26-alpha - 2026-11-06
+- Make the middle panel flexible and keep the rightmost panel inside the app border.
+
+## 0.1.25-alpha - 2026-11-06
+- Make the middle panel fill the space between the leftmost and rightmost panels.
+
+## 0.1.24-alpha - 2026-11-06
+- Make the rightmost panel always stick to the right application border.
+
+## 0.1.23-alpha - 2026-11-06
+- Make all panels stick together and fill the application width with no gaps.
+
+## 0.1.22-alpha - 2026-11-06
+- Make rightmost panel stick to the app edge and show a small drag ghost.
+
 ## 0.1.21-alpha - 2026-11-06
 - Keep resized panels within application borders and prevent overflow.
 

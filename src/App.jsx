@@ -36,6 +36,7 @@ export default function App() {
   const [dragId, setDragId] = useState(null);
   const [drop, setDrop] = useState(null);
   const [panelWidths, setPanelWidths] = useState({});
+  const [dragGhost, setDragGhost] = useState(null);
   const [playerState, setPlayerState] = useState({ total: 0, index: 0, status: 'stopped', rate: 1, volume: 1, buffering: false, position: 0, duration: 0 });
   const audioRef = useRef(null);
   const playerEngineRef = useRef(null);
@@ -337,12 +338,14 @@ export default function App() {
     e.dataTransfer.setData('text/plain', id);
     const panel = e.currentTarget.closest('.panel');
     if (panel) e.dataTransfer.setDragImage(panel, 16, 16);
+    setDragGhost({ x: e.clientX, y: e.clientY, id });
     logEvent('Drag panel ' + id);
   };
 
   const onGripDragEnd = () => {
     setDragId(null);
     setDrop(null);
+    setDragGhost(null);
   };
 
   const onPanelDragOver = (id) => (e) => {
@@ -393,8 +396,6 @@ export default function App() {
   const panelClass = (id, extra) =>
     'panel ' + extra + (dragId === id ? ' dragging' : '') + (drop && drop.id === id ? ' drop-' + drop.side : '');
 
-  const panelStyle = (id) => (panelWidths[id] ? { order: order.indexOf(id), width: `${panelWidths[id]}px`, flex: `0 0 ${panelWidths[id]}px`, minWidth: '220px' } : { order: order.indexOf(id), flex: '1 1 0', minWidth: '220px' });
-
   const onResizeStart = (id) => (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -412,6 +413,14 @@ export default function App() {
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', stop, { once: true });
+  };
+
+  const isRightmost = (id) => order.indexOf(id) === order.length - 1;
+
+  const panelStyle = (id) => {
+    if (id === 'reader') return { order: order.indexOf(id), flex: '1 1 auto', minWidth: '220px' };
+    if (id === 'job') return { order: order.indexOf(id), flex: '0 0 auto', width: panelWidths.job ? `${panelWidths.job}px` : 'auto', minWidth: '220px' };
+    return { order: order.indexOf(id), flex: '0 0 auto', width: panelWidths.text ? `${panelWidths.text}px` : 'auto', minWidth: '220px' };
   };
 
   const stateWord = {
@@ -503,6 +512,7 @@ export default function App() {
           </div>
         </section>
       </div>
+      {dragGhost ? <div className="drag-ghost">⋮⋮</div> : null}
       <footer className="playerbar">
         <button onClick={() => playerEngineRef.current && playerEngineRef.current.prev()} disabled={!playerState.total || playerState.index === 0}>Previous</button>
         {playerState.status === 'playing'
