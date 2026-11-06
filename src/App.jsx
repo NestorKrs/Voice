@@ -393,7 +393,7 @@ export default function App() {
   const panelClass = (id, extra) =>
     'panel ' + extra + (dragId === id ? ' dragging' : '') + (drop && drop.id === id ? ' drop-' + drop.side : '');
 
-  const panelStyle = (id) => (panelWidths[id] ? { order: order.indexOf(id), width: panelWidths[id], flex: `0 1 ${panelWidths[id]}px` } : { order: order.indexOf(id) });
+  const panelStyle = (id) => (panelWidths[id] ? { order: order.indexOf(id), width: `${panelWidths[id]}px`, flex: `0 0 ${panelWidths[id]}px`, minWidth: '220px' } : { order: order.indexOf(id), flex: '1 1 0', minWidth: '220px' });
 
   const onResizeStart = (id) => (e) => {
     e.preventDefault();
@@ -403,7 +403,7 @@ export default function App() {
     const startX = e.clientX;
     const startWidth = panel.getBoundingClientRect().width;
     const move = (event) => {
-      const nextWidth = Math.max(160, Math.round(startWidth + event.clientX - startX));
+      const nextWidth = Math.max(220, Math.round(startWidth + event.clientX - startX));
       setPanelWidths((current) => ({ ...current, [id]: nextWidth }));
     };
     const stop = () => {

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.20-alpha - 2026-11-06
+- Fix panel resize minimum width and keep all panels filling the available width.
+
 ## 0.1.19-alpha - 2026-11-06
 - Add functional panel width resize handles with minimum widths and flex reflow.
 
