@@ -153,6 +153,7 @@ export default function App() {
 
   const handleStart = async () => {
     logEvent('Start Reading pressed');
+    setNotice('');
     if (!services) return;
     if (schedulerRef.current) {
             try { schedulerRef.current.cancel(); } catch {}
@@ -591,7 +592,7 @@ export default function App() {
               const st = schedState.chunks[i] ? schedState.chunks[i].status : 'queued';
               const err = schedState.chunks[i] ? schedState.chunks[i].error : null;
               return (
-                <div key={i} className={`chunk-row ${st}`}>
+                <div key={i} className={`chunk-row ${st} ${playingChunk === i ? "playing" : ""}`}>
                   <div className="chunk-head">
                     <span className={`badge ${st}`}>{st}</span>
                     <span className="chunk-num">#{i + 1}</span>
