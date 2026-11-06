@@ -1,3 +1,6 @@
+## 0.1.46-alpha - 2026-11-06
+- Status hint to press Start Reading after dropping a file.
+
 ## 0.1.45-alpha - 2026-11-06
 - Fix drag-over tint being overridden on the textarea.
 

@@ -381,7 +381,7 @@ export default function App() {
     e.preventDefault();
     setTextDropActive(false);
     const reader = new FileReader();
-    reader.onload = () => { setText(String(reader.result || '')); };
+    reader.onload = () => { setText(String(reader.result || '')); setNotice('File loaded. Press Start Reading to analyze it.'); };
     reader.readAsText(file);
   };
 
