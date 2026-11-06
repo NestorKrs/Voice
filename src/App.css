@@ -4,7 +4,7 @@
 .title { font-weight: 700; font-size: 15px; letter-spacing: 0.02em; }
 .version { color: var(--muted); font-size: 12px; }
 .requests { color: var(--muted); font-size: 12px; margin-left: auto; }
-.columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 0.8fr); gap: 12px; padding: 12px; flex: 1; min-height: 0; }
+.columns { display: flex; gap: 12px; padding: 12px; flex: 1; min-height: 0; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden; transition: border-color var(--ease), opacity var(--ease); }
 .panel-head { display: flex; align-items: center; gap: 8px; min-height: 20px; }
 .panel-title { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
@@ -42,3 +42,13 @@
 .drawer h3 { margin: 0; }
 .drawer label { display: block; margin-top: 6px; font-size: 12px; color: var(--muted); }
 .drawer input, .drawer select { width: 100%; background: var(--bg); }
+
+.text-panel { flex: 1 1 0; min-width: 0; }
+.reader-panel { flex: 1.4 1 0; min-width: 0; }
+.job-panel { flex: 0.8 1 0; min-width: 0; }
+.grip { flex: none; width: 14px; height: 18px; cursor: grab; color: var(--muted); opacity: 0.35; background-image: radial-gradient(circle, currentColor 1.5px, transparent 1.7px); background-size: 7px 6px; transition: opacity var(--ease), color var(--ease); }
+.grip:hover, .grip:focus-visible { opacity: 1; color: var(--accent); }
+.grip:active { cursor: grabbing; }
+.panel.dragging { opacity: 0.45; }
+.panel.drop-before { box-shadow: inset 4px 0 0 var(--accent); }
+.panel.drop-after { box-shadow: inset -4px 0 0 var(--accent); }

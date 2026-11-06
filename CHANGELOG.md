@@ -1,3 +1,6 @@
+## 0.1.17-alpha - 2026-11-06
+- Draggable panels: grip in each panel header, teal drop marker, order saved in the browser, Reset layout button, Alt+Left and Alt+Right on a focused grip.
+
 ## 0.1.16-alpha - 2026-11-06
 - Layout polish: panel headers, wrapped chunk rows with status badges, player bar placeholder, JetBrains Mono, no overlap with the status bar.
 
