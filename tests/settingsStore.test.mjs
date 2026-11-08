@@ -19,7 +19,7 @@ test('defaults', () => {
 test('round trip', () => {
   const s = makeStorage();
   saveSettings(s, { voice: 'v', chunkSize: 500, lookahead: 3 });
-  assert.deepEqual(loadSettings(s), { voice: 'v', provider: 'fish', voices: { fish: 'v' }, chunkSize: 500, lookahead: 3, dailyLimit: 50 });
+  assert.deepEqual(loadSettings(s), { voice: 'v', provider: 'fish', voices: { fish: 'v' }, chunkSize: 500, lookahead: 3, dailyLimit: 50, fontWeight: 400 });
 });
 
 test('broken JSON', () => {
@@ -130,4 +130,30 @@ test('secrecy of key in settings', () => {
   saveKey(s, 'sk-test-SECRET-123');
   const l = loadSettings(s);
   assert.ok(!JSON.stringify(l).includes('sk-test-SECRET-123'));
+});
+
+test('fontWeight accepts 100, 450 and 800', () => {
+  for (const v of [100, 450, 800]) {
+    const s = makeStorage();
+    saveSettings(s, { voice: 'v', fontWeight: v });
+    assert.equal(loadSettings(s).fontWeight, v, String(v));
+  }
+});
+
+test('fontWeight invalid falls back to the default', () => {
+  for (const v of [99, 801, 450.5, 'bold', undefined]) {
+    const s = makeStorage();
+    saveSettings(s, { voice: 'v', fontWeight: v });
+    assert.equal(loadSettings(s).fontWeight, 400, String(v));
+  }
+});
+
+test('invalid fontWeight does not reset other settings', () => {
+  const s = makeStorage();
+  saveSettings(s, { voice: 'v', chunkSize: 500, lookahead: 3, fontWeight: 99 });
+  const l = loadSettings(s);
+  assert.equal(l.voice, 'v');
+  assert.equal(l.chunkSize, 500);
+  assert.equal(l.lookahead, 3);
+  assert.equal(l.fontWeight, 400);
 });

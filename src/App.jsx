@@ -18,6 +18,23 @@ const services = storage ? createServices({ storage }) : null;
 
 const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
 
+// Local state keeps the chunk list from re-rendering on every slider move.
+function FontWeightControl({ initial, onCommit }) {
+  const [value, setValue] = useState(initial);
+  useEffect(() => {
+    document.body.style.setProperty('--font-weight', String(value));
+  }, [value]);
+  const commit = () => onCommit(value);
+  return (
+    <div className="row">
+      <input className="weight-slider" type="range" min="100" max="800" step="100" value={value} aria-label="Font weight"
+        onChange={(e) => setValue(Number(e.target.value))}
+        onPointerUp={commit} onKeyUp={commit} />
+      <span className="weight-label">{value}</span>
+    </div>
+  );
+}
+
 export default function App() {
   const [text, setText] = useState(() => (storage ? loadText(storage) : ''));
   const [settings, setSettings] = useState(() => (storage ? loadSettings(storage) : { voice: '', chunkSize: 2000, lookahead: 2, dailyLimit: 50 }));
@@ -28,7 +45,6 @@ export default function App() {
   const [chunkInput, setChunkInput] = useState(settings.chunkSize);
   const [lookInput, setLookInput] = useState(settings.lookahead);
   const [dailyInput, setDailyInput] = useState(settings.dailyLimit);
-  const [fontInput, setFontInput] = useState('400');
   const [textZoom, setTextZoom] = useState(100);
   const [textDropActive, setTextDropActive] = useState(false);
 
@@ -42,6 +58,10 @@ export default function App() {
       window.removeEventListener('keydown', preventKeyZoom);
     };
   }, []);
+  // The drawer mounts lazily, so the stored weight has to be applied here too.
+  useEffect(() => {
+    document.body.style.setProperty('--font-weight', String(settings.fontWeight));
+  }, [settings.fontWeight]);
   const [schedState, setSchedState] = useState({ state: 'idle', resetAt: null, playhead: 0, chunks: [] });
   const [usedToday, setUsedToday] = useState(() => (services ? services.counter.count() : 0));
   const [jobError, setJobError] = useState('');
@@ -612,6 +632,16 @@ export default function App() {
     }
   };
 
+  const handleFontWeightCommit = (value) => {
+    if (!storage || value === settings.fontWeight) return;
+    if (!saveSettings(storage, { ...settings, fontWeight: value })) {
+      logEvent('Could not save the font weight');
+      return;
+    }
+    setSettings(loadSettings(storage));
+    logEvent('Font weight ' + value);
+  };
+
   const panelClass = (id, extra) =>
     'panel ' + extra + (dragId === id ? ' dragging' : '') + (drop && drop.id === id ? ' drop-' + drop.side : '');
 
@@ -760,12 +790,7 @@ export default function App() {
           </select>
           <small>1000 needs $10 of lifetime credit purchases on OpenRouter. The app cannot check this.</small>
           <label>Font weight</label>
-          <select value={fontInput} onChange={(e) => { setFontInput(e.target.value); document.body.style.fontWeight = e.target.value; }}>
-            <option value="100">Thin</option>
-            <option value="400">Regular</option>
-            <option value="700">Bold</option>
-            <option value="800">Extra Bold</option>
-          </select>
+          <FontWeightControl initial={settings.fontWeight} onCommit={handleFontWeightCommit} />
           <div className="privacy">Your text is sent to OpenRouter.</div>
           <button onClick={handleResetLayout} disabled={isDefaultOrder && isDefaultWidths} title={isDefaultOrder && isDefaultWidths ? 'The panels are already in the default order and size.' : 'Put the panels back in the default order and size.'}>Reset layout</button>
           <button onClick={handleSaveSettings}>Save settings</button>

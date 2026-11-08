@@ -1,7 +1,4 @@
-@font-face { font-family: 'JetBrains Mono'; src: url('../font/webfonts/JetBrainsMono-Thin.woff2') format('woff2'); font-weight: 100; font-style: normal; font-display: swap; }
-@font-face { font-family: 'JetBrains Mono'; src: url('../font/webfonts/JetBrainsMono-Regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: 'JetBrains Mono'; src: url('../font/webfonts/JetBrainsMono-Bold.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
-@font-face { font-family: 'JetBrains Mono'; src: url('../font/webfonts/JetBrainsMono-ExtraBold.woff2') format('woff2'); font-weight: 800; font-style: normal; font-display: swap; }
+@font-face { font-family: 'JetBrains Mono'; src: url('../font/variable/JetBrainsMono[wght].ttf') format('truetype'); font-weight: 100 800; font-style: normal; font-display: swap; }
 :root {
   --bg: #15171a;
   --panel: #1d2024;
@@ -18,7 +15,7 @@
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.5 var(--font); }
+body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.5 var(--font); font-weight: var(--font-weight, 400); }
 button { font: inherit; color: var(--accent-text); background: var(--accent-fill); border: 1px solid var(--accent); border-radius: 6px; padding: 6px 12px; cursor: pointer; transition: border-color var(--ease), background var(--ease), color var(--ease); }
 button:hover:not(:disabled) { border-color: var(--accent-hover); background: #1d2c2a; }
 button:disabled { background: var(--disabled); border-color: var(--line); color: var(--muted); cursor: not-allowed; }

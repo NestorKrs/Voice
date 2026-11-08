@@ -50,6 +50,8 @@
 .drawer h3 { margin: 0; }
 .drawer label { display: block; margin-top: 6px; font-size: 12px; color: var(--muted); }
 .drawer input, .drawer select { width: 100%; background: var(--bg); }
+.drawer .weight-slider { flex: 1; width: auto; accent-color: var(--accent); }
+.drawer .weight-label { width: 4ch; text-align: right; font-variant-numeric: tabular-nums; flex: none; color: var(--accent); }
 
 .grip { flex: none; width: 24px; height: 24px; cursor: grab; color: #79c7c0; opacity: 0.35; background-color: #171a1d; background-image: radial-gradient(circle, currentColor 2px, transparent 2.5px); background-size: 100% 100%; background-position: center; background-repeat: no-repeat; border: 1px solid #4fa9a2; border-radius: 4px; transition: opacity var(--ease), color var(--ease); }
 .grip:hover, .grip:focus-visible { opacity: 1; color: var(--accent); }

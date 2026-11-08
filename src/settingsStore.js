@@ -1,4 +1,4 @@
-export const DEFAULT_SETTINGS = { voice: '', provider: 'fish', voices: {}, chunkSize: 2000, lookahead: 2, dailyLimit: 50 };
+export const DEFAULT_SETTINGS = { voice: '', provider: 'fish', voices: {}, chunkSize: 2000, lookahead: 2, dailyLimit: 50, fontWeight: 400 };
 
 function validate(settings) {
   const out = { ...DEFAULT_SETTINGS, voices: {} };
@@ -13,6 +13,7 @@ function validate(settings) {
     if (Number.isInteger(settings.chunkSize) && settings.chunkSize >= 200 && settings.chunkSize <= 5000) out.chunkSize = settings.chunkSize;
     if (Number.isInteger(settings.lookahead) && settings.lookahead >= 0 && settings.lookahead <= 5) out.lookahead = settings.lookahead;
     if (settings.dailyLimit === 50 || settings.dailyLimit === 1000) out.dailyLimit = settings.dailyLimit;
+    if (Number.isInteger(settings.fontWeight) && settings.fontWeight >= 100 && settings.fontWeight <= 800) out.fontWeight = settings.fontWeight;
   }
   out.voice = out.voices[out.provider] || '';
   return out;

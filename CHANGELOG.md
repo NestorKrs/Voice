@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.51-alpha - 2026-11-08
+- Settings: font weight slider moves in steps of 100 and uses the player slider accent color.
+
+## 0.1.50-alpha - 2026-11-08
+- Settings: font weight is a slider from 100 to 800 using the variable font, replacing the four-weight dropdown.
+
 ## 0.1.49-alpha - 2026-11-08
 - Job panel: one Pause/Resume button works (highlighted while paused); Resume continues from the playing chunk, also after Cancel. Fix: an unexpected scheduler error now shows the error state.
 
