@@ -33,11 +33,12 @@ export default function App() {
 
   useEffect(() => {
     const preventBrowserZoom = (e) => { if (e.ctrlKey) e.preventDefault(); };
+    const preventKeyZoom = (e) => { if (e.ctrlKey && e.altKey === false && ['+', '=', '-', '_'].includes(e.key)) e.preventDefault(); };
     window.addEventListener('wheel', preventBrowserZoom, { passive: false });
-    window.addEventListener('keydown', preventBrowserZoom, { passive: false });
+    window.addEventListener('keydown', preventKeyZoom, { passive: false });
     return () => {
       window.removeEventListener('wheel', preventBrowserZoom);
-      window.removeEventListener('keydown', preventBrowserZoom);
+      window.removeEventListener('keydown', preventKeyZoom);
     };
   }, []);
   const [schedState, setSchedState] = useState({ state: 'idle', resetAt: null, playhead: 0, chunks: [] });

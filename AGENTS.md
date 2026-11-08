@@ -4,7 +4,7 @@ For Hermes (the coder profile, "Gemma") and any other agent working on Voice. Re
 
 ## What Voice is
 
-A personal, single-user, browser-only text-to-speech reader. The owner pastes very long text (35 to 50+ pages). The app reads it aloud chunk by chunk with free OpenRouter text-to-speech models (`fish-audio/s2.1-pro-free:free` and `heygen/heygen-voice-1-turbo:free`, switchable). There is NO backend. The full plan is in docs/plan.md. If this file and docs/plan.md disagree, stop and ask.
+A personal, single-user, browser-only text-to-speech reader. The owner pastes very long text (35 to 50+ pages). The app reads it aloud chunk by chunk with free OpenRouter text-to-speech models (`fish-audio/s2.1-pro-free:free` and `heygen/heygen-voice-1-turbo:free`, switchable). There is NO backend. The original plan is in docs/plan.md and is partly outdated (it still says Web Audio and one model). Where it disagrees with this file, this file wins.
 
 ## Where you work
 
@@ -21,10 +21,6 @@ A personal, single-user, browser-only text-to-speech reader. The owner pastes ve
 5. Bugs: first do a read-only diagnosis (paste the code and the raw evidence, name the root cause). Fix only after the owner says go.
 6. Do not add dependencies unless the task names them. Approved later: `mammoth` (docx), `pdfjs-dist` (pdf).
 7. Never run git commands that change anything (no add, commit, push, reset, checkout, stash). Reading (`git status`, `git log`) is fine if a .git exists. At the end of each task write a READY TO COMMIT list: exact file names and one suggested commit message ending with the new version. The owner commits from the P75.
-
-## Structure (target)
-
-React + Vite app in src/: textPipeline (clean and chunk text), fileReaders (txt, docx, pdf), speechClient (the ONLY file that uses the network), audioCache (IndexedDB), scheduler, player (Web Audio), store, diagnostics, components/. tests/ has focused checks. docs/ has notes. Do not create these files before the task that needs them.
 
 ## Commands (run in /workspace/voice)
 
@@ -51,8 +47,8 @@ The owner makes source backups from the P75 (archive: ~/Work/Voice-source-backup
 
 ## Security and money
 
-- The API key is typed by the owner into the app Settings and stored only in browser localStorage. It is read only by speechClient. It never appears in code, logs, Diagnostics, errors, tests, docs, screenshots or reports. Never ask for the key. Never open or print any .env file anywhere.
-- Free cap: 50 requests per UTC day, shared with all free models. On 429 with `free-models-per-day`: do NOT retry. Pause, show the reset time from the `X-RateLimit-Reset` header (epoch milliseconds), keep all audio and the position.
+- The API key is typed by the owner into the app Settings and stored only in browser localStorage. It is read only through src/wiring.js and used only by speechClient. It never appears in code, logs, Diagnostics, errors, tests, docs, screenshots or reports. Never ask for the key. Never open or print any .env file anywhere.
+-Free cap: 50 requests per UTC day (1000 if lifetime credit purchases reach $10, set by hand in Settings), plus 20 per minute, shared with all free models. On 429 with `free-models-per-day`: do NOT retry. Pause, keep all audio and the position. The browser cannot read X-RateLimit-Reset, so show the next 00:00 UTC as the reset time.
 - Retry once, only on 429 (not the daily cap) or 5xx. Never retry 400, 401, 402, 403 or 404.
 - Success responses are RAW AUDIO BYTES, not JSON. Never call response.json() on success. Errors are JSON `{"error":{"code","message"}}`.
 - Only models whose ID ends in `:free` may be called (enforced in src/providers.js). Never use a paid model, for example `fish-audio/s2.1-pro` or `heygen/heygen-voice-1-turbo`.
@@ -61,7 +57,7 @@ The owner makes source backups from the P75 (archive: ~/Work/Voice-source-backup
 
 ## UI rules
 
-Dark theme. Every disabled button shows its exact reason. Every failure shows an exact reason in the UI and in Diagnostics (Ctrl+Shift+L). No modals or toasts for errors.
+Dark theme. Every disabled button shows its exact reason. Every failure shows an exact reasonin the UI and in the status bar event log. No modals or toasts for errors.
 
 ## Report format (end of every task)
 
