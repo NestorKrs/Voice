@@ -12,9 +12,10 @@ Voice is the owner's personal, browser-only text-to-speech reader (React + Vite,
 - Message starts with "voice task: backup done": run the Backup message procedure below.
 - Any other message that starts with "voice task": run the Procedure below.
 - Message starts with "voice lesson:": see Lessons.
-- Message is "good night": do the Wrap-up in AGENTS.md. Change no code.
+- Message is "good night": do the Wrap-up in AGENTS.md. Change no code. Read package.json and the first CHANGELOG entry first; report any skipped version or missing entry, but do not fix it.
 - Any other Voice message with no written task: answer in one or two short lines and ask which task to run. Do no work.
 - Do not use this skill for other projects.
+- The task prefix decides the skill, not the file names or code shape in the attached content. If the attachment starts with "voice task", load this skill even when the code looks like another project.
 
 ## Where things are
 
@@ -37,7 +38,7 @@ Voice is the owner's personal, browser-only text-to-speech reader (React + Vite,
 ## Quick map (as of 2026-11-08; docs/codebase-map.md wins if it differs)
 
 - src/App.jsx: the whole page in ONE big component (state, handlers, top bar, Text/Reader/Job panels, player bar, Settings drawer, status bar). Most edits and most breakages happen here.
-- src/App.css (layout) and src/theme.css (colors, button look; CSS variables --bg --panel --line --muted --accent --ease --font). The font is JetBrains Mono from the installed npm package @fontsource/jetbrains-mono.
+- src/App.css (layout) and src/theme.css (colors, button look; CSS variables --bg --panel --line --muted --accent --ease --font).The font is @font-face in src/theme.css.
 - src/panelLayout.js: panel order (drag by grip; the page changes the visual order with CSS order, the DOM order stays fixed). src/panelWidths.js: panel widths in percent, limits, handles.
 - src/providers.js: provider list (Fish, HeyGen, owner-added), only models ending in :free. src/audioFormat.js: PCM to WAV, audio type detection.
 - src/speechClient.js: the ONLY file that uses the network. src/wiring.js: the ONLY file that imports readKey; builds the services (cache, speak, counter, makeKey).
@@ -45,7 +46,7 @@ Voice is the owner's personal, browser-only text-to-speech reader (React + Vite,
 - src/playerEngine.js and src/playerCore.js: the bottom player (two Audio slots, preloads the next chunk, reset()).
 - src/settingsStore.js: settings, key and text in localStorage. Settings keep one voice per provider; "voice" is the active provider's voice.
 - src/textPipeline.js (clean and split text), src/textStats.js (counts).
-- File loading (drop a file onto the Text panel, the Load button): not mapped here yet. Grep the code for it before you touch it.
+- File loading (drop a file onto the Text panel, or the Load button): FileReader.readAsText only; the file input accepts .txt,.md,.doc,text/plain. No .docx/.pdf parsing yet (no mammoth, no pdfjs-dist). Dropping a file cancels the scheduler, clears the audio cache and resets the player; the Load button only sets the text.
 - tests/*.test.mjs: one file per module.
 
 ## Standing rules (every task)
@@ -56,7 +57,7 @@ Voice is the owner's personal, browser-only text-to-speech reader (React + Vite,
 4. Paste RAW command output, never a summary. Write NOT RUN for a command you did not run. Never invent output. Never say something works unless you ran a check and pasted its output. Tests with mocks do not prove the live app works.
 5. Bugs: first a read-only diagnosis. A diagnosis task changes no file. Paste the code and the raw evidence, answer each lettered question in one line, in order, with the line number that proves it, and name the root cause and the failure layer. "Not found in code" is a valid answer; a guess is not. A summary instead of the raw output is a failed step. Fix only after the owner says go, or when the task itself says to fix if the evidence matches the condition it states.
 6. Never weaken or edit an existing test to make it pass. If an old test breaks only because of a field your task introduced, change only that expected value and say which test.
-7. Add no dependency. Never edit the dependency lists in package.json. If one is needed, tell the owner the package name. Already installed by the owner: @fontsource/jetbrains-mono. Approved later: mammoth, pdfjs-dist.
+7. Add no dependency. Never edit the dependency lists in package.json. If one is needed, tell the owner the package name. Approved later: mammoth, pdfjs-dist.
 8. Secrets: never ask for, open, print or log the API key or any .env file. When you need network facts from the owner, ask for the Network tab Payload and Response only, never Headers.
 9. Money and cap: only models whose ID ends in :free (code enforces it). The free cap is 50 requests per UTC day, or 1000 once the owner's lifetime credit purchases reach $10 (the owner bought $10; the Daily limit setting is chosen by hand and the 1000 cap is not verified), plus 20 requests per minute. The cap is shared with other free models and every attempt counts, including failed ones. The browser cannot read X-RateLimit-Reset, so a cap pause falls back to the next 00:00 UTC. Never make a live request. Never write code that loops requests. Never tell the owner to press Retry repeatedly.
 10. Never log pasted text or chunk text. Diagnostics hold time, chunk number, status and latency only.
@@ -66,7 +67,7 @@ Voice is the owner's personal, browser-only text-to-speech reader (React + Vite,
 
 ## Procedure
 
-1. Gate. The message must start with "voice task" and contain numbered steps. If not, ask for the task and stop. (Exception: the backup message, see below.)
+1. Gate. The message or its attached content must start with "voice task" and contain numbered steps. If not, ask for the task and stop. (Exception: the backup message, see below.)
 2. Orient. Read AGENTS.md, docs/handoff.md, docs/codebase-map.md (if missing, say so and go on) and docs/lessons.md (if missing, go on). If handoff.md names a version older than package.json, say "handoff.md is stale" in the report and use the truth order from "Where things are". Read other code only where the task needs it.
 3. Check the start. Read the version from package.json. Compare it with the first line of CHANGELOG.md that starts with "## ". If they differ, say so in the report. If CHANGELOG.md has no line for the current version, or skips a version number, say so too and do not fix it unless the task says so. For every anchor in the task, run grep -n on it first and paste the result. If an anchor does not match exactly once: STOP.
 4. Do the steps. Before adding any name (function, const, state, import, class), run grep -n "<name>" on the file. If it already exists: STOP.
@@ -78,8 +79,8 @@ Voice is the owner's personal, browser-only text-to-speech reader (React + Vite,
 6. Version and notes (only when the task changes behavior, UI or fixes a bug; docs-only and tests-only tasks do not bump). Bump PATCH in the version line of package.json only. Add one entry to CHANGELOG.md as the new first "## " entry (newest first, above the previous newest): "## <version> - <date>" and one "- " line saying what changed. Do not move the "# Changelog" heading. Add 1 to the counter in docs/backup-log.md: read the current value and write that value plus 1. Edit the existing lines in place; never add a second version line or a second Counter line (vship stops on duplicates). When the counter reaches 3, write BACKUP DUE at the top of the report. Never reset the counter yourself; only the owner's backup message resets it.
 7. Report, once, in the AGENTS.md format (what changed and why; version before and after; files with wc -l; commands with RAW output; READY TO COMMIT; BACKUP DUE or counter; Not verified). Add two lines: "Wiring proof" and "Lessons checked". The Not verified part says exactly what the owner must test live, step by step.
 8. Give the owner commands in fenced blocks. One block per purpose, a label line before each, one command per line, owner paths (~/Work/Voice, never /workspace/voice). End a command with 2>&1 | wl-copy when the owner should paste the result back. Always include:
-   - Ship: end every report with ONE fenced block that holds exactly one line: the complete vship command with the real message already written, ready to copy, for example vship "Generation follows playback: scheduler playhead tracks the player". No placeholders, no version number in the message, nothing else in that block, and it is the last thing in the report. Skip this block only when the task did not bump the version; then give the git commands below instead. vship runs lint, build and tests, stages a fixed list of paths (src, tests, package.json, package-lock.json, CHANGELOG.md, README.md, AGENTS.md, docs/backup-log.md, docs/plan.md, index.html, vite.config.js, .gitignore), stops if the staged changes contain an sk-or- key pattern, asks y/N, commits as "<version>: <message>", and offers a backup when the counter is 3 or more. It copies its own output to the clipboard.
    - Files vship does NOT stage: docs/handoff.md, docs/codebase-map.md, docs/lessons.md, docs/plinth-reference.css, font/ and anything else outside that list. List each such file by name in READY TO COMMIT and give: git -C ~/Work/Voice add <the exact files>, then git -C ~/Work/Voice commit -m "<what>". Docs-only commits have no version in the message and no version bump.
+   - Ship: end EVERY report with ONE fenced block that holds exactly one line: the complete vship command with the real message already written, ready to copy, for example vship "Generation follows playback: scheduler playhead tracks the player". No placeholders, no version number in the message, nothing else in that block, and it is the last thing in the report. This includes docs-only tasks. The good-night wrap-up is the exception: it ends with the single line vend, because vship does not stage docs/handoff.md. vship runs lint, build and tests, stages a fixed list of paths (src, tests, package.json, package-lock.json, CHANGELOG.md, README.md, AGENTS.md, docs/backup-log.md, docs/plan.md, index.html, vite.config.js, .gitignore), stops if the staged changes contain an sk-or- key pattern, asks y/N, commits as "<version>: <message>", and offers a backup when the counter is 3 or more. It copies its own output to the clipboard.
    Never git add -A.
 
 ## Backup message
@@ -90,7 +91,7 @@ The owner sends: "voice task: backup done, counter 0, label <x>, <date>". Do onl
 3. Paste the file. This is docs-only: no version bump, no CHANGELOG entry, no other file touched.
 4. READY TO COMMIT: docs/backup-log.md. (vship stages it with the next commit.)
 
-## Editing big files (App.jsx is about 600 lines in one component)
+## Editing big files (App.jsx is about 760 lines in one component)
 
 Hermes has broken this file by pasting a function inside another function, by declaring a name twice, and by skipping a step. So:
 
@@ -98,6 +99,9 @@ Hermes has broken this file by pasting a function inside another function, by de
 - New component-level const lines are indented exactly 2 spaces. A function indented deeper than 2 spaces is inside another function and is WRONG.
 - After editing, run this and paste the result (expect no output except the last word):
   (grep -oE "^  const [A-Za-z0-9_]+" src/App.jsx | sort | uniq -d); echo "dup check done"
+- The dup check has a known pre-existing false positive: `const chunks` matches twice (once inside handleStart at 2-space indent, once at component level), so it prints `  const chunks` before `dup check done`. That is not your edit; do not "fix" the indentation unless the task says so.
+- When a task says "after EVERY such line", grep the anchor first and count occurrences; the same line can appear at different indentation (for example `schedulerRef.current = null;` at 8 and 10 spaces). Patch each occurrence with its surrounding context, not replace_all.
+- When a task says "append only" to a test file, append with a heredoc (`cat >> tests/x.test.mjs <<'EOF'`); never rewrite the file or reorder existing tests.
 - Print the 6 lines before and after each insertion with sed -n and paste them.
 - Re-read each changed block once for unbalanced braces and parentheses.
 - Do every numbered step. A skipped step is the most common failure. Finish with the wiring proof.
@@ -133,10 +137,13 @@ If you must ask the owner, ask ONE question that separates two layers, for examp
 - A speed slider with step 0.25 reached 1.75, a value the player does not accept, so the thumb snapped back, and its label changed width as the number changed. -> A control for a fixed list of values moves by position in that list (import the list, never copy it) and its label has a fixed width. Do not hide jumpiness with a debounce or a transition.
 - The highlighted chunk row came from its own state that only the row's Play button set, so Previous and Next never moved it. -> Derive what the screen shows from the engine state (activeRowIndex); never keep a second copy of what the engine already knows.
 - A dragged panel followed the pointer as a full picture. The browser takes that picture itself and CSS cannot change it. -> In dragstart call dataTransfer.setDragImage with a visible element (the grip), and apply any dimming of the source after the drag has started (setTimeout 0).
-- CHANGELOG entries were added above the "# Changelog" heading, which ended up in the middle of the file, and one version got no entry. -> Add the new entry as the first "## " entry, never move the heading, and write one entry for every version bump.
+- CHANGELOG entries were added above the "# Changelog" heading, which ended up in the middle of the file, and one version got no entry. -> Add the new entry as the first "## " entry and write one entry for every version bump; while adding entries, never move the heading. A docs fix for a heading stranded mid-file moves the single heading to line 1 and inserts the missing version entry in numeric order; check with grep -c "^# Changelog" (expect 1) and grep -n "^## " before and after.
 - A test named "placeholder" covers nothing. -> Add a behavior test before claiming an integration is verified.
 - A control looked active while playback state was stale. -> Map every control to a real engine method and drive the UI from the engine's onChange.
 - Moved UI text or controls were left in their old place too. -> When you move something, remove the original; grep for the old text to prove it.
+- The scheduler window stopped after the first 3 chunks because nothing advanced its playhead. -> A scheduler that makes chunks ahead of a playhead needs two wires: App.jsx must call scheduler.setPlayhead when the player index changes, and call playerEngine.notifyReady(index) when a chunk becomes ready; without both, generation stalls after the initial window.
+- scheduler.setPlayhead has no not-started guard: calling it before start() starts runLoop with uncomputed keys (null). Only wire a pre-start setPlayhead when the task requires it, and list the race under Not verified.
+
 
 ## Lessons
 
