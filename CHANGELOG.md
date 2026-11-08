@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.55-alpha - 2026-11-08
+- Job pane: the character count of the text selected in the Text pane shows at the bottom and disappears when the selection is cleared.
+
 ## 0.1.54-alpha - 2026-11-08
 - Text pane: the sentence highlight is pulled back 0.15s so it no longer rushes ahead of the voice.
 
