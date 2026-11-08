@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.53-alpha - 2026-11-08
+- Text pane: Ctrl+wheel zoom works during playback, the word highlight tracks the voice more closely, and a None option shows the text without highlights.
+
+## 0.1.52-alpha - 2026-11-08
+- Text pane highlights the word or sentence being read while playing; Settings can switch words/sentences.
+
 ## 0.1.51-alpha - 2026-11-08
 - Settings: font weight slider moves in steps of 100 and uses the player slider accent color.
 

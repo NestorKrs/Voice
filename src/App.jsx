@@ -3,6 +3,7 @@ import { APP_VERSION } from './version.js';
 import { loadSettings, saveSettings, loadText, saveText, hasKey, saveKey, clearKey } from './settingsStore.js';
 import { computeStats } from './textStats.js';
 import { chunkText } from './textPipeline.js';
+import { highlightRange } from './highlight.js';
 import { createScheduler } from './scheduler.js';
 import { createServices } from './wiring.js';
 import { createPlayerEngine } from './playerEngine.js';
@@ -35,9 +36,62 @@ function FontWeightControl({ initial, onCommit }) {
   );
 }
 
+// Read-only view of the chunk being read. It polls the player engine with
+// requestAnimationFrame because the engine emits position updates only about
+// 4 times a second, which made the word highlight lag the voice.
+function TextReadView({ chunk, mode, engineRef, textZoom, onZoom }) {
+  const [hlRange, setHlRange] = useState(null);
+  const hlRef = useRef(null);
+  useEffect(() => {
+    setHlRange(null);
+    if (!chunk || mode === 'none') return undefined;
+    let raf;
+    let last = 0;
+    const tick = (t) => {
+      if (t - last >= 50) {
+        last = t;
+        const engine = engineRef.current;
+        const s = engine ? engine.getState() : null;
+        const duration = s ? s.duration : 0;
+        const position = s ? s.position : 0;
+        const fraction = duration > 0 ? Math.min(1, Math.max(0, position / duration)) : 0;
+        const char = Math.floor(fraction * chunk.length);
+        setHlRange((prev) => {
+          const next = highlightRange(chunk, mode, char);
+          return prev && prev.start === next.start && prev.end === next.end ? prev : next;
+        });
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [chunk, mode, engineRef]);
+  useEffect(() => {
+    if (hlRef.current) hlRef.current.scrollIntoView({ block: 'nearest' });
+  }, [hlRange]);
+  const r = hlRange || { start: 0, end: 0 };
+  return (
+    <div
+      className="text-read"
+      style={{ fontSize: `${textZoom}%` }}
+      tabIndex={0}
+      onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); onZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }}
+      onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); onZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); onZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); onZoom(100); } }}
+    >
+      {mode === 'none' ? chunk : (
+        <>
+          {chunk.slice(0, r.start)}
+          {hlRange ? <span ref={hlRef} className="text-hl">{chunk.slice(r.start, r.end)}</span> : null}
+          {chunk.slice(r.end)}
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const [text, setText] = useState(() => (storage ? loadText(storage) : ''));
-  const [settings, setSettings] = useState(() => (storage ? loadSettings(storage) : { voice: '', chunkSize: 2000, lookahead: 2, dailyLimit: 50 }));
+  const [settings, setSettings] = useState(() => (storage ? loadSettings(storage) : { voice: '', chunkSize: 2000, lookahead: 2, dailyLimit: 50, highlightMode: 'words' }));
   const [keySet, setKeySet] = useState(() => (storage ? hasKey(storage) : false));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [keyInput, setKeyInput] = useState('');
@@ -45,6 +99,7 @@ export default function App() {
   const [chunkInput, setChunkInput] = useState(settings.chunkSize);
   const [lookInput, setLookInput] = useState(settings.lookahead);
   const [dailyInput, setDailyInput] = useState(settings.dailyLimit);
+  const [highlightInput, setHighlightInput] = useState(settings.highlightMode);
   const [textZoom, setTextZoom] = useState(100);
   const [textDropActive, setTextDropActive] = useState(false);
 
@@ -642,6 +697,18 @@ export default function App() {
     logEvent('Font weight ' + value);
   };
 
+  const handleHighlightModeChange = (value) => {
+    if (value !== 'words' && value !== 'sentences' && value !== 'none') return;
+    if (!storage || value === settings.highlightMode) return;
+    if (!saveSettings(storage, { ...settings, highlightMode: value })) {
+      logEvent('Could not save the highlight mode');
+      return;
+    }
+    setSettings(loadSettings(storage));
+    setHighlightInput(value);
+    logEvent('Highlight ' + value);
+  };
+
   const panelClass = (id, extra) =>
     'panel ' + extra + (dragId === id ? ' dragging' : '') + (drop && drop.id === id ? ' drop-' + drop.side : '');
 
@@ -661,6 +728,9 @@ export default function App() {
   const pauseReason = canPause ? 'Stop making new audio. The request in progress finishes. Audio already made keeps playing.' : (!jobLive ? 'No job yet. Press Start Reading.' : 'Nothing to pause (' + stateWord + ').');
   const resumeReason = canResume ? 'Continue making audio from the chunk that is playing now.' : 'Nothing to resume (' + stateWord + ').';
   const cancelReason = canCancel ? 'Stop the job. Audio already made is kept.' : (!jobLive ? 'No job yet.' : 'Nothing to cancel (' + stateWord + ').');
+
+  const reading = playerState.total > 0 && (playerState.status === 'playing' || playerState.status === 'paused');
+  const readChunk = reading && chunks[playerState.index] ? chunks[playerState.index] : '';
 
   return (
     <div className="app">
@@ -682,7 +752,10 @@ export default function App() {
             <span className="grip" role="button" tabIndex={0} draggable="true" title="Drag to move this panel. Keyboard: Alt+Left or Alt+Right." aria-label="Move the Text panel" onDragStart={onGripDragStart('text')} onDragEnd={onGripDragEnd} onKeyDown={onGripKeyDown('text')} />
             <span className="panel-title">Text</span>
           </div>
-          <textarea value={text} onChange={(e) => setText(e.target.value)} style={{ fontSize: `${textZoom}%` }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} className={textDropActive ? 'drop-active' : ''} />
+          <textarea value={text} onChange={(e) => setText(e.target.value)} style={{ fontSize: `${textZoom}%`, display: reading ? 'none' : undefined }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} className={textDropActive ? 'drop-active' : ''} />
+          {reading ? (
+            <TextReadView chunk={readChunk} mode={settings.highlightMode} engineRef={playerEngineRef} textZoom={textZoom} onZoom={setTextZoom} />
+          ) : null}
           <div className="stats" style={{ justifyContent: 'flex-end' }}>
             <span>{plural(stats.characters, 'character')}</span>
             <span>{plural(stats.pages, 'page')} (about)</span>
@@ -791,6 +864,12 @@ export default function App() {
           <small>1000 needs $10 of lifetime credit purchases on OpenRouter. The app cannot check this.</small>
           <label>Font weight</label>
           <FontWeightControl initial={settings.fontWeight} onCommit={handleFontWeightCommit} />
+          <label>Highlight while reading</label>
+          <select value={highlightInput} onChange={(e) => handleHighlightModeChange(e.target.value)} aria-label="Highlight mode">
+            <option value="words">Words</option>
+            <option value="sentences">Sentences</option>
+            <option value="none">None</option>
+          </select>
           <div className="privacy">Your text is sent to OpenRouter.</div>
           <button onClick={handleResetLayout} disabled={isDefaultOrder && isDefaultWidths} title={isDefaultOrder && isDefaultWidths ? 'The panels are already in the default order and size.' : 'Put the panels back in the default order and size.'}>Reset layout</button>
           <button onClick={handleSaveSettings}>Save settings</button>

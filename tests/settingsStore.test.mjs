@@ -19,7 +19,7 @@ test('defaults', () => {
 test('round trip', () => {
   const s = makeStorage();
   saveSettings(s, { voice: 'v', chunkSize: 500, lookahead: 3 });
-  assert.deepEqual(loadSettings(s), { voice: 'v', provider: 'fish', voices: { fish: 'v' }, chunkSize: 500, lookahead: 3, dailyLimit: 50, fontWeight: 400 });
+  assert.deepEqual(loadSettings(s), { voice: 'v', provider: 'fish', voices: { fish: 'v' }, chunkSize: 500, lookahead: 3, dailyLimit: 50, fontWeight: 400, highlightMode: 'words' });
 });
 
 test('broken JSON', () => {
@@ -156,4 +156,39 @@ test('invalid fontWeight does not reset other settings', () => {
   assert.equal(l.chunkSize, 500);
   assert.equal(l.lookahead, 3);
   assert.equal(l.fontWeight, 400);
+});
+test('highlightMode default is words', () => {
+  const s = makeStorage();
+  assert.equal(loadSettings(s).highlightMode, 'words');
+  assert.equal(DEFAULT_SETTINGS.highlightMode, 'words');
+});
+
+test('highlightMode round trips', () => {
+  const s = makeStorage();
+  saveSettings(s, { voice: 'v', highlightMode: 'sentences' });
+  assert.equal(loadSettings(s).highlightMode, 'sentences');
+});
+
+test('highlightMode invalid falls back to words', () => {
+  for (const v of ['blocks', 'Words', null, 1]) {
+    const s = makeStorage();
+    saveSettings(s, { voice: 'v', highlightMode: v });
+    assert.equal(loadSettings(s).highlightMode, 'words', String(v));
+  }
+});
+
+test('invalid highlightMode does not reset other settings', () => {
+  const s = makeStorage();
+  saveSettings(s, { voice: 'v', chunkSize: 500, lookahead: 3, highlightMode: 'blocks' });
+  const l = loadSettings(s);
+  assert.equal(l.voice, 'v');
+  assert.equal(l.chunkSize, 500);
+  assert.equal(l.lookahead, 3);
+  assert.equal(l.highlightMode, 'words');
+});
+
+test('highlightMode none round trips', () => {
+  const s = makeStorage();
+  saveSettings(s, { voice: 'v', highlightMode: 'none' });
+  assert.equal(loadSettings(s).highlightMode, 'none');
 });
