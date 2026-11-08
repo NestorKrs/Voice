@@ -102,7 +102,7 @@ export function estimateTimes({ chars = [], durations = [], index = 0, positionS
     if (durations[i] != null) return durations[i];
     return c * spc;
   });
-  const estimated = durations.some((d, i) => d == null);
+  const estimated = durations.some((d) => d == null);
   const total = full.reduce((a, b) => a + b, 0);
   // elapsed
   let elapsed = 0;

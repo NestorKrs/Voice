@@ -27,29 +27,6 @@ export function createPlayerEngine({ getBytes, createAudio, makeUrl, revokeUrl, 
 
   function swapSlots() { const t = activeKey; activeKey = idleKey; idleKey = t; }
 
-  function applyRateAndVolume(audio) {
-    if (!audio) return;
-    audio.playbackRate = state.rate;
-    audio.volume = volume;
-    audio.preservesPitch = true;
-    audio.mozPreservesPitch = true;
-  }
-
-  function getState() {
-    const a = active();
-    const audio = a && a.audio;
-    return {
-      total: state.total,
-      index: state.index,
-      status: state.status,
-      rate: state.rate,
-      volume,
-      buffering: /* tracked */ (state.status === 'playing' && !(a && a.loaded && a.index === state.index)),
-      position: state.status === 'finished' ? 0 : (audio ? (audio.currentTime || 0) : 0),
-      duration: audio ? (audio.duration || 0) : 0,
-    };
-  }
-
   // We'll track buffering explicitly
   let bufferingFlag = false;
 
@@ -180,7 +157,6 @@ export function createPlayerEngine({ getBytes, createAudio, makeUrl, revokeUrl, 
     if (destroyed) return;
     if (audio !== active().audio) return;
     // reduce ENDED
-    const prevIndex = state.index;
     state = reduce(state, { type: 'ENDED' });
     const oldSlot = active();
     // revoke url of ended slot
@@ -368,7 +344,6 @@ export function createPlayerEngine({ getBytes, createAudio, makeUrl, revokeUrl, 
     notifyReady(index) {
       if (destroyed) return;
       // if buffering for that index, load
-      const slot = active();
       if (bufferingFlag && state.index === index) {
         loadToken++;
         const token = loadToken;
