@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.54-alpha - 2026-11-08
+- Text pane: the sentence highlight is pulled back 0.15s so it no longer rushes ahead of the voice.
+
 ## 0.1.53-alpha - 2026-11-08
 - Text pane: Ctrl+wheel zoom works during playback, the word highlight tracks the voice more closely, and a None option shows the text without highlights.
 

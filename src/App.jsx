@@ -36,6 +36,10 @@ function FontWeightControl({ initial, onCommit }) {
   );
 }
 
+// The TTS pauses between sentences, so the linear estimate reaches the next
+// sentence before the voice does. Pull the sentence highlight back by this.
+const SENTENCE_DELAY = 0.15;
+
 // Read-only view of the chunk being read. It polls the player engine with
 // requestAnimationFrame because the engine emits position updates only about
 // 4 times a second, which made the word highlight lag the voice.
@@ -53,7 +57,8 @@ function TextReadView({ chunk, mode, engineRef, textZoom, onZoom }) {
         const engine = engineRef.current;
         const s = engine ? engine.getState() : null;
         const duration = s ? s.duration : 0;
-        const position = s ? s.position : 0;
+        const rawPosition = s ? s.position : 0;
+        const position = mode === 'sentences' ? Math.max(0, rawPosition - SENTENCE_DELAY) : rawPosition;
         const fraction = duration > 0 ? Math.min(1, Math.max(0, position / duration)) : 0;
         const char = Math.floor(fraction * chunk.length);
         setHlRange((prev) => {
