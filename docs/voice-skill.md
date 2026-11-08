@@ -37,7 +37,7 @@ Voice is the owner's personal, browser-only text-to-speech reader (React + Vite,
 
 ## Quick map (as of 2026-11-08; docs/codebase-map.md wins if it differs)
 
-- src/App.jsx: the whole page in ONE big component (state, handlers, top bar, Text/Reader/Job panels, player bar, Settings drawer, status bar). Most edits and most breakages happen here.
+- src/App.jsx: the whole page in ONE big component (state, handlers, top bar, Text/Reader/Job panels, player bar, Settings drawer, status bar) plus two module-level controls (FontWeightControl, TextReadView). Most edits and most breakages happen here. src/highlight.js picks the word/sentence range and the weighted character index for the Text panel's read-only highlight view (textarea hidden while playing); the Job pane shows the selected-character count pinned at the bottom, and clicking a Reader chunk row jumps the player there.
 - src/App.css (layout) and src/theme.css (colors, button look; CSS variables --bg --panel --line --muted --accent --ease --font).The font is @font-face in src/theme.css.
 - src/panelLayout.js: panel order (drag by grip; the page changes the visual order with CSS order, the DOM order stays fixed). src/panelWidths.js: panel widths in percent, limits, handles.
 - src/providers.js: provider list (Fish, HeyGen, owner-added), only models ending in :free. src/audioFormat.js: PCM to WAV, audio type detection.
@@ -64,10 +64,11 @@ Voice is the owner's personal, browser-only text-to-speech reader (React + Vite,
 11. UI: dark theme. Every disabled control shows its exact reason (visible text or title). Every failure shows an exact reason on screen and in the status bar. No modals and no toasts for errors. Every click gives visible feedback. The bottom status bar and its expandable event log keep their markup and behavior; the owner copies logs from there. Change them only when a task says so.
 12. Replies: short, plain words.
 13. Lint: add no new lint warnings. No unused variables, functions, imports or parameters. If a parameter must stay unused, start its name with an underscore. The owner's vship run prints the warning count.
+14. When the owner calls a task "quick", "mini" or "small", implement the smallest direct version that works; add no optional settings, abstractions or speculative guards, only the minimum needed for correct behaviour.
 
 ## Procedure
 
-1. Gate. The message or its attached content must start with "voice task" and contain numbered steps. If not, ask for the task and stop. (Exception: the backup message, see below.)
+1. Gate. The message or its attached content must start with "voice task" and contain numbered steps. If not, ask for the task and stop. (Exception: the backup message, see below.) A prose feature request without the prefix is still a written task: answer the feasibility question with code evidence, confirm the direction with the clarify tool, then proceed once the owner picks.
 2. Orient. Read AGENTS.md, docs/handoff.md, docs/codebase-map.md (if missing, say so and go on) and docs/lessons.md (if missing, go on). If handoff.md names a version older than package.json, say "handoff.md is stale" in the report and use the truth order from "Where things are". Read other code only where the task needs it.
 3. Check the start. Read the version from package.json. Compare it with the first line of CHANGELOG.md that starts with "## ". If they differ, say so in the report. If CHANGELOG.md has no line for the current version, or skips a version number, say so too and do not fix it unless the task says so. For every anchor in the task, run grep -n on it first and paste the result. If an anchor does not match exactly once: STOP.
 4. Do the steps. Before adding any name (function, const, state, import, class), run grep -n "<name>" on the file. If it already exists: STOP.
@@ -91,11 +92,11 @@ The owner sends: "voice task: backup done, counter 0, label <x>, <date>". Do onl
 3. Paste the file. This is docs-only: no version bump, no CHANGELOG entry, no other file touched.
 4. READY TO COMMIT: docs/backup-log.md. (vship stages it with the next commit.)
 
-## Editing big files (App.jsx is about 760 lines in one component)
+## Editing big files (App.jsx is one big component, hundreds of lines)
 
 Hermes has broken this file by pasting a function inside another function, by declaring a name twice, and by skipping a step. So:
 
-- Insert at the exact anchor the task gives. If the task gives none: put new component-level functions directly above `const panelClass =` (grep that it exists first) and new hooks next to the other hooks.
+- Insert at the exact anchor the task gives. If the task gives none: put new component-level functions directly above `const panelClass =` (grep that it exists first) and new hooks next to the other hooks. New module-level components go next to FontWeightControl, above `export default function App()`.
 - New component-level const lines are indented exactly 2 spaces. A function indented deeper than 2 spaces is inside another function and is WRONG.
 - After editing, run this and paste the result (expect no output except the last word):
   (grep -oE "^  const [A-Za-z0-9_]+" src/App.jsx | sort | uniq -d); echo "dup check done"
@@ -103,7 +104,7 @@ Hermes has broken this file by pasting a function inside another function, by de
 - When a task says "after EVERY such line", grep the anchor first and count occurrences; the same line can appear at different indentation (for example `schedulerRef.current = null;` at 8 and 10 spaces). Patch each occurrence with its surrounding context, not replace_all.
 - When a task says "append only" to a test file, append with a heredoc (`cat >> tests/x.test.mjs <<'EOF'`); never rewrite the file or reorder existing tests.
 - Print the 6 lines before and after each insertion with sed -n and paste them.
-- Re-read each changed block once for unbalanced braces and parentheses.
+- Re-read each changed block once for unbalanced braces and parentheses. The patch tool's fuzzy match can insert the leading indentation of old_string into the middle of a line; when patching a line-internal substring, keep old_string/new_string free of leading indentation and re-read the line after patching.
 - Do every numbered step. A skipped step is the most common failure. Finish with the wiring proof.
 
 ## Finding the failure layer (bugs)
@@ -141,8 +142,22 @@ If you must ask the owner, ask ONE question that separates two layers, for examp
 - A test named "placeholder" covers nothing. -> Add a behavior test before claiming an integration is verified.
 - A control looked active while playback state was stale. -> Map every control to a real engine method and drive the UI from the engine's onChange.
 - Moved UI text or controls were left in their old place too. -> When you move something, remove the original; grep for the old text to prove it.
+- A "switch X to Y" request can name X as if it already exists. -> Grep for X first and paste the evidence; if it is not in the code, say so and offer the executable alternatives instead of building a switch from nothing.
+- The speech endpoint returns raw audio bytes with no word or sentence timestamps (speechClient sends {model, input, response_format} and reads arrayBuffer). -> A "highlight the word being read" feature can only estimate the position from audio position/duration; it drifts. Say so in the report.
+- The Text panel is a plain <textarea> and chunkText cleans the text first, so chunks are slices of cleanText(text), not of the raw text. -> Highlight inside the chunk text in a read-only view; do not map chunk offsets back to the raw textarea text.
+- playerState.position updates only about 4 times a second (throttled timeupdate), so a word-level highlight driven by it lags the voice. -> Poll playerEngine.getState() from a requestAnimationFrame loop throttled to ~50ms; getState() reads audio.currentTime live. Update only the highlight state and bail out when the range is unchanged, so App does not re-render at 60fps.
+- A read-only view that replaces the textarea loses the textarea's handlers (Ctrl+wheel zoom, Ctrl++/-/0, file drop). -> Copy them onto the new view, with tabIndex=0 and a focus outline for the keyboard ones, or they silently stop working.
+- Settings that change the live view (font weight, highlight mode) are applied and saved at once; settings that change generation (chunk size, lookahead, daily limit) are saved on the Save settings button. -> Follow the existing split; do not make a view setting wait for Save.
 - The scheduler window stopped after the first 3 chunks because nothing advanced its playhead. -> A scheduler that makes chunks ahead of a playhead needs two wires: App.jsx must call scheduler.setPlayhead when the player index changes, and call playerEngine.notifyReady(index) when a chunk becomes ready; without both, generation stalls after the initial window.
 - scheduler.setPlayhead has no not-started guard: calling it before start() starts runLoop with uncomputed keys (null). Only wire a pre-start setPlayhead when the task requires it, and list the race under Not verified.
+- A read-only view that re-renders its text on every animation frame destroys the owner's drag-selection in it. -> Freeze the highlight while a selection is in progress (a ref set on mousedown, cleared on mouseup) and read window.getSelection() on mouseup; otherwise the selection count flashes or never appears.
+- Adding onClick to a list row that contains buttons makes the buttons fire the row action too. -> Call e.stopPropagation() in the inner buttons, or the row action silently overrides them.
+- The owner says "the bottom of the panel" and means pinned to the bottom, not flowing right after the last control. -> Use marginTop: 'auto' on the flex child; a block placed directly after a button row reads as "under the buttons".
+- The TTS pauses between sentences, so the linear position/duration estimate reaches the next sentence before the voice does and a sentence highlight rushes ahead. -> Pull the sentence-mode position back by a small named constant (SENTENCE_DELAY) rather than touching the word mode or the shared estimate.
+- The browser only re-runs spellcheck when a text control gains focus, so changing the spellcheck attribute on an unfocused textarea leaves the old red underlines until the owner clicks into it. -> Force the re-check in a useEffect on the setting (after React commits the attribute), not in the change handler: focus the textarea, blur it on the next task, then restore selectionStart/End, scrollTop/Left and the previously focused control. Skip the first run with a prev-value ref (StrictMode double-invokes effects) and skip while the element is hidden (offsetParent === null), or a view setting silently does nothing.
+- A task can ask for a function that builds derived data (per-character weights) and for the caller to memoize that data once per chunk. A function that only takes the raw input cannot use the memoized copy, so the memo is an unused variable (lint warning) and the builder is dead code. -> Let the lookup accept the raw input or the precomputed form, and say which you chose in the report.
+- A per-character index must use the same index space as the existing highlight code: text.length and text[i] (UTF-16 code units), because highlightRange returns regex/length indices; [...text] (code points) returns an index that mismatches on text with astral characters. Check a listed special character before the whitespace fallback ('\n' is both).
+- A task step saying "do not change ... any other file" means unrelated files, not the mandatory version/CHANGELOG/backup bookkeeping; AGENTS.md requires a PATCH bump for every behavior change. Follow AGENTS.md and say so in the report.
 
 
 ## Lessons
