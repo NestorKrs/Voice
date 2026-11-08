@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { APP_VERSION } from './version.js';
 import { loadSettings, saveSettings, loadText, saveText, hasKey, saveKey, clearKey } from './settingsStore.js';
 import { computeStats } from './textStats.js';
 import { chunkText } from './textPipeline.js';
-import { highlightRange } from './highlight.js';
+import { highlightRange, charWeights, charAtFraction } from './highlight.js';
 import { createScheduler } from './scheduler.js';
 import { createServices } from './wiring.js';
 import { createPlayerEngine } from './playerEngine.js';
@@ -40,6 +40,10 @@ function FontWeightControl({ initial, onCommit }) {
 // sentence before the voice does. Pull the sentence highlight back by this.
 const SENTENCE_DELAY = 0.15;
 
+// The weighted lookup slows the word highlight across pauses, so lead it by
+// this many seconds to keep it on the voice.
+const WORD_LEAD_SECONDS = 0.12;
+
 // Read-only view of the chunk being read. It polls the player engine with
 // requestAnimationFrame because the engine emits position updates only about
 // 4 times a second, which made the word highlight lag the voice.
@@ -47,6 +51,7 @@ function TextReadView({ chunk, mode, engineRef, textZoom, onZoom, onSelectText }
   const [hlRange, setHlRange] = useState(null);
   const hlRef = useRef(null);
   const selectingRef = useRef(false);
+  const weights = useMemo(() => charWeights(chunk || ''), [chunk]);
   useEffect(() => {
     setHlRange(null);
     if (!chunk || mode === 'none') return undefined;
@@ -59,9 +64,9 @@ function TextReadView({ chunk, mode, engineRef, textZoom, onZoom, onSelectText }
         const s = engine ? engine.getState() : null;
         const duration = s ? s.duration : 0;
         const rawPosition = s ? s.position : 0;
-        const position = mode === 'sentences' ? Math.max(0, rawPosition - SENTENCE_DELAY) : rawPosition;
+        const position = mode === 'sentences' ? Math.max(0, rawPosition - SENTENCE_DELAY) : rawPosition + (mode === 'words' ? WORD_LEAD_SECONDS : 0);
         const fraction = duration > 0 ? Math.min(1, Math.max(0, position / duration)) : 0;
-        const char = Math.floor(fraction * chunk.length);
+        const char = charAtFraction(weights, fraction);
         setHlRange((prev) => {
           const next = highlightRange(chunk, mode, char);
           return prev && prev.start === next.start && prev.end === next.end ? prev : next;

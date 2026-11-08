@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { highlightRange } from '../src/highlight.js';
+import { highlightRange, charAtFraction } from '../src/highlight.js';
 
 test('words: picks the word containing the offset', () => {
   const text = 'hello world again';
@@ -36,4 +36,28 @@ test('sentences: picks the sentence containing the offset', () => {
 test('empty text', () => {
   assert.deepEqual(highlightRange('', 'words', 0), { start: 0, end: 0 });
   assert.deepEqual(highlightRange('', 'sentences', 0), { start: 0, end: 0 });
+});
+
+test('charAtFraction: fraction 0 returns 0', () => {
+  assert.equal(charAtFraction('hello world', 0), 0);
+});
+
+test('charAtFraction: fraction 1 returns the last index', () => {
+  const text = 'hello world';
+  assert.equal(charAtFraction(text, 1), text.length - 1);
+});
+
+test('charAtFraction: a full stop moves the highlight slower than a linear estimate', () => {
+  const chunk = 'Hello world. This sentence is much longer than the first one.';
+  const fraction = 0.25;
+  const weighted = charAtFraction(chunk, fraction);
+  const linear = Math.floor(fraction * chunk.length);
+  assert.equal(weighted, chunk.indexOf('.'));
+  assert.ok(weighted < linear, `weighted ${weighted} should be before linear ${linear}`);
+});
+
+test('charAtFraction: empty text is safe', () => {
+  assert.equal(charAtFraction('', 0), 0);
+  assert.equal(charAtFraction('', 0.5), 0);
+  assert.equal(charAtFraction('', 1), 0);
 });

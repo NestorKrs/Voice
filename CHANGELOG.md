@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.59-alpha - 2026-11-08
+- Text pane: word highlight timing is weighted per character so it moves slower across pauses, and words mode leads the voice by 0.12s; sentence timing is unchanged.
+
 ## 0.1.58-alpha - 2026-11-08
 - Settings: a Spell check toggle turns the browser's red underlines in the Text pane on or off; it is saved and stays across reloads.
 
