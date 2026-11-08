@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.60-alpha - 2026-11-09
+- Reader: each chunk row's Play button is now a Download icon button; Settings chooses MP3 or WAV, and WAV is decoded from MP3 in the browser when needed.
+
 ## 0.1.59-alpha - 2026-11-08
 - Text pane: word highlight timing is weighted per character so it moves slower across pauses, and words mode leads the voice by 0.12s; sentence timing is unchanged.
 

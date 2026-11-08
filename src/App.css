@@ -28,6 +28,10 @@
 .chunk-head { display: flex; align-items: center; gap: 8px; }
 .chunk-actions { margin-left: auto; display: flex; gap: 6px; }
 .chunk-row button { padding: 3px 10px; font-size: 12px; min-width: 58px; }
+.chunk-row .icon-btn.chunk-download { min-width: 0; padding: 0; width: 28px; height: 28px; border-radius: 50%; color: var(--accent); }
+.chunk-row .icon-btn.chunk-download:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-fill); color: var(--accent); }
+.chunk-row .icon-btn.chunk-download:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chunk-row .icon-btn.chunk-download:disabled { opacity: 0.4; cursor: not-allowed; }
 .chunk-num { color: var(--muted); font-size: 12px; }
 .chunk-preview { font-size: 12px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .badge { font-size: 11px; padding: 1px 8px; border-radius: 10px; background: #2c3036; color: var(--muted); }

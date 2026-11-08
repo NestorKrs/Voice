@@ -10,7 +10,7 @@ import { createPlayerEngine } from './playerEngine.js';
 import { newlyReady, readyFlags, playheadToSend } from './followPlayback.js';
 import { RATES, activeRowIndex } from './playerCore.js';
 import { allProviders, loadCustomProviders, getProvider, providerLabel } from './providers.js';
-import { audioMime } from './audioFormat.js';
+import { chunkFileName, audioKind, toWavBytes, encodeWav } from './chunkDownload.js';
 import { DEFAULT_ORDER, movePanel, stepPanel, loadOrder, saveOrder, resetOrder } from './panelLayout.js';
 import { DEFAULT_WIDTHS, clampWidths, usableWidth, resizeFromHandle, columnsTemplate, loadWidths, saveWidths, resetWidths } from './panelWidths.js';
 
@@ -123,9 +123,11 @@ export default function App() {
   const [dailyInput, setDailyInput] = useState(settings.dailyLimit);
   const [highlightInput, setHighlightInput] = useState(settings.highlightMode);
   const [spellCheckInput, setSpellCheckInput] = useState(settings.spellCheck);
+  const [downloadFormatInput, setDownloadFormatInput] = useState(settings.downloadFormat);
   const [textZoom, setTextZoom] = useState(100);
   const [textDropActive, setTextDropActive] = useState(false);
   const [selectedChars, setSelectedChars] = useState(0);
+  const [chunkNotes, setChunkNotes] = useState({});
 
   useEffect(() => {
     const preventBrowserZoom = (e) => { if (e.ctrlKey) e.preventDefault(); };
@@ -360,62 +362,6 @@ export default function App() {
     logEvent(`Retry chunk ${i + 1} pressed`);
     try {
       if (schedulerRef.current) schedulerRef.current.retryChunk(i);
-    } catch (e) {
-      const m = e && e.message ? e.message : 'error';
-      setJobError(m);
-      logEvent(m);
-    }
-  };
-
-  const playChunk = async (index) => {
-    logEvent(`Play chunk ${index + 1} pressed`);
-    if (!services || !schedulerRef.current) return;
-    if (playerEngineRef.current && playerState.status === 'playing') playerEngineRef.current.pause();
-    if (audioRef.current) { audioRef.current.pause(); }
-
-    try {
-      const chunkList = chunkText(text, settings.chunkSize);
-      const key = await services.makeKey({ text: chunkList[index], voice: settings.voice, provider });
-      logEvent(`Chunk ${index + 1} requested`);
-      const bytes = await services.cache.get(key);
-      if (!bytes) {
-        logEvent(`Play chunk ${index + 1}: key ${key.slice(0, 8)}, no audio in cache for this chunk`);
-        setNotice('Play chunk ' + (index + 1) + ': no audio in cache for this chunk');
-        return;
-      }
-      logEvent(`Play chunk ${index + 1}: key ${key.slice(0, 8)}, ${bytes.byteLength} bytes from cache`);
-      const blob = new Blob([bytes], { type: audioMime(bytes) });
-      logEvent(`Play chunk ${index + 1}: blob ${blob.size} bytes, type ${blob.type}`);
-      const url = URL.createObjectURL(blob);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        if (audioUrl) URL.revokeObjectURL(audioUrl);
-      }
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      setAudioUrl(url);
-      audio.onloadedmetadata = () => logEvent(`duration ${audio.duration} s`);
-      audio.oncanplay = () => logEvent('canplay');
-      audio.onplaying = () => logEvent('playing');
-      audio.onended = () => {    URL.revokeObjectURL(url); setAudioUrl(null); logEvent('ended'); };
-      audio.onerror = () => {
-        const code = audio.error ? audio.error.code : 0;
-        const msg = audio.error ? audio.error.message : 'error';
-        logEvent(`error ${code} ${msg}`);
-        setNotice(`Playback failed (code ${code})`);
-      };
-      logEvent(`audio volume ${audio.volume}, muted ${audio.muted}`);
-      try {
-        await audio.play();
-        logEvent('play() resolved');
-      } catch (e) {
-        const m = e && e.name ? `${e.name}: ${e.message}` : 'error';
-        logEvent(`play() rejected: ${m}`);
-        setNotice('Click Play again to start audio.');
-      }
-      setTimeout(() => {
-        logEvent(`1 s later: paused=${audio.paused}, currentTime=${audio.currentTime.toFixed(2)}, readyState=${audio.readyState}`);
-      }, 1000);
     } catch (e) {
       const m = e && e.message ? e.message : 'error';
       setJobError(m);
@@ -750,6 +696,99 @@ export default function App() {
     logEvent('Spell check ' + (value ? 'on' : 'off'));
   };
 
+  const handleDownloadFormatChange = (value) => {
+    if (value !== 'mp3' && value !== 'wav') return;
+    if (!storage || value === settings.downloadFormat) return;
+    if (!saveSettings(storage, { ...settings, downloadFormat: value })) {
+      logEvent('Could not save the download format');
+      return;
+    }
+    setSettings(loadSettings(storage));
+    setDownloadFormatInput(value);
+    logEvent('Download format ' + value);
+  };
+
+  const handleDownloadChunk = async (index) => {
+    const n = index + 1;
+    const fail = (msg) => {
+      logEvent(msg);
+      setNotice(msg);
+      setChunkNotes((prev) => ({ ...prev, [index]: msg }));
+    };
+    if (!services) return;
+    try {
+      const key = await services.makeKey({ text: chunks[index], voice: settings.voice, provider });
+      const bytes = await services.cache.get(key);
+      if (!bytes) {
+        fail(`Chunk ${n} is not ready yet: no audio in the cache.`);
+        return;
+      }
+      const kind = audioKind(bytes);
+      const format = settings.downloadFormat === 'wav' ? 'wav' : 'mp3';
+      if (format === 'mp3' && kind !== 'mp3') {
+        fail('MP3 is not available for this chunk: this provider gives PCM/WAV audio. Choose WAV in Settings.');
+        return;
+      }
+      let out = null;
+      if (format === 'mp3') {
+        out = bytes;
+      } else if (kind === 'wav' || kind === 'pcm') {
+        out = toWavBytes(bytes, kind);
+      } else {
+        const Ctx = globalThis.AudioContext || globalThis.webkitAudioContext;
+        if (!Ctx) throw new Error('This browser cannot decode MP3 audio.');
+        const ctx = new Ctx();
+        try {
+          const decoded = await ctx.decodeAudioData(bytes.slice().buffer);
+          const channels = [];
+          for (let c = 0; c < decoded.numberOfChannels; c += 1) channels.push(decoded.getChannelData(c));
+          out = encodeWav(channels, decoded.sampleRate);
+        } finally {
+          if (typeof ctx.close === 'function') ctx.close().catch(() => {});
+        }
+      }
+      const name = chunkFileName(index, chunks.length, format);
+      if (typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
+        let handle = null;
+        try {
+          handle = await window.showSaveFilePicker({
+            suggestedName: name,
+            types: [{ description: format.toUpperCase() + ' audio', accept: { [format === 'mp3' ? 'audio/mpeg' : 'audio/wav']: ['.' + format] } }],
+          });
+        } catch (e) {
+          if (e && e.name === 'AbortError') {
+            logEvent('Download cancelled');
+            return;
+          }
+          throw e;
+        }
+        const writable = await handle.createWritable();
+        await writable.write(out);
+        await writable.close();
+      } else {
+        const blob = new Blob([out], { type: format === 'mp3' ? 'audio/mpeg' : 'audio/wav' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        logEvent('Save dialog not available here; used the browser download instead');
+      }
+      setChunkNotes((prev) => {
+        const next = { ...prev };
+        delete next[index];
+        return next;
+      });
+      logEvent(`Chunk ${n} downloaded as ${format} (${Math.round(out.byteLength / 1024)} KB)`);
+    } catch (e) {
+      const m = e && e.message ? e.message : 'error';
+      fail(m);
+    }
+  };
+
   const panelClass = (id, extra) =>
     'panel ' + extra + (dragId === id ? ' dragging' : '') + (drop && drop.id === id ? ' drop-' + drop.side : '');
 
@@ -830,10 +869,13 @@ export default function App() {
                     <span className="chunk-num">#{i + 1}</span>
                     <span className="chunk-actions">
                       {st === 'failed' ? <button onClick={(e) => { e.stopPropagation(); handleRetry(i); }}>Retry</button> : null}
-                      <button disabled={st !== 'ready'} onClick={(e) => { e.stopPropagation(); playChunk(i); }}>Play</button>
+                      <button className="icon-btn chunk-download" disabled={st !== 'ready'} title={st === 'ready' ? 'Download this chunk' : `Chunk ${i + 1} is not ready yet: no audio in the cache.`} onClick={(e) => { e.stopPropagation(); handleDownloadChunk(i); }} aria-label={`Download chunk ${i + 1}`}>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8.5 12.5L12 16l3.5-3.5" /></svg>
+                      </button>
                     </span>
                   </div>
                   <div className="chunk-preview">{c.slice(0, 400)}</div>
+                  {chunkNotes[i] ? <div className="err">{chunkNotes[i]}</div> : null}
                   {err ? <div className="err">{err.message}</div> : null}
                 </div>
               );
@@ -911,6 +953,11 @@ export default function App() {
             <option value="words">Words</option>
             <option value="sentences">Sentences</option>
             <option value="none">None</option>
+          </select>
+          <label>Chunk download format</label>
+          <select value={downloadFormatInput} onChange={(e) => handleDownloadFormatChange(e.target.value)} aria-label="Chunk download format">
+            <option value="mp3">MP3</option>
+            <option value="wav">WAV</option>
           </select>
           <div className="check-row">
             <label className="switch">

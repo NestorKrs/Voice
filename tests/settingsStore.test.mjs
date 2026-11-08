@@ -19,7 +19,7 @@ test('defaults', () => {
 test('round trip', () => {
   const s = makeStorage();
   saveSettings(s, { voice: 'v', chunkSize: 500, lookahead: 3 });
-  assert.deepEqual(loadSettings(s), { voice: 'v', provider: 'fish', voices: { fish: 'v' }, chunkSize: 500, lookahead: 3, dailyLimit: 50, fontWeight: 400, highlightMode: 'words', spellCheck: true });
+  assert.deepEqual(loadSettings(s), { voice: 'v', provider: 'fish', voices: { fish: 'v' }, chunkSize: 500, lookahead: 3, dailyLimit: 50, fontWeight: 400, highlightMode: 'words', spellCheck: true, downloadFormat: 'mp3' });
 });
 
 test('broken JSON', () => {
@@ -211,4 +211,34 @@ test('spellCheck invalid falls back to true', () => {
     saveSettings(s, { voice: 'v', spellCheck: v });
     assert.equal(loadSettings(s).spellCheck, true, String(v));
   }
+});
+
+test('downloadFormat default is mp3', () => {
+  const s = makeStorage();
+  assert.equal(loadSettings(s).downloadFormat, 'mp3');
+  assert.equal(DEFAULT_SETTINGS.downloadFormat, 'mp3');
+});
+
+test('downloadFormat wav round trips', () => {
+  const s = makeStorage();
+  saveSettings(s, { voice: 'v', downloadFormat: 'wav' });
+  assert.equal(loadSettings(s).downloadFormat, 'wav');
+});
+
+test('downloadFormat invalid falls back to mp3', () => {
+  for (const v of ['ogg', 'MP3', null, 1]) {
+    const s = makeStorage();
+    saveSettings(s, { voice: 'v', downloadFormat: v });
+    assert.equal(loadSettings(s).downloadFormat, 'mp3', String(v));
+  }
+});
+
+test('invalid downloadFormat does not reset other settings', () => {
+  const s = makeStorage();
+  saveSettings(s, { voice: 'v', chunkSize: 500, lookahead: 3, downloadFormat: 'ogg' });
+  const l = loadSettings(s);
+  assert.equal(l.voice, 'v');
+  assert.equal(l.chunkSize, 500);
+  assert.equal(l.lookahead, 3);
+  assert.equal(l.downloadFormat, 'mp3');
 });
