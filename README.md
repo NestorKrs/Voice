@@ -1,13 +1,27 @@
 # Voice
 
-Personal, single-user, browser-only text-to-speech reader. Paste or drop long text and it reads it aloud, chunk by chunk, with OpenRouter's free models: Fish Audio S2.1 Pro Free (mp3) and HeyGen Voice Turbo Free (pcm). Switch providers in the top bar.
+Personal, single-user, browser-only text-to-speech reader. The owner pastes or loads very long text and it reads it aloud, chunk by chunk, using free OpenRouter text-to-speech models.
 
-Status: 0.1.48-alpha. Plan: docs/plan.md. Handoff: docs/handoff.md.
+Models: Fish Audio (fish-audio/s2.1-pro-free:free) and HeyGen (heygen/heygen-voice-1-turbo:free), switchable in Settings. Only models whose ID ends in :free can be called (enforced in src/providers.js).
 
-Run: npm install, then npm run dev, then open http://127.0.0.1:5180/
+Status: Alpha. The current version is in package.json and the history in CHANGELOG.md.
 
-Features: three draggable, resizable panels (Text, Reader, Job); bottom player with speed 0.75x to 2x, volume and seek; settings drawer (API key, voice, chunk size, lookahead, daily limit, font weight, audio cache); status bar with an event log; audio cache in IndexedDB; text and settings in localStorage.
+Features:
+- Chunked reading with the next chunks made ahead.
+- Audio cache in the browser (IndexedDB), so a chunk is never requested twice.
+- Player with play, pause, stop, previous, next, seek, speed and volume.
+- The playing chunk is highlighted.
+- A daily request limit setting (50 or 1000).
+- Draggable and resizable panels.
+- A status bar with an event log.
+- Loads .txt, .md, .doc and text/plain files as plain text.
 
-Limits: .txt/.md/.doc files load as plain text (.docx and .pdf are not parsed yet); there is no Download button yet; playback uses HTML audio, not gapless Web Audio.
+Run: npm install, then npm run dev, then open http://127.0.0.1:5180/. Tests: npm test.
 
-Privacy: the pasted text is sent to OpenRouter. The API key is typed into the app and stays in this browser.
+Key: The OpenRouter API key is typed into Settings and stays in this browser's localStorage. It is never written to a file.
+
+Privacy: The pasted text is sent to OpenRouter and to the selected provider (Fish Audio or HeyGen) to make the speech.
+
+Limits: OpenRouter free models allow 50 requests per UTC day (1000 if the account has bought $10 of credits in total) and 20 per minute, shared with all free models. Every attempt counts, including failed ones.
+
+Plan: docs/plan.md (original, partly outdated). Rules for coding agents: AGENTS.md.

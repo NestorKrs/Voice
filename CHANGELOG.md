@@ -1,3 +1,5 @@
+# Changelog
+
 ## 0.1.49-alpha - 2026-11-08
 - Job panel: one Pause/Resume button works (highlighted while paused); Resume continues from the playing chunk, also after Cancel. Fix: an unexpected scheduler error now shows the error state.
 
@@ -21,6 +23,9 @@
 
 ## 0.1.42-alpha - 2026-11-06
 - Drop .txt/.md/.doc files onto the text panel to load them.
+
+## 0.1.41-alpha - 2026-11-06
+- No entry was written for this version.
 
 ## 0.1.40-alpha - 2026-11-06
 - Text panel clear/load moved to right as circular icons.
@@ -54,8 +59,6 @@
 
 ## 0.1.30-alpha - 2026-11-06
 - panels resize by drag and keyboard, always fill the window
-
-# Changelog
 
 ## 0.1.29-alpha - 2026-11-06
 - Wire panelWidths logic into the UI with grid columns and resize handles.
