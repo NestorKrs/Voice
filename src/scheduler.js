@@ -119,7 +119,7 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
         emit();
         break;
       }
-    } catch {
+    } catch (e) {
       const msg = (e && e.message ? e.message : String(e)).slice(0, 300);
       if (currentIdx !== null && state.chunks[currentIdx] && state.chunks[currentIdx].status === 'generating') {
         state.chunks[currentIdx].status = 'failed';
@@ -163,17 +163,21 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
       }
     },
     pause() {
+      if (['cancelled', 'done', 'error', 'waiting_reset'].includes(state.state)) return;
       paused = true;
+      state.state = 'paused';
+      emit();
     },
     async resume() {
       paused = false;
-      if (state.state === 'waiting_reset' || state.state === 'error') {
+      if (['waiting_reset', 'error', 'paused', 'cancelled'].includes(state.state)) {
         state.state = 'generating';
         state.resetAt = null;
       }
       // set failed chunks in window to queued
       for (let i = 0; i < list.length; i++) {
         if (state.chunks[i].status === 'failed') state.chunks[i].status = 'queued';
+        if (!currentController && state.chunks[i].status === 'generating') state.chunks[i].status = 'queued';
       }
       emit();
       runLoop();

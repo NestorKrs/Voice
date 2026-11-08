@@ -223,7 +223,24 @@ export default function App() {
   const handleResume = () => {
     logEvent('Resume pressed');
     try {
-      if (schedulerRef.current) schedulerRef.current.resume();
+      if (schedulerRef.current) {
+        schedulerRef.current.setPlayhead(playerState.index);
+        lastPlayheadRef.current = playerState.index;
+        schedulerRef.current.resume();
+      }
+    } catch (e) {
+      const m = e && e.message ? e.message : 'error';
+      setJobError(m);
+      logEvent(m);
+    }
+  };
+  const handlePause = () => {
+    logEvent('Pause pressed');
+    try {
+      if (schedulerRef.current) {
+        schedulerRef.current.pause();
+        logEvent('Job state after pause: ' + schedulerRef.current.getState().state);
+      }
     } catch (e) {
       const m = e && e.message ? e.message : 'error';
       setJobError(m);
@@ -602,10 +619,18 @@ export default function App() {
     idle: 'Idle',
     generating: 'Generating',
     waiting_reset: 'Waiting for daily reset',
+    paused: 'Paused',
     error: 'Error',
     done: 'Done',
     cancelled: 'Cancelled',
   }[schedState.state] || 'Idle';
+  const jobLive = schedState.chunks.length > 0;
+  const canPause = jobLive && (schedState.state === 'generating' || schedState.state === 'idle');
+  const canResume = ['paused', 'cancelled', 'waiting_reset', 'error'].includes(schedState.state);
+  const canCancel = jobLive && ['generating', 'idle', 'paused'].includes(schedState.state);
+  const pauseReason = canPause ? 'Stop making new audio. The request in progress finishes. Audio already made keeps playing.' : (!jobLive ? 'No job yet. Press Start Reading.' : 'Nothing to pause (' + stateWord + ').');
+  const resumeReason = canResume ? 'Continue making audio from the chunk that is playing now.' : 'Nothing to resume (' + stateWord + ').';
+  const cancelReason = canCancel ? 'Stop the job. Audio already made is kept.' : (!jobLive ? 'No job yet.' : 'Nothing to cancel (' + stateWord + ').');
 
   return (
     <div className="app">
@@ -683,8 +708,8 @@ export default function App() {
           {schedState.state === 'waiting_reset' ? <div>Reset: {new Date(schedState.resetAt).toLocaleString()}<br />Audio already made is kept.</div> : null}
           {jobError ? <div className="notice">{jobError}</div> : null}
           <div className="row">
-            <button onClick={handleResume} disabled={!(schedState.state === 'waiting_reset' || schedState.state === 'error')}>Resume</button>
-            <button onClick={handleCancel} disabled={schedState.state !== 'generating'}>Cancel</button>
+            <button className={'job-toggle' + (schedState.state === 'paused' ? ' is-paused' : '')} onClick={canResume ? handleResume : handlePause} disabled={!canPause && !canResume} title={canResume ? resumeReason : pauseReason}>{canResume ? 'Resume' : 'Pause'}</button>
+            <button onClick={handleCancel} disabled={!canCancel} title={cancelReason}>Cancel</button>
           </div>
         </section>
         <div className="col-handle" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Resize the left and middle panels" title="Drag to resize. Keyboard: Left or Right arrow, Shift for bigger steps." style={{ gridColumn: 2, gridRow: 1 }} onPointerDown={onHandlePointerDown(0)} onPointerMove={onHandlePointerMove} onPointerUp={onHandlePointerUp} onPointerCancel={onHandlePointerUp} onKeyDown={onHandleKeyDown(0)} />

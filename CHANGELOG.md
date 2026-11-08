@@ -1,3 +1,6 @@
+## 0.1.49-alpha - 2026-11-08
+- Job panel: one Pause/Resume button works (highlighted while paused); Resume continues from the playing chunk, also after Cancel. Fix: an unexpected scheduler error now shows the error state.
+
 ## 0.1.48-alpha - 2026-11-08
 - Generation follows playback: scheduler playhead tracks the player, ready chunks wake the player
 
