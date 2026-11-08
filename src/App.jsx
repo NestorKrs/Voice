@@ -43,16 +43,17 @@ const SENTENCE_DELAY = 0.15;
 // Read-only view of the chunk being read. It polls the player engine with
 // requestAnimationFrame because the engine emits position updates only about
 // 4 times a second, which made the word highlight lag the voice.
-function TextReadView({ chunk, mode, engineRef, textZoom, onZoom }) {
+function TextReadView({ chunk, mode, engineRef, textZoom, onZoom, onSelectText }) {
   const [hlRange, setHlRange] = useState(null);
   const hlRef = useRef(null);
+  const selectingRef = useRef(false);
   useEffect(() => {
     setHlRange(null);
     if (!chunk || mode === 'none') return undefined;
     let raf;
     let last = 0;
     const tick = (t) => {
-      if (t - last >= 50) {
+      if (t - last >= 50 && !selectingRef.current) {
         last = t;
         const engine = engineRef.current;
         const s = engine ? engine.getState() : null;
@@ -74,12 +75,23 @@ function TextReadView({ chunk, mode, engineRef, textZoom, onZoom }) {
   useEffect(() => {
     if (hlRef.current) hlRef.current.scrollIntoView({ block: 'nearest' });
   }, [hlRange]);
+  useEffect(() => {
+    const onUp = () => {
+      if (!selectingRef.current) return;
+      selectingRef.current = false;
+      const sel = window.getSelection();
+      onSelectText(sel ? sel.toString().length : 0);
+    };
+    window.addEventListener('mouseup', onUp);
+    return () => window.removeEventListener('mouseup', onUp);
+  }, [onSelectText]);
   const r = hlRange || { start: 0, end: 0 };
   return (
     <div
       className="text-read"
       style={{ fontSize: `${textZoom}%` }}
       tabIndex={0}
+      onMouseDown={() => { selectingRef.current = true; }}
       onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); onZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }}
       onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); onZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); onZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); onZoom(100); } }}
     >
@@ -403,6 +415,11 @@ export default function App() {
       setJobError(m);
       logEvent(m);
     }
+  };
+
+  const jumpToChunk = (index) => {
+    logEvent(`Jump to chunk ${index + 1} pressed`);
+    if (playerEngineRef.current) playerEngineRef.current.jump(index);
   };
 
   const handleSaveKey = () => {
@@ -760,7 +777,7 @@ export default function App() {
           </div>
           <textarea value={text} onChange={(e) => { setText(e.target.value); setSelectedChars(0); }} onSelect={(e) => { const s = e.target.selectionStart; const t = e.target.selectionEnd; setSelectedChars(t > s ? t - s : 0); }} style={{ fontSize: `${textZoom}%`, display: reading ? 'none' : undefined }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} className={textDropActive ? 'drop-active' : ''} />
           {reading ? (
-            <TextReadView chunk={readChunk} mode={settings.highlightMode} engineRef={playerEngineRef} textZoom={textZoom} onZoom={setTextZoom} />
+            <TextReadView chunk={readChunk} mode={settings.highlightMode} engineRef={playerEngineRef} textZoom={textZoom} onZoom={setTextZoom} onSelectText={setSelectedChars} />
           ) : null}
           <div className="stats" style={{ justifyContent: 'flex-end' }}>
             <span>{plural(stats.characters, 'character')}</span>
@@ -789,13 +806,13 @@ export default function App() {
               const st = schedState.chunks[i] ? schedState.chunks[i].status : 'queued';
               const err = schedState.chunks[i] ? schedState.chunks[i].error : null;
               return (
-                <div key={i} className={`chunk-row ${st} ${i === activeRowIndex(playerState) ? "playing" : ""}`} aria-current={i === activeRowIndex(playerState) ? "true" : undefined}>
+                <div key={i} className={`chunk-row ${st} ${i === activeRowIndex(playerState) ? "playing" : ""}`} aria-current={i === activeRowIndex(playerState) ? "true" : undefined} onClick={() => jumpToChunk(i)} style={{ cursor: 'pointer' }} title="Jump to this chunk">
                   <div className="chunk-head">
                     <span className={`badge ${st}`}>{st}</span>
                     <span className="chunk-num">#{i + 1}</span>
                     <span className="chunk-actions">
-                      {st === 'failed' ? <button onClick={() => handleRetry(i)}>Retry</button> : null}
-                      <button disabled={st !== 'ready'} onClick={() => playChunk(i)}>Play</button>
+                      {st === 'failed' ? <button onClick={(e) => { e.stopPropagation(); handleRetry(i); }}>Retry</button> : null}
+                      <button disabled={st !== 'ready'} onClick={(e) => { e.stopPropagation(); playChunk(i); }}>Play</button>
                     </span>
                   </div>
                   <div className="chunk-preview">{c.slice(0, 400)}</div>

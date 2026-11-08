@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.57-alpha - 2026-11-08
+- Job pane: selecting text in the reading view while the voice plays shows the selected character count; the word/sentence highlight pauses during the selection.
+
+## 0.1.56-alpha - 2026-11-08
+- Reader: click a chunk row to jump to that chunk and start reading; Retry and Play still work on their own.
+
 ## 0.1.55-alpha - 2026-11-08
 - Job pane: the character count of the text selected in the Text pane shows at the bottom and disappears when the selection is cleared.
 
