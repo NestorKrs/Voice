@@ -19,7 +19,7 @@ test('defaults', () => {
 test('round trip', () => {
   const s = makeStorage();
   saveSettings(s, { voice: 'v', chunkSize: 500, lookahead: 3 });
-  assert.deepEqual(loadSettings(s), { voice: 'v', provider: 'fish', voices: { fish: 'v' }, chunkSize: 500, lookahead: 3, dailyLimit: 50, fontWeight: 400, highlightMode: 'words' });
+  assert.deepEqual(loadSettings(s), { voice: 'v', provider: 'fish', voices: { fish: 'v' }, chunkSize: 500, lookahead: 3, dailyLimit: 50, fontWeight: 400, highlightMode: 'words', spellCheck: true });
 });
 
 test('broken JSON', () => {
@@ -191,4 +191,24 @@ test('highlightMode none round trips', () => {
   const s = makeStorage();
   saveSettings(s, { voice: 'v', highlightMode: 'none' });
   assert.equal(loadSettings(s).highlightMode, 'none');
+});
+
+test('spellCheck default is true', () => {
+  const s = makeStorage();
+  assert.equal(loadSettings(s).spellCheck, true);
+  assert.equal(DEFAULT_SETTINGS.spellCheck, true);
+});
+
+test('spellCheck false round trips', () => {
+  const s = makeStorage();
+  saveSettings(s, { voice: 'v', spellCheck: false });
+  assert.equal(loadSettings(s).spellCheck, false);
+});
+
+test('spellCheck invalid falls back to true', () => {
+  for (const v of ['off', 0, null, {}]) {
+    const s = makeStorage();
+    saveSettings(s, { voice: 'v', spellCheck: v });
+    assert.equal(loadSettings(s).spellCheck, true, String(v));
+  }
 });

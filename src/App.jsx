@@ -117,6 +117,7 @@ export default function App() {
   const [lookInput, setLookInput] = useState(settings.lookahead);
   const [dailyInput, setDailyInput] = useState(settings.dailyLimit);
   const [highlightInput, setHighlightInput] = useState(settings.highlightMode);
+  const [spellCheckInput, setSpellCheckInput] = useState(settings.spellCheck);
   const [textZoom, setTextZoom] = useState(100);
   const [textDropActive, setTextDropActive] = useState(false);
   const [selectedChars, setSelectedChars] = useState(0);
@@ -732,6 +733,18 @@ export default function App() {
     logEvent('Highlight ' + value);
   };
 
+  const handleSpellCheckChange = (value) => {
+    if (typeof value !== 'boolean') return;
+    if (!storage || value === settings.spellCheck) return;
+    if (!saveSettings(storage, { ...settings, spellCheck: value })) {
+      logEvent('Could not save the spell check setting');
+      return;
+    }
+    setSettings(loadSettings(storage));
+    setSpellCheckInput(value);
+    logEvent('Spell check ' + (value ? 'on' : 'off'));
+  };
+
   const panelClass = (id, extra) =>
     'panel ' + extra + (dragId === id ? ' dragging' : '') + (drop && drop.id === id ? ' drop-' + drop.side : '');
 
@@ -775,7 +788,7 @@ export default function App() {
             <span className="grip" role="button" tabIndex={0} draggable="true" title="Drag to move this panel. Keyboard: Alt+Left or Alt+Right." aria-label="Move the Text panel" onDragStart={onGripDragStart('text')} onDragEnd={onGripDragEnd} onKeyDown={onGripKeyDown('text')} />
             <span className="panel-title">Text</span>
           </div>
-          <textarea value={text} onChange={(e) => { setText(e.target.value); setSelectedChars(0); }} onSelect={(e) => { const s = e.target.selectionStart; const t = e.target.selectionEnd; setSelectedChars(t > s ? t - s : 0); }} style={{ fontSize: `${textZoom}%`, display: reading ? 'none' : undefined }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} className={textDropActive ? 'drop-active' : ''} />
+          <textarea value={text} spellCheck={settings.spellCheck} onChange={(e) => { setText(e.target.value); setSelectedChars(0); }} onSelect={(e) => { const s = e.target.selectionStart; const t = e.target.selectionEnd; setSelectedChars(t > s ? t - s : 0); }} style={{ fontSize: `${textZoom}%`, display: reading ? 'none' : undefined }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} className={textDropActive ? 'drop-active' : ''} />
           {reading ? (
             <TextReadView chunk={readChunk} mode={settings.highlightMode} engineRef={playerEngineRef} textZoom={textZoom} onZoom={setTextZoom} onSelectText={setSelectedChars} />
           ) : null}
@@ -894,6 +907,13 @@ export default function App() {
             <option value="sentences">Sentences</option>
             <option value="none">None</option>
           </select>
+          <div className="check-row">
+            <label className="switch">
+              <input type="checkbox" checked={spellCheckInput} onChange={(e) => handleSpellCheckChange(e.target.checked)} aria-label="Spell check" />
+              <span className="slider" />
+            </label>
+            <span>Spell check</span>
+          </div>
           <div className="privacy">Your text is sent to OpenRouter.</div>
           <button onClick={handleResetLayout} disabled={isDefaultOrder && isDefaultWidths} title={isDefaultOrder && isDefaultWidths ? 'The panels are already in the default order and size.' : 'Put the panels back in the default order and size.'}>Reset layout</button>
           <button onClick={handleSaveSettings}>Save settings</button>

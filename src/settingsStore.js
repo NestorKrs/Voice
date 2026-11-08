@@ -1,4 +1,4 @@
-export const DEFAULT_SETTINGS = { voice: '', provider: 'fish', voices: {}, chunkSize: 2000, lookahead: 2, dailyLimit: 50, fontWeight: 400, highlightMode: 'words' };
+export const DEFAULT_SETTINGS = { voice: '', provider: 'fish', voices: {}, chunkSize: 2000, lookahead: 2, dailyLimit: 50, fontWeight: 400, highlightMode: 'words', spellCheck: true };
 
 function validate(settings) {
   const out = { ...DEFAULT_SETTINGS, voices: {} };
@@ -15,6 +15,7 @@ function validate(settings) {
     if (settings.dailyLimit === 50 || settings.dailyLimit === 1000) out.dailyLimit = settings.dailyLimit;
     if (Number.isInteger(settings.fontWeight) && settings.fontWeight >= 100 && settings.fontWeight <= 800) out.fontWeight = settings.fontWeight;
     if (settings.highlightMode === 'words' || settings.highlightMode === 'sentences' || settings.highlightMode === 'none') out.highlightMode = settings.highlightMode;
+    if (typeof settings.spellCheck === 'boolean') out.spellCheck = settings.spellCheck;
   }
   out.voice = out.voices[out.provider] || '';
   return out;

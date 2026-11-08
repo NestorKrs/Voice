@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.58-alpha - 2026-11-08
+- Settings: a Spell check toggle turns the browser's red underlines in the Text pane on or off; it is saved and stays across reloads.
+
 ## 0.1.57-alpha - 2026-11-08
 - Job pane: selecting text in the reading view while the voice plays shows the selected character count; the word/sentence highlight pauses during the selection.
 
