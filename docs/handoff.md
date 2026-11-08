@@ -1,55 +1,45 @@
 # Voice handoff
 
-Date: 2026-11-05 (end of day). Owner: @Eleven. Plan: docs/plan.md. Rules: AGENTS.md.
+Date: 2026-11-08 (end of day). Owner: @Eleven. Plan: docs/plan.md. Rules: AGENTS.md.
 
 ## Version and git
-- Last version confirmed committed: 0.1.5-alpha (scheduler). 73 tests pass on 0.1.6-alpha.
-- 0.1.6-alpha (wiring.js, App.jsx three columns, tests/wiring.test.mjs) is written. Commit status NOT confirmed: run `git -C ~/Work/Voice log --oneline -5` and `git status --short`.
-- Lint was 0 warnings at 0.1.4 (cleanup task 2.0 committed). 0.1.6 shows 10 warnings; the list was never pasted. Fix in the next cleanup.
-- Backups: phase0 verified. phase1 and phase2 backup commands were given; results NOT reported, treat as not done. Backup counter in docs/backup-log.md is 3 (BACKUP DUE).
+- package.json: 0.1.48-alpha. CHANGELOG has an entry for it dated 2026-11-08. Commit status NOT confirmed: the sandbox has no .git, so run `git -C ~/Work/Voice log --oneline -5` and `git status --short`.
+- CHANGELOG issues (not fixed): 0.1.41 is missing (0.1.40 then 0.1.42) and the `# Changelog` heading sits mid-file between 0.1.30 and 0.1.29.
+- Backup counter in docs/backup-log.md is 31 (BACKUP DUE).
+- docs/codebase-map.md and docs/lessons.md do not exist yet.
 
 ## What exists (all unit tested with mocks)
-textPipeline (clean, chunk, packs paragraphs up to 2000 chars), speechClient (one retry on 429-other or 5xx, never on 4xx, daily-cap detection), audioCache (IndexedDB store plus memory store), requestCounter (UTC day), settingsStore, textStats, scheduler (window = playhead + lookahead, cap pause, resume), wiring.js (the only file that imports readKey), App shell (text panel, counts, settings drawer, reader list with Play per ready chunk, Job panel).
+- textPipeline (clean, chunk; packs paragraphs up to 2000 chars), speechClient (one retry on 429-other or 5xx, never 4xx, daily-cap detection), audioCache (IndexedDB + memory store, bytes in and out), requestCounter (UTC day), settingsStore (settings, key, text in localStorage), textStats, providers (Fish + HeyGen built in, owner-added free models from localStorage, no UI to add them yet), audioFormat (PCM to WAV, audio type from bytes).
+- scheduler (window = playhead + lookahead, cap pause, resume, retryChunk, cancel), followPlayback (ready flags, newly ready, playhead to send), playerCore (reducer, RATES 0.75/1/1.25/1.5/2, activeRowIndex, estimateTimes), playerEngine (two HTMLAudio slots, preloads the next chunk, preservesPitch), panelLayout, panelWidths, wiring (the only file that imports readKey).
+- App.jsx (761 lines, one component): top bar with provider select and Requests today; Text / Reader / Job panels (drag to reorder, drag handles to resize, order and widths saved); bottom player bar (prev/play/stop/next, seek, volume, speed); Settings drawer (key, voice, chunk size, lookahead, daily limit 50/1000, font weight, reset layout, cache size and clear); status bar with a 20-line event log (click to expand); window error handlers.
+- Playback is HTMLAudioElement slots, NOT Web Audio. Start Reading fills the lookahead window; the player plays from cache; the scheduler follows the playhead (0.1.48).
+- File loading: drop or the Load button reads .txt/.md/.doc as plain text (readAsText). No .docx/.pdf parsing, no Download, no playback shortcuts, no Diagnostics overlay (the status bar log replaces it).
 
-## Verified live
-- Curl: HTTP 200, valid mp3, no voice field.
-- Browser page (cors-test.html, deleted): POST with Authorization header works. HTTP 200, audio/mpeg, 35943 bytes, decoded 2.247 s, speech heard. Browser-only stands.
-- Readable response headers in the browser: cf-ray, content-type, x-generation-id. X-RateLimit-Reset was NOT readable (seen on a 200 only). Assume the cap reset time is unreadable; scheduler falls back to the next 00:00 UTC (01:00 CET).
-- Empty voice ID works. The empty voice is not the cause of the current bug.
+## Verified
+- npm test in the sandbox: 136 tests pass, 0 fail (2026-11-08).
+- Build and lint: NOT RUN here (no node_modules or network). The owner's vship run is the real check.
+- Live: no live results for 0.1.44 to 0.1.48 were pasted to Hermes. Treat live behavior as unverified.
 
-## Current bug (open, cause unknown)
-In 0.1.6 pressing Start Reading shows no visible result and no sound. Key saved, text shown, privacy line shown.
-- Not known: whether requests were sent (Requests today did not necessarily rise), whether chunk rows appeared, what the Network tab and console show.
-- Hermes diagnosis (read-only): "not found in code". Facts it found: runLoop() in start() is not awaited; createAudioCache.get swallows store errors and returns a miss, so failures can be invisible.
-- Playback in 0.1.6 is manual on purpose: each ready chunk has a Play button. Start Reading does not auto-play. Auto-play comes with the Phase 4 player.
-- Task 2.4 (written in chat, NOT yet sent to Hermes): cache errors propagate, scheduler catches everything, status bar at the bottom of the page logs every click and event, window error handlers. Bump 0.1.7-alpha.
+## Owner must test live
+1. Paste a long text, Start Reading, press play in the player bar: chunks play in order, the Reader row highlights, generation follows the playhead.
+2. Switch provider (Fish to HeyGen): audio resets, the voice list changes, Start Reading works with the new provider.
+3. Drop a .txt file: cache clears, text loads, Start Reading works.
+4. Reload the page: text and settings come back; press Start Reading again and confirm cached chunks are ready with no new requests.
+5. Hit the daily cap: state shows Waiting for daily reset, audio is kept, Resume works after the reset.
+6. Listen at 1.5x and 2x for pitch and for gaps between chunks.
 
-## Not verified
-Build and lint on 0.1.6 (build passed, lint 10 warnings). IndexedDB path live. Cache hit after reload. Voice consistency between chunks. Gaps at chunk edges (item 8). Max input size (item 2). Whether failed requests count toward the cap (item 4). Joined mp3 (item 5). Best chunk size (item 6). 429 header readability.
-
-## Cap and credits
-Free cap 50 per UTC day, shared with Plinth Image Analysis. Today used: at least 2 (curl, browser page) plus any from Start Reading attempts; the app counter only sees requests made by the app. Owner adds 5 credits on 2026-11-06 (cap 1000 a day). Do not assume it until confirmed.
-
-## Decisions made today (not in plan.md yet)
-1. Chunks pack whole paragraphs up to the limit to save requests.
-2. Chunk status comes from the cache, not from a separate saved list.
-3. The request counter counts every attempt, including failed ones.
-4. Phase 3 (visible UI) was moved ahead of the player so the owner can see progress.
-5. Owner rule: every click must give visible feedback, and errors show on screen (status bar).
-6. A word longer than the chunk limit is hard-cut. This is the only allowed word cut.
-
-## Next steps in order
-1. Check git state (see Version and git). Commit 0.1.6 by file name if not committed.
-2. Send Hermes task 2.4. Run lint, build, tests on the P75. Commit 0.1.7.
-3. Reload, press Start Reading, read the status bar. Report the exact text (never the key).
-4. If still silent: F12, Console and Network (look for `speech`), paste the red lines.
-5. Lint cleanup task for the 10 warnings.
-6. Backups: make phase1 and phase2 archives with the -I zstd form, test, scan, then tell Hermes the counter is 0.
-7. Live 3-chunk read, listen for voice change and cut words. Reload and press Start Reading again: chunks must be ready with no new requests.
-8. Then Phase 4: player (Web Audio gapless, speed, pitch check at 1.5x and 2x).
+## Known bugs
+- None confirmed in code (no TODO/FIXME markers). Known gaps, not bugs: .docx/.pdf not parsed; a .doc read as text is likely garbage; no Download; no shortcuts; no request log or time heard/remaining in the Job panel.
 
 ## Open decisions
-Voice ID list UI, whether short texts need a special mode, final app name, paid fallback model (owner decides).
+- Final app name; voice list UI for Fish (no voice list yet, HeyGen has 10); whether short texts need a special mode; paid fallback model; download format (joined mp3 vs ZIP).
+
+## Next steps in order
+1. Owner: run build and lint on 0.1.48 and paste the output; commit if not committed.
+2. Live test list above.
+3. Backup: the counter is 31, make a source backup, then tell Hermes "voice task: backup done, counter 0, label <x>, <date>".
+4. Phase 5 leftovers: request log and time heard/remaining in the Job panel; decide whether reload needs Start Reading again or a real resume.
+5. Phase 6: .docx/.pdf (mammoth, pdfjs-dist), Download (joined mp3 vs ZIP), playback shortcuts, README and app rename.
 
 ## Files not yet committed
-Unknown until step 1. Expected: src/wiring.js, src/App.jsx, src/App.css, tests/wiring.test.mjs, package.json, CHANGELOG.md, docs/backup-log.md.
+Unknown from the sandbox (no .git). Expected: src/*, tests/*, package.json, package-lock.json, CHANGELOG.md, README.md, AGENTS.md, docs/*.md. Owner checks `git status --short`.
