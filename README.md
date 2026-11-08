@@ -12,6 +12,7 @@ Features:
 - Player with play, pause, stop, previous, next, seek, speed and volume.
 - The playing chunk is highlighted.
 - A daily request limit setting (50 or 1000).
+- A font weight slider (100-800) using the variable font.
 - Draggable and resizable panels.
 - A status bar with an event log.
 - Loads .txt, .md, .doc and text/plain files as plain text.
