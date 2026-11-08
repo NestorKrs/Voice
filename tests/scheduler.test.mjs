@@ -264,3 +264,51 @@ test('13 empty chunks done', async () => {
   await wait();
   assert.equal(s.getState().state, 'done');
 });
+test('follows a moving playhead through 50 chunks', async () => {
+  const chunks = Array.from({ length: 50 }, (_, i) => 'chunk-' + i);
+  const cache = makeCache();
+  const requested = [];
+  const speak = async ({ input }) => { requested.push(input); return { ok: true, bytes: new ArrayBuffer(1), attempts: 1 }; };
+  const counter = { add() {}, resetAt() { return 0; } };
+  const makeKey = async ({ text }) => 'k:' + text;
+  const s = createScheduler({ chunks, voice: 'v', lookahead: 2, cache, speak, counter, makeKey });
+  await s.start();
+  await wait();
+  for (let p = 1; p <= 10; p++) {
+    s.setPlayhead(p);
+    await wait();
+    requested.forEach((input) => {
+      const idx = chunks.indexOf(input);
+      assert.ok(idx <= p + 2, `requested ${idx} beyond window at p=${p}`);
+    });
+    assert.equal(new Set(requested).size, requested.length, 'no index requested twice');
+    assert.equal(s.getState().chunks[p + 2].status, 'ready');
+  }
+});
+
+test('same playhead twice does not request again', async () => {
+  const chunks = ['a', 'b', 'c', 'd', 'e', 'f'];
+  const cache = makeCache();
+  const requested = [];
+  let inFlight = 0;
+  let maxInFlight = 0;
+  const speak = async ({ input }) => {
+    inFlight++;
+    maxInFlight = Math.max(maxInFlight, inFlight);
+    await new Promise((r) => setTimeout(r, 5));
+    inFlight--;
+    requested.push(input);
+    return { ok: true, bytes: new ArrayBuffer(1), attempts: 1 };
+  };
+  const counter = { add() {}, resetAt() { return 0; } };
+  const makeKey = async ({ text }) => 'k:' + text;
+  const s = createScheduler({ chunks, voice: 'v', lookahead: 2, cache, speak, counter, makeKey });
+  await s.start();
+  await wait(50);
+  s.setPlayhead(1);
+  await wait(50);
+  s.setPlayhead(1);
+  await wait(50);
+  assert.equal(maxInFlight, 1);
+  assert.equal(new Set(requested).size, requested.length, 'no index requested twice');
+});

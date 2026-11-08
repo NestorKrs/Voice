@@ -1,3 +1,6 @@
+## 0.1.48-alpha - 2026-11-08
+- Generation follows playback: scheduler playhead tracks the player, ready chunks wake the player
+
 ## 0.1.47-alpha - 2026-11-06
 - Dropping a file clears audio cache and resets playback.
 

@@ -6,6 +6,7 @@ import { chunkText } from './textPipeline.js';
 import { createScheduler } from './scheduler.js';
 import { createServices } from './wiring.js';
 import { createPlayerEngine } from './playerEngine.js';
+import { newlyReady, readyFlags, playheadToSend } from './followPlayback.js';
 import { RATES, activeRowIndex } from './playerCore.js';
 import { allProviders, loadCustomProviders, getProvider, providerLabel } from './providers.js';
 import { audioMime } from './audioFormat.js';
@@ -64,6 +65,8 @@ export default function App() {
   const playerEngineRef = useRef(null);
   const playerDataRef = useRef({ text, settings, chunks: [] });
   const schedulerRef = useRef(null);
+  const readySeenRef = useRef([]);
+  const lastPlayheadRef = useRef(null);
   const timer = useRef(null);
 
   const logEvent = (msg) => {
@@ -141,6 +144,8 @@ export default function App() {
       if (schedulerRef.current) {
         try { schedulerRef.current.cancel(); } catch {}
         schedulerRef.current = null;
+        readySeenRef.current = [];
+        lastPlayheadRef.current = null;
       }
       setSchedState({ state: 'idle', resetAt: null, playhead: 0, chunks: [] });
       if (playerEngineRef.current) playerEngineRef.current.stop();
@@ -171,6 +176,9 @@ export default function App() {
       counter: services.counter,
       makeKey: (a) => services.makeKey({ ...a, provider }),
       onChange: (p) => {
+        const fresh = newlyReady(readySeenRef.current, p.chunks);
+        readySeenRef.current = readyFlags(p.chunks);
+        fresh.forEach((i) => { if (playerEngineRef.current) playerEngineRef.current.notifyReady(i); });
         setSchedState((prev) => {
           // detect newly ready
           const prevStatuses = prev.chunks.map((c) => c.status);
@@ -199,6 +207,9 @@ export default function App() {
       },
     });
     schedulerRef.current = sched;
+    readySeenRef.current = [];
+    lastPlayheadRef.current = playerState.index;
+    if (playerState.index > 0) sched.setPlayhead(playerState.index);
     setJobError('');
     try {
       await sched.start();
@@ -338,6 +349,8 @@ export default function App() {
         if (schedulerRef.current) {
           try { schedulerRef.current.cancel(); } catch {}
           schedulerRef.current = null;
+          readySeenRef.current = [];
+          lastPlayheadRef.current = null;
         }
         setSchedState({ state: 'idle', resetAt: null, playhead: 0, chunks: [] });
         setJobError('');
@@ -387,6 +400,8 @@ export default function App() {
       if (schedulerRef.current) {
         try { schedulerRef.current.cancel(); } catch {}
         schedulerRef.current = null;
+        readySeenRef.current = [];
+        lastPlayheadRef.current = null;
       }
       setSchedState({ state: 'idle', resetAt: null, playhead: 0, chunks: [] });
       setJobError('');
@@ -444,6 +459,21 @@ export default function App() {
   useEffect(() => {
     if (playerEngineRef.current) playerEngineRef.current.reset();
   }, [provider.id, settings.voice, settings.chunkSize]);
+  useEffect(() => {
+    const sched = schedulerRef.current;
+    if (!sched) return;
+    const idx = playheadToSend(playerState.index, lastPlayheadRef.current, schedState.state);
+    if (idx === null) return;
+    lastPlayheadRef.current = idx;
+    try {
+      sched.setPlayhead(idx);
+      logEvent('Reading position ' + (idx + 1) + ': generation follows');
+    } catch (e) {
+      const m = e && e.message ? e.message : 'error';
+      setJobError(m);
+      logEvent(m);
+    }
+  }, [playerState.index, schedState.state]);
 
   const isDefaultOrder = order.join() === DEFAULT_ORDER.join();
   const usablePx = usableWidth(boxWidth);
