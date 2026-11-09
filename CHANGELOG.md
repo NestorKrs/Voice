@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.65-alpha - 2026-11-09
+- Settings drawer: controls grouped into cards with a sticky header and a sticky Save settings footer; no control or handler changed.
+
 ## 0.1.64-alpha - 2026-11-09
 - Reader panel: the two download buttons moved to the bottom of the panel, are always visible, and are renamed "Download all chunks" and "Download all joined".
 

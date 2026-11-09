@@ -1123,58 +1123,109 @@ export default function App() {
       </footer>
       {drawerOpen ? (
         <aside className="drawer">
-          <h3>Settings</h3>
-          <button onClick={() => setDrawerOpen(false)}>Close</button>
-          <label>API key</label>
-          <input type="password" value={keyInput} onChange={(e) => setKeyInput(e.target.value)} placeholder="••••••••" />
-          <div className="row">
-            <button onClick={handleSaveKey}>Save key</button>
-            <button onClick={handleClearKey}>Clear key</button>
+          <div className="drawer-header">
+            <h3>Settings</h3>
+            <button className="close-btn" onClick={() => setDrawerOpen(false)} aria-label="Close settings" title="Close settings">×</button>
           </div>
-          <div>{keySet ? 'Key set' : 'No key'}</div>
-          <label>Voice ({provider.label})</label>
-          {Array.isArray(provider.voices) && provider.voices.length ? (
-            <select value={voiceInput} onChange={(e) => setVoiceInput(e.target.value)} aria-label="Voice">
-              {provider.voices.map((v) => (<option key={v} value={v}>{v}</option>))}
-            </select>
-          ) : null}
-          <small>{provider.voiceHint}</small>
-          <small>Model: {provider.model} - audio: {provider.format}</small>
-          <label>Chunk size</label>
-          <input type="number" value={chunkInput} onChange={(e) => setChunkInput(e.target.value)} />
-          <label>Lookahead</label>
-          <input type="number" value={lookInput} onChange={(e) => setLookInput(e.target.value)} />
-          <label>Daily limit</label>
-          <select value={dailyInput} onChange={(e) => setDailyInput(Number(e.target.value))}>
-            <option value={50}>50</option>
-            <option value={1000}>1000</option>
-          </select>
-          <small>1000 needs $10 of lifetime credit purchases on OpenRouter. The app cannot check this.</small>
-          <label>Font weight</label>
-          <FontWeightControl initial={settings.fontWeight} onCommit={handleFontWeightCommit} />
-          <label>Highlight while reading</label>
-          <select value={highlightInput} onChange={(e) => handleHighlightModeChange(e.target.value)} aria-label="Highlight mode">
-            <option value="words">Words</option>
-            <option value="sentences">Sentences</option>
-            <option value="none">None</option>
-          </select>
-          <label>Chunk download format</label>
-          <select value={downloadFormatInput} onChange={(e) => handleDownloadFormatChange(e.target.value)} aria-label="Chunk download format">
-            <option value="mp3">MP3</option>
-            <option value="wav">WAV</option>
-          </select>
-          <div className="check-row">
-            <label className="switch">
-              <input type="checkbox" checked={spellCheckInput} onChange={(e) => handleSpellCheckChange(e.target.checked)} aria-label="Spell check" />
-              <span className="slider" />
-            </label>
-            <span>Spell check</span>
+          <section className="settings-card">
+            <div className="card-label">Connection</div>
+            <div className="settings-row">
+              <div className="row-text"><span className="row-label">API key</span><span className="helper">Stored in this browser only.</span></div>
+              <input type="password" value={keyInput} onChange={(e) => setKeyInput(e.target.value)} placeholder="••••••••" />
+            </div>
+            <div className="settings-row">
+              <div className="row-text"><span className="row-label">Saved key</span><span className="helper">{keySet ? 'Key set' : 'No key'}</span></div>
+              <div className="row">
+                <button className="btn-primary" onClick={handleSaveKey}>Save key</button>
+                <button className="btn-danger" onClick={handleClearKey}>Clear key</button>
+              </div>
+            </div>
+            <div className="footnote privacy">Your text is sent to OpenRouter.</div>
+          </section>
+          <section className="settings-card">
+            <div className="card-label">Voice</div>
+            <div className="settings-row">
+              <div className="row-text"><span className="row-label">Voice ({provider.label})</span><span className="helper">{provider.voiceHint}</span></div>
+              {Array.isArray(provider.voices) && provider.voices.length ? (
+                <select value={voiceInput} onChange={(e) => setVoiceInput(e.target.value)} aria-label="Voice">
+                  {provider.voices.map((v) => (<option key={v} value={v}>{v}</option>))}
+                </select>
+              ) : null}
+            </div>
+            <div className="model-line"><small>Model: {provider.model} - audio: {provider.format}</small></div>
+            <div className="footnote">Applied with Save settings.</div>
+          </section>
+          <section className="settings-card">
+            <div className="card-label">Reading</div>
+            <div className="settings-row">
+              <div className="row-text"><span className="row-label">Chunk size</span><span className="helper">Size of each chunk.</span></div>
+              <input type="number" value={chunkInput} onChange={(e) => setChunkInput(e.target.value)} />
+            </div>
+            <div className="footnote">Applied with Save settings.</div>
+            <div className="settings-row">
+              <div className="row-text"><span className="row-label">Lookahead</span><span className="helper">Chunks made ahead of the playhead.</span></div>
+              <input type="number" value={lookInput} onChange={(e) => setLookInput(e.target.value)} />
+            </div>
+            <div className="footnote">Applied with Save settings.</div>
+            <div className="settings-row">
+              <div className="row-text"><span className="row-label">Daily limit</span><span className="helper">Requests per UTC day.</span></div>
+              <select value={dailyInput} onChange={(e) => setDailyInput(Number(e.target.value))}>
+                <option value={50}>50</option>
+                <option value={1000}>1000</option>
+              </select>
+            </div>
+            <div className="footnote">Applied with Save settings.</div>
+            <div className="footnote">1000 needs $10 of lifetime credit purchases on OpenRouter. The app cannot check this.</div>
+          </section>
+          <section className="settings-card">
+            <div className="card-label">Display</div>
+            <div className="settings-row">
+              <div className="row-text"><span className="row-label">Font weight</span><span className="helper">Reading text weight.</span></div>
+              <div className="row-control"><FontWeightControl initial={settings.fontWeight} onCommit={handleFontWeightCommit} /></div>
+            </div>
+            <div className="settings-row">
+              <div className="row-text"><span className="row-label">Highlight while reading</span><span className="helper">Word or sentence highlight.</span></div>
+              <select value={highlightInput} onChange={(e) => handleHighlightModeChange(e.target.value)} aria-label="Highlight mode">
+                <option value="words">Words</option>
+                <option value="sentences">Sentences</option>
+                <option value="none">None</option>
+              </select>
+            </div>
+            <div className="settings-row">
+              <div className="row-text"><span className="row-label">Spell check</span><span className="helper">Red underlines in the Text pane.</span></div>
+              <div className="check-row">
+                <label className="switch">
+                  <input type="checkbox" checked={spellCheckInput} onChange={(e) => handleSpellCheckChange(e.target.checked)} aria-label="Spell check" />
+                  <span className="slider" />
+                </label>
+              </div>
+            </div>
+          </section>
+          <section className="settings-card">
+            <div className="card-label">Downloads</div>
+            <div className="settings-row">
+              <div className="row-text"><span className="row-label">Chunk download format</span><span className="helper">Format for chunk downloads.</span></div>
+              <select value={downloadFormatInput} onChange={(e) => handleDownloadFormatChange(e.target.value)} aria-label="Chunk download format">
+                <option value="mp3">MP3</option>
+                <option value="wav">WAV</option>
+              </select>
+            </div>
+          </section>
+          <section className="settings-card">
+            <div className="card-label">Storage and layout</div>
+            <div className="settings-row">
+              <div className="row-text"><span className="row-label">Audio cache</span><span className="helper">Audio cache: {(cacheSize / 1024 / 1024).toFixed(2)} MB</span></div>
+              <button className="btn-danger" onClick={handleClearCache}>Clear audio cache</button>
+            </div>
+            <div className="settings-row">
+              <div className="row-text"><span className="row-label">Panel layout</span><span className="helper">Panel order and size.</span></div>
+              <button className="btn-secondary" onClick={handleResetLayout} disabled={isDefaultOrder && isDefaultWidths} title={isDefaultOrder && isDefaultWidths ? 'The panels are already in the default order and size.' : 'Put the panels back in the default order and size.'}>Reset layout</button>
+            </div>
+          </section>
+          <div className="settings-footer">
+            <button className="btn-primary footer-save" onClick={handleSaveSettings}>Save settings</button>
+            <div className="footnote">Applies voice, chunk size, lookahead and daily limit. Other settings save immediately.</div>
           </div>
-          <div className="privacy">Your text is sent to OpenRouter.</div>
-          <button onClick={handleResetLayout} disabled={isDefaultOrder && isDefaultWidths} title={isDefaultOrder && isDefaultWidths ? 'The panels are already in the default order and size.' : 'Put the panels back in the default order and size.'}>Reset layout</button>
-          <button onClick={handleSaveSettings}>Save settings</button>
-          <div>Audio cache: {(cacheSize / 1024 / 1024).toFixed(2)} MB</div>
-          <button onClick={handleClearCache}>Clear audio cache</button>
         </aside>
       ) : null}
       <div className="statusbar" onClick={() => setShowEvents((v) => !v)}>

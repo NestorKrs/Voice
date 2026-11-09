@@ -55,18 +55,34 @@
 .statusbar { position: fixed; bottom: 0; left: 0; right: 0; height: 28px; display: flex; align-items: center; background: var(--panel); border-top: 1px solid var(--line); padding: 0 12px; font-size: 12px; cursor: pointer; z-index: 20; }
 .statusbar.err { color: #e27e7e; }
 .eventlist { position: fixed; bottom: 28px; left: 0; right: 0; background: var(--panel); border-top: 1px solid var(--line); padding: 6px 12px; font-size: 11px; color: var(--muted); max-height: 160px; overflow: auto; user-select: text; z-index: 20; }
-.drawer { position: fixed; top: 0; right: 0; bottom: 28px; width: 360px; display: flex; flex-direction: column; gap: 8px; background: var(--panel); border-left: 1px solid var(--line); padding: 16px; overflow: auto; z-index: 10; }
-.drawer h3 { margin: 0; }
-.drawer label { display: block; margin-top: 6px; font-size: 12px; color: var(--muted); }
-.drawer input, .drawer select { width: 100%; background: var(--bg); }
+.drawer { --danger: #c9605f; position: fixed; top: 0; right: 0; bottom: 28px; width: 400px; max-width: 100vw; display: flex; flex-direction: column; background: var(--panel); border-left: 1px solid var(--line); overflow: auto; z-index: 10; }
+.drawer-header { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 16px; background: var(--panel); border-bottom: 1px solid var(--line); z-index: 1; }
+.drawer-header h3 { margin: 0; }
+.drawer .close-btn { width: 32px; height: 32px; min-width: 32px; padding: 0; border-radius: 50%; background: var(--panel); border-color: var(--line); color: var(--muted); font-size: 16px; line-height: 1; }
+.drawer .settings-card { margin: 8px 16px 0; padding: 8px 16px 16px; border: 1px solid var(--line); border-radius: 8px; }
+.drawer .card-label { margin: 8px 0 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.drawer .settings-row { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 8px 0; border-top: 1px solid var(--line); }
+.drawer .card-label + .settings-row { border-top: 0; }
+.drawer .row-text { display: flex; flex-direction: column; gap: 0; flex: 1; min-width: 0; }
+.drawer .row-label { font-size: 12px; }
+.drawer .helper { font-size: 11px; color: var(--muted); }
+.drawer .footnote { margin-top: 8px; font-size: 11px; color: var(--muted); }
+.drawer .model-line { margin-top: 8px; color: var(--muted); }
+.drawer .settings-row input, .drawer .settings-row select { width: 144px; flex: none; background: var(--bg); }
+.drawer .row-control { width: 160px; flex: none; }
+.drawer .settings-footer { position: sticky; bottom: 0; margin-top: 8px; padding: 8px 16px 16px; background: var(--panel); border-top: 1px solid var(--line); z-index: 1; }
+.drawer .footer-save { width: 100%; }
+.drawer .btn-primary { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--panel)); border-color: var(--accent); }
+.drawer .btn-secondary { color: var(--muted); background: var(--panel); border-color: var(--line); }
+.drawer .btn-danger { color: var(--danger); background: var(--panel); border-color: var(--danger); }
 .drawer .weight-slider { flex: 1; width: auto; accent-color: var(--accent); }
-.drawer .check-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; color: var(--muted); }
+.drawer .check-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
 .drawer .switch { position: relative; display: inline-block; width: 40px; height: 22px; flex: none; margin: 0; }
 .drawer .switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
 .drawer .slider { position: absolute; inset: 0; background: var(--line); border-radius: 999px; transition: background var(--ease); }
-.drawer .slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: var(--text); border-radius: 50%; transition: transform var(--ease); }
+.drawer .slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: var(--accent); border-radius: 50%; transition: transform var(--ease); }
 .drawer .switch input:checked + .slider { background: var(--accent); }
-.drawer .switch input:checked + .slider::before { transform: translateX(18px); }
+.drawer .switch input:checked + .slider::before { transform: translateX(18px); background: var(--bg); }
 .drawer .switch input:focus-visible + .slider { outline: 2px solid var(--accent); outline-offset: 2px; }
 .drawer .weight-label { width: 4ch; text-align: right; font-variant-numeric: tabular-nums; flex: none; color: var(--accent); }
 
