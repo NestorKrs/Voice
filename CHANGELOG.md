@@ -1,3 +1,6 @@
+## 0.1.103-alpha - 2026-11-09
+- Text fullscreen: a toggle button next to Clear, the Ctrl+Shift+Space handler listens in the capture phase and also accepts event.code Space, and the status bar log shows 'Text fullscreen on/off'.
+
 ## 0.1.101-alpha - 2026-11-09
 - Two panels: Job panel removed; job errors, pause state and Resume live in the Reader note.
 
@@ -18,7 +21,10 @@
 
 # Changelog
 
-## 0.1.95 - 2026-11-09
+## 0.1.102-alpha - 2026-11-09
+- Ctrl+Shift+Space shows the Text panel fullscreen; fix: the panel was hidden together with its parent .columns. Reader, player bar, status bar and settings are hidden while it is on.
+
+## 0.1.101-alpha - 2026-11-09
 - Highlight now uses alignTimeMap (break-to-pause alignment) instead of the timeMap.js map, and corrects the decoded-audio/player length difference before looking up the character; log lines now read "aligned X of Y breaks, Z pauses".
 
 ## 0.1.94 - 2026-11-09

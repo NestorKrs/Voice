@@ -154,3 +154,27 @@
 .job-toggle { min-width: 88px; transition: border-color var(--ease), color var(--ease), box-shadow var(--ease); }
 .job-panel .row button { flex: 1; min-width: 0; }
 .row .job-toggle.is-paused { border-color: var(--accent); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+/* Text fullscreen mode: only the Text panel stays, fixed over the window */
+.app.text-fullscreen-mode .topbar,
+.app.text-fullscreen-mode .playerbar,
+.app.text-fullscreen-mode .statusbar,
+.app.text-fullscreen-mode .eventlist,
+.app.text-fullscreen-mode .drawer,
+.app.text-fullscreen-mode .reader-panel,
+.app.text-fullscreen-mode .col-handle {
+    display: none;
+}
+
+.app.text-fullscreen-mode .text-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    border-radius: 0;
+    border: 0;
+    background: var(--bg);
+}
+
+.app.text-fullscreen-mode .sel-speaker {
+    z-index: 101;
+}

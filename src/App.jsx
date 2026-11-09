@@ -233,6 +233,7 @@ export default function App() {
   const [selectedChars, setSelectedChars] = useState(0);
   const [selIcon, setSelIcon] = useState(null);
   const [selBusy, setSelBusy] = useState(false);
+  const [textFullscreen, setTextFullscreen] = useState(false);
   const selAudioRef = useRef(null);
   const [findQuery, setFindQuery] = useState('');
   const [findIndex, setFindIndex] = useState(-1);
@@ -249,6 +250,17 @@ export default function App() {
       window.removeEventListener('wheel', preventBrowserZoom);
       window.removeEventListener('keydown', preventKeyZoom);
     };
+  }, []);
+
+  useEffect(() => {
+    const handleTextFullscreen = (event) => {
+      if (event.ctrlKey && event.shiftKey && (event.code === 'Space' || event.key === ' ')) {
+        event.preventDefault();
+        setTextFullscreen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleTextFullscreen, true);
+    return () => window.removeEventListener('keydown', handleTextFullscreen, true);
   }, []);
   // The drawer mounts lazily, so the stored weight has to be applied here too.
   useEffect(() => {
@@ -305,6 +317,10 @@ export default function App() {
       window.removeEventListener('unhandledrejection', onRej);
     };
   }, []);
+
+  useEffect(() => {
+    logEvent('Text fullscreen ' + (textFullscreen ? 'on' : 'off'));
+  }, [textFullscreen]);
 
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -1299,7 +1315,7 @@ export default function App() {
   const readChunk = reading && chunks[playerState.index] ? chunks[playerState.index] : '';
 
   return (
-    <div className="app" onClick={(e) => { if (drawerOpen && !e.target.closest('.drawer') && !e.target.closest('.settings-btn')) { handleSaveSettings(); setDrawerOpen(false); } }} onMouseDown={(e) => { if (selIcon && !e.target.closest('.sel-speaker')) setSelIcon(null); }} onKeyDown={(e) => { if (e.key === 'Escape') setSelIcon(null); }}>
+    <div className={`app ${textFullscreen ? "text-fullscreen-mode" : ""}`} onClick={(e) => { if (drawerOpen && !e.target.closest('.drawer') && !e.target.closest('.settings-btn')) { handleSaveSettings(); setDrawerOpen(false); } }} onMouseDown={(e) => { if (selIcon && !e.target.closest('.sel-speaker')) setSelIcon(null); }} onKeyDown={(e) => { if (e.key === 'Escape') setSelIcon(null); }}>
       <header className="topbar">
         <span className="title">Voice</span>
         <span className="version">v{APP_VERSION}</span>
@@ -1365,6 +1381,7 @@ export default function App() {
             <span style={{ flex: 1 }} />
             <button className="icon-btn" title="Load file (.txt .md .doc)" onClick={() => fileInputRef.current && fileInputRef.current.click()}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg></button>
             <button className="icon-btn" title="Clear text" onClick={handleClearText}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+            <button className="icon-btn" title="Fullscreen text (Ctrl+Shift+Space)" aria-label="Toggle text fullscreen" onClick={() => setTextFullscreen((v) => !v)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
           <input ref={fileInputRef} type="file" accept=".txt,.md,.doc,text/plain" style={{display:"none"}} onChange={handleLoadFile} />
           </div>
           {startReason ? <div className="reason">{startReason}</div> : null}
