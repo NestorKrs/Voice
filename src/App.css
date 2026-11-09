@@ -61,6 +61,8 @@
 .badge.failed { background: #3a2020; color: #e27e7e; }
 .err { color: #e27e7e; font-size: 12px; }
 .job-panel { overflow: auto; }
+.job-note { padding: 8px 10px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: 13px; display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.job-note-error { color: var(--danger); }
 .job-panel .state { font-size: 16px; font-weight: 700; }
 .progress { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
 .bar { height: 100%; background: var(--accent); transition: width var(--ease); }

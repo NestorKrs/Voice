@@ -1407,6 +1407,12 @@ export default function App() {
               );
             })}
           </div>
+          {(jobError || schedState.state === 'paused' || schedState.state === 'waiting_reset') ? (
+            <div className={'job-note' + (jobError ? ' job-note-error' : '')}>
+              {jobError ? <span>{jobError}</span> : <span>{stateWord}{schedState.state === 'waiting_reset' ? ' - ' + new Date(schedState.resetAt).toLocaleString() : ''}</span>}
+              {canResume ? <button disabled={!canResume} title={resumeReason} onClick={handleResume}>Resume</button> : null}
+            </div>
+          ) : null}
           <div className="reader-card">
             <div className="card-label">Download</div>
             <div className="reader-actions">

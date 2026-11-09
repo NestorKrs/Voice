@@ -1,3 +1,6 @@
+## 0.1.100-alpha - 2026-11-09
+- Reader pane: .job-note strip for errors and paused/cap state.
+
 ## 0.1.99-alpha - 2026-11-09
 - Reader chunk rows: per-chunk progress bar and Pause/Resume/Cancel icons on the active row.
 
