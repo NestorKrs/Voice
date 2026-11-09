@@ -184,6 +184,9 @@
     display: none;
 }
 
+/* Mouse exit for fullscreen: a floating button in the top-right corner. */
+.fullscreen-exit { position: fixed; top: 12px; right: 12px; z-index: 102; }
+
 .app.text-fullscreen-mode .sel-speaker {
     z-index: 101;
 }

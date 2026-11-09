@@ -1385,6 +1385,9 @@ export default function App() {
           <input ref={fileInputRef} type="file" accept=".txt,.md,.doc,text/plain" style={{display:"none"}} onChange={handleLoadFile} />
           </div>
           {startReason ? <div className="reason">{startReason}</div> : null}
+          {textFullscreen ? (
+            <button className="icon-btn fullscreen-exit" title="Exit fullscreen (Ctrl+Shift+Space)" aria-label="Exit text fullscreen" onClick={(e) => { e.stopPropagation(); setTextFullscreen(false); }}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/></svg></button>
+          ) : null}
         </section>
         <section className={panelClass('reader', 'reader-panel')} style={{ gridColumn: order.indexOf('reader') * 2 + 1, gridRow: 1 }} onDragOver={onPanelDragOver('reader')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('reader')}>
           <div className="panel-head">

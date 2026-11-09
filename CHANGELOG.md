@@ -1,3 +1,6 @@
+## 0.1.105-alpha - 2026-11-09
+- Text fullscreen: a floating exit button in the top-right corner closes it with the mouse.
+
 ## 0.1.104-alpha - 2026-11-09
 - Text fullscreen: only the textarea stays visible (the reading view while playing); the panel title, find row, stats, buttons and reason are hidden.
 
