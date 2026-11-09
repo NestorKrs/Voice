@@ -1185,6 +1185,7 @@ export default function App() {
     } catch (e) {
       setStatus(e && e.message ? e.message : String(e));
     } finally {
+      setUsedToday(services.counter.count());
       setSelBusy(false);
     }
   };
