@@ -3,6 +3,8 @@ import { APP_VERSION } from './version.js';
 import { loadSettings, saveSettings, loadText, saveText, hasKey, saveKey, clearKey } from './settingsStore.js';
 import { computeStats } from './textStats.js';
 import { chunkText } from './textPipeline.js';
+import { findMatches, nextIndex } from './textFind.js';
+import { scrollTextareaToIndex } from './textScroll.js';
 import { highlightRange, charWeights, charAtFraction } from './highlight.js';
 import { createScheduler } from './scheduler.js';
 import { createServices } from './wiring.js';
@@ -130,6 +132,8 @@ export default function App() {
   const [textZoom, setTextZoom] = useState(100);
   const [textDropActive, setTextDropActive] = useState(false);
   const [selectedChars, setSelectedChars] = useState(0);
+  const [findQuery, setFindQuery] = useState('');
+  const [findIndex, setFindIndex] = useState(-1);
   const [chunkNotes, setChunkNotes] = useState({});
   const [zipRunning, setZipRunning] = useState(false);
   const [joinedRunning, setJoinedRunning] = useState(false);
@@ -158,6 +162,9 @@ export default function App() {
   const [showEvents, setShowEvents] = useState(false);
   const [order, setOrder] = useState(() => (storage ? loadOrder(storage) : [...DEFAULT_ORDER]));
   const fileInputRef = useRef(null);
+  const textRef = useRef(null);
+  const findInputRef = useRef(null);
+  const findLoggedRef = useRef(false);
   const [customProviders] = useState(() => (storage ? loadCustomProviders(storage) : []));
   const [dragId, setDragId] = useState(null);
   const [drop, setDrop] = useState(null);
@@ -503,6 +510,54 @@ export default function App() {
   };
 
   const chunks = chunkText(text, settings.chunkSize);
+  const matches = useMemo(() => findMatches(text, findQuery), [text, findQuery]);
+
+  const handleFindChange = (e) => {
+    const q = e.target.value;
+    setFindQuery(q);
+    setFindIndex(-1);
+    findLoggedRef.current = false;
+    const list = findMatches(text, q);
+    if (list.length === 0) return;
+    const ta = textRef.current;
+    const cursor = ta ? ta.selectionStart : 0;
+    const atOrAfter = list.findIndex((m) => m >= cursor);
+    const idx = atOrAfter === -1 ? 0 : atOrAfter;
+    setFindIndex(idx);
+    if (ta) {
+      ta.setSelectionRange(list[idx], list[idx] + q.length);
+      scrollTextareaToIndex(ta, list[idx]);
+    }
+  };
+
+  const jumpToMatch = (idx) => {
+    if (idx < 0 || idx >= matches.length) return;
+    setFindIndex(idx);
+    let scrolled = null;
+    const ta = textRef.current;
+    if (ta && findQuery) {
+      ta.focus();
+      ta.setSelectionRange(matches[idx], matches[idx] + findQuery.length);
+      scrolled = scrollTextareaToIndex(ta, matches[idx]);
+    }
+    if (!findLoggedRef.current) {
+      findLoggedRef.current = true;
+      logEvent(`Find: ${matches.length} matches`);
+      if (scrolled) logEvent(`Find scroll: y=${scrolled.y} scrollHeight=${scrolled.scrollHeight} clientHeight=${scrolled.clientHeight}`);
+    }
+  };
+
+  const handleFindNext = () => { jumpToMatch(nextIndex(findIndex, matches.length, 1)); };
+  const handleFindPrev = () => { jumpToMatch(nextIndex(findIndex, matches.length, -1)); };
+  const handleFindClear = () => { setFindQuery(''); setFindIndex(-1); findLoggedRef.current = false; };
+  const handleFindKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (e.shiftKey) handleFindPrev(); else handleFindNext();
+    } else if (e.key === 'Escape') {
+      handleFindClear();
+    }
+  };
   playerDataRef.current = { text, settings, chunks, provider };
 
   useEffect(() => {
@@ -1031,7 +1086,26 @@ export default function App() {
             <span className="grip" role="button" tabIndex={0} draggable="true" title="Drag to move this panel. Keyboard: Alt+Left or Alt+Right." aria-label="Move the Text panel" onDragStart={onGripDragStart('text')} onDragEnd={onGripDragEnd} onKeyDown={onGripKeyDown('text')} />
             <span className="panel-title">Text</span>
           </div>
-          <textarea value={text} spellCheck={settings.spellCheck} onChange={(e) => { setText(e.target.value); setSelectedChars(0); }} onSelect={(e) => { const s = e.target.selectionStart; const t = e.target.selectionEnd; setSelectedChars(t > s ? t - s : 0); }} style={{ fontSize: `${textZoom}%`, display: reading ? 'none' : undefined }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} className={textDropActive ? 'drop-active' : ''} />
+          <div className="find-row">
+            <input
+              ref={findInputRef}
+              className="find-input"
+              type="text"
+              placeholder="Find in text"
+              value={findQuery}
+              disabled={reading}
+              title={reading ? 'Find works when reading is stopped' : undefined}
+              aria-label="Find in text"
+              onChange={handleFindChange}
+              onKeyDown={handleFindKeyDown}
+            />
+            <span className="find-count">{findIndex + 1} / {matches.length}</span>
+            <button type="button" className="find-btn" onClick={handleFindPrev} disabled={reading || matches.length === 0} title={reading ? 'Find works when reading is stopped' : (matches.length === 0 ? (findQuery ? 'No matches' : 'Type something to find') : undefined)} aria-label="Previous match">↑</button>
+            <button type="button" className="find-btn" onClick={handleFindNext} disabled={reading || matches.length === 0} title={reading ? 'Find works when reading is stopped' : (matches.length === 0 ? (findQuery ? 'No matches' : 'Type something to find') : undefined)} aria-label="Next match">↓</button>
+            {findQuery ? <button type="button" className="find-clear" onClick={handleFindClear} disabled={reading} title="Clear find query" aria-label="Clear find query">×</button> : null}
+            {reading ? <span className="find-reason">Find works when reading is stopped</span> : null}
+          </div>
+          <textarea ref={textRef} value={text} spellCheck={settings.spellCheck} onChange={(e) => { setText(e.target.value); setSelectedChars(0); }} onSelect={(e) => { const s = e.target.selectionStart; const t = e.target.selectionEnd; setSelectedChars(t > s ? t - s : 0); }} style={{ fontSize: `${textZoom}%`, display: reading ? 'none' : undefined }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} className={textDropActive ? 'drop-active' : ''} />
           {reading ? (
             <TextReadView chunk={readChunk} mode={settings.highlightMode} engineRef={playerEngineRef} textZoom={textZoom} onZoom={setTextZoom} onSelectText={setSelectedChars} />
           ) : null}

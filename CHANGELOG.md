@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.81-alpha - 2026-11-09
+- Text panel find: the match is selected and scrolled into the middle of the textarea while typing and on Previous/Next, and the selection uses the accent colour.
+
+## 0.1.80-alpha - 2026-11-09
+- Text panel: a find row above the textarea searches the text case-insensitively, with a match count, Previous/Next buttons, Enter/Shift+Enter/Esc, and a clear button.
+
 ## 0.1.79-alpha - 2026-11-09
 - Job panel: Pause and Cancel now each take half the panel width.
 
