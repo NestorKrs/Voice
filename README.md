@@ -16,6 +16,7 @@ Features:
 - Draggable and resizable panels.
 - A status bar with an event log.
 - Loads .txt, .md, .doc and text/plain files as plain text.
+- Download: each ready chunk, all ready chunks as one ZIP, or the whole text as one joined audio file (MP3 or WAV, chosen in Settings).
 
 Run: npm install, then npm run dev, then open http://127.0.0.1:5180/. Tests: npm test.
 
