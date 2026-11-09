@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.1.78-alpha - 2026-11-09
+- Settings drawer Storage title: cache size back to two decimals (e.g. 123.04 MB), and the duplicate size under Audio cache is removed.
+
+## 0.1.77-alpha - 2026-11-09
+- Settings drawer: the Storage card title now shows the live cache size in parentheses, Save settings also slides the drawer closed, and the slide-out is slower (0.5s) than the slide-in (0.3s).
+
+## 0.1.76-alpha - 2026-11-09
+- Settings drawer: audio cache size now shows whole MB only, and the drawer slides in from the right on the cogwheel and slides back out to the right when it closes.
+
+## 0.1.75-alpha - 2026-11-09
+- Settings drawer: every drawer button (including the X close) now uses the same hover style as Save/Clear key, and clicking outside the drawer (e.g. into the text) closes it and saves the settings automatically.
+
+## 0.1.74-alpha - 2026-11-09
+- Settings drawer Storage & layout card: Clear audio cache and Reset layout buttons are the same width, the card label uses "&", the "Panel order and size." text is gone, and the cache size now shows as just "X MB" next to Audio cache.
+
+## 0.1.73-alpha - 2026-11-09
+- Settings drawer footer: removed the "Applies voice..." helper under Save settings and gave the button a balanced 16px margin above and below.
+
+## 0.1.72-alpha - 2026-11-09
+- Settings drawer Downloads card: "Chunk download format" is now "Download format" and its helper text is removed; the MP3/WAV dropdown is unchanged.
+
+## 0.1.71-alpha - 2026-11-09
+- Settings drawer Display card: font weight slider, highlight dropdown and spell check toggle are now the same width and line up on the same left edge.
+
+## 0.1.70-alpha - 2026-11-09
+- Settings drawer Display card: removed the font weight, highlight and spell check helpers, renamed "Highlight while reading" to "Highlight on reading", and removed the font weight slider's number indicator; the controls are unchanged.
+
+## 0.1.69-alpha - 2026-11-09
+- Settings drawer Reading card: removed the chunk size, lookahead and daily limit helpers and all three "Applied with Save settings." notes; the controls are unchanged.
+
+## 0.1.68-alpha - 2026-11-09
+- Settings drawer Voice card: removed the voice hint, the model line and the "Applied with Save settings." footnote; the voice dropdown is unchanged.
+
+## 0.1.67-alpha - 2026-11-09
+- Settings drawer Connection card: API key field is longer, "Saved key" and its divider are gone, and Save key / Clear key each take half the width.
+
+## 0.1.66-alpha - 2026-11-09
+- Settings drawer: removed the "Stored in this browser only", "Your text is sent to OpenRouter." and Key set/No key texts from the Connection card; no function changed.
+
 ## 0.1.65-alpha - 2026-11-09
 - Settings drawer: controls grouped into cards with a sticky header and a sticky Save settings footer; no control or handler changed.
 
