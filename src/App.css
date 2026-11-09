@@ -9,9 +9,9 @@
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: auto; min-width: 0; transition: border-color var(--ease), opacity var(--ease); }
 .panel-head { position: relative; display: flex; align-items: center; gap: 8px; min-height: 20px; }
 .panel-title { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-.text-panel textarea { flex: 1; min-height: 0; resize: none; background: var(--bg); line-height: 1.6; padding: 10px 12px; }
+.text-panel textarea { flex: 1; min-height: 0; resize: none; background: var(--bg); line-height: 1.6; padding: 10px 12px;}
 .text-panel .text-read { flex: 1; min-height: 0; overflow: auto; background: var(--bg); line-height: 1.6; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; white-space: pre-wrap; word-wrap: break-word; }
-.text-panel .text-hl { background: rgba(79, 169, 162, 0.30); border-radius: 3px; }
+.text-panel .text-hl { background: rgba(79, 169, 162, 0.30); border-radius: 8px; padding:2px 6px;}
 .text-panel .text-read:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .text-panel textarea::selection { background: rgba(79, 169, 162, 0.55); color: #fff; }
 .find-row { flex: none; display: flex; align-items: center; gap: 8px; }
