@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.93 - 2026-11-09
+- Highlight map is now triggered by the player (reading + chunk index + status) instead of the scheduler playhead effect, so every playing chunk gets a map; a chunk with no cached audio yet logs "no cached audio yet (estimated)".
+
 ## 0.1.92 - 2026-11-09
 - Highlight now follows the real pauses: the playing chunk's cached audio is decoded, its silences are found and mapped to character indexes; word and sentence highlight use that map, falling back to the old estimate when a chunk's map cannot be built.
 

@@ -727,8 +727,12 @@ export default function App() {
       setJobError(m);
       logEvent(m);
     }
-    buildChunkMap(idx);
   }, [playerState.index, schedState.state]);
+  useEffect(() => {
+    const isReading = playerState.total > 0 && (playerState.status === 'playing' || playerState.status === 'paused');
+    if (!isReading) return;
+    buildChunkMap(playerState.index);
+  }, [playerState.total, playerState.index, playerState.status]);
 
   const isDefaultOrder = order.join() === DEFAULT_ORDER.join();
   const usablePx = usableWidth(boxWidth);
@@ -1228,7 +1232,7 @@ export default function App() {
       if (!services) throw new Error('No services yet.');
       const key = await services.makeKey({ text: chunk, voice: data.settings.voice, provider: data.provider });
       const bytes = await services.cache.get(key);
-      if (!bytes) { mapRef.current.delete(index); return; }
+      if (!bytes) { mapRef.current.delete(index); logEvent('Highlight map chunk ' + index + ': no cached audio yet (estimated)'); return; }
       const { channels, sampleRate } = await decodeChunk(bytes);
       const silence = findSilences(mixToMono(channels), sampleRate);
       const weights = charWeights(chunk);
