@@ -61,3 +61,28 @@ test('charAtFraction: empty text is safe', () => {
   assert.equal(charAtFraction('', 0.5), 0);
   assert.equal(charAtFraction('', 1), 0);
 });
+
+import { sentenceRanges } from '../src/highlight.js';
+
+test('sentenceRanges: three sentences give three ranges that cover the text', () => {
+  const text = 'One. Two. Three.';
+  const ranges = sentenceRanges(text);
+  assert.equal(ranges.length, 3);
+  assert.equal(text.slice(ranges[0].start, ranges[ranges.length - 1].end), text);
+  assert.deepEqual(ranges, [
+    { start: 0, end: 5 },
+    { start: 5, end: 10 },
+    { start: 10, end: 16 },
+  ]);
+});
+
+test('sentenceRanges: each range equals highlightRange at its own start', () => {
+  const text = 'One. Two. Three.';
+  for (const range of sentenceRanges(text)) {
+    assert.deepEqual(highlightRange(text, 'sentences', range.start), range);
+  }
+});
+
+test('sentenceRanges: empty text gives no ranges', () => {
+  assert.deepEqual(sentenceRanges(''), []);
+});

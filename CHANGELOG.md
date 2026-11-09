@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.92 - 2026-11-09
+- Highlight now follows the real pauses: the playing chunk's cached audio is decoded, its silences are found and mapped to character indexes; word and sentence highlight use that map, falling back to the old estimate when a chunk's map cannot be built.
+
 ## 0.1.91 - 2026-11-09
 - Added src/timeMap.js: buildTimeMap turns findSilences pauses into a playback-time to character-index map (longest pauses kept, weighted inside a sentence, holds during a pause).
 

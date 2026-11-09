@@ -1,3 +1,16 @@
+// The sentence splitting rule, shared by highlightRange and sentenceRanges.
+function splitSentences(text) {
+  const segmenter = new Intl.Segmenter(undefined, { granularity: 'sentence' });
+  const ranges = [];
+  for (const { segment, index } of segmenter.segment(text)) ranges.push({ start: index, end: index + segment.length });
+  return ranges;
+}
+
+export function sentenceRanges(text) {
+  if (typeof text !== 'string' || text === '') return [];
+  return splitSentences(text);
+}
+
 // Picks the word or sentence range that contains charOffset in text.
 // The speech endpoint returns raw audio with no timestamps, so the caller
 // estimates charOffset from the audio position; this only chooses the range.
@@ -5,11 +18,10 @@ export function highlightRange(text, mode, charOffset) {
   if (typeof text !== 'string' || text === '') return { start: 0, end: 0 };
   const offset = Math.max(0, Math.min(text.length, Math.floor(charOffset) || 0));
   if (mode === 'sentences') {
-    const segmenter = new Intl.Segmenter(undefined, { granularity: 'sentence' });
     let current = null;
-    for (const { segment, index } of segmenter.segment(text)) {
-      if (index > offset) break;
-      current = { start: index, end: index + segment.length };
+    for (const range of splitSentences(text)) {
+      if (range.start > offset) break;
+      current = range;
     }
     return current || { start: 0, end: text.length };
   }

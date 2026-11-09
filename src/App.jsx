@@ -6,7 +6,9 @@ import { chunkText } from './textPipeline.js';
 import { selectionReadState } from './selectionSpeech.js';
 import { findMatches, nextIndex } from './textFind.js';
 import { scrollTextareaToIndex } from './textScroll.js';
-import { highlightRange, charWeights, charAtFraction } from './highlight.js';
+import { highlightRange, charWeights, charAtFraction, sentenceRanges } from './highlight.js';
+import { findSilences } from './silenceMap.js';
+import { buildTimeMap } from './timeMap.js';
 import { createScheduler } from './scheduler.js';
 import { createServices } from './wiring.js';
 import { createPlayerEngine } from './playerEngine.js';
@@ -109,10 +111,27 @@ const SENTENCE_DELAY = 0.15;
 // this many seconds to keep it on the voice.
 const WORD_LEAD_SECONDS = 0.12;
 
+// A chunk with a silence map already follows the real voice, so its highlight
+// gets no sentence delay and no word lead. Kept as a constant so it can be tuned.
+const MAP_WORD_LEAD = 0;
+
+// Decoded audio arrives as one Float32Array per channel; findSilences wants mono.
+function mixToMono(channels) {
+  if (!Array.isArray(channels) || channels.length === 0) return new Float32Array(0);
+  if (channels.length === 1) return channels[0].slice();
+  const length = channels[0].length;
+  const out = new Float32Array(length);
+  for (let c = 0; c < channels.length; c += 1) {
+    const channel = channels[c];
+    for (let i = 0; i < length; i += 1) out[i] += channel[i] / channels.length;
+  }
+  return out;
+}
+
 // Read-only view of the chunk being read. It polls the player engine with
 // requestAnimationFrame because the engine emits position updates only about
 // 4 times a second, which made the word highlight lag the voice.
-function TextReadView({ chunk, mode, engineRef, textZoom, onZoom, onSelectText, onSelectIcon }) {
+function TextReadView({ chunk, mode, engineRef, chunkIndex, mapRef, textZoom, onZoom, onSelectText, onSelectIcon }) {
   const [hlRange, setHlRange] = useState(null);
   const hlRef = useRef(null);
   const selectingRef = useRef(false);
@@ -129,11 +148,14 @@ function TextReadView({ chunk, mode, engineRef, textZoom, onZoom, onSelectText, 
         const s = engine ? engine.getState() : null;
         const duration = s ? s.duration : 0;
         const rawPosition = s ? s.position : 0;
+        const entry = mapRef.current && chunkIndex != null ? mapRef.current.get(chunkIndex) : null;
+        const mapped = !!(entry && entry.state === 'ok' && typeof entry.timeToIndex === 'function');
         const position = mode === 'sentences' ? Math.max(0, rawPosition - SENTENCE_DELAY) : rawPosition + (mode === 'words' ? WORD_LEAD_SECONDS : 0);
         const fraction = duration > 0 ? Math.min(1, Math.max(0, position / duration)) : 0;
         const char = charAtFraction(weights, fraction);
+        const offset = mapped ? entry.timeToIndex(rawPosition + MAP_WORD_LEAD) : char;
         setHlRange((prev) => {
-          const next = highlightRange(chunk, mode, char);
+          const next = highlightRange(chunk, mode, offset);
           return prev && prev.start === next.start && prev.end === next.end ? prev : next;
         });
       }
@@ -141,7 +163,7 @@ function TextReadView({ chunk, mode, engineRef, textZoom, onZoom, onSelectText, 
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [chunk, mode, engineRef]);
+  }, [chunk, mode, engineRef, chunkIndex, mapRef]);
   useEffect(() => {
     if (hlRef.current) hlRef.current.scrollIntoView({ block: 'nearest' });
   }, [hlRange]);
@@ -261,6 +283,7 @@ export default function App() {
   const schedulerRef = useRef(null);
   const readySeenRef = useRef([]);
   const lastPlayheadRef = useRef(null);
+  const mapRef = useRef(new Map());
   const timer = useRef(null);
 
   const logEvent = (msg) => {
@@ -343,6 +366,7 @@ export default function App() {
       }
       setSchedState({ state: 'idle', resetAt: null, playhead: 0, chunks: [] });
       if (playerEngineRef.current) playerEngineRef.current.stop();
+      mapRef.current.clear();
       setSelIcon(null);
       stopSelectionAudio();
       setJobError('');
@@ -459,6 +483,7 @@ export default function App() {
     logEvent(`Retry chunk ${i + 1} pressed`);
     try {
       if (schedulerRef.current) schedulerRef.current.retryChunk(i);
+      mapRef.current.delete(i);
     } catch (e) {
       const m = e && e.message ? e.message : 'error';
       setJobError(m);
@@ -546,6 +571,7 @@ export default function App() {
     logEvent('Clear pressed');
     try {
       setText('');
+      mapRef.current.clear();
       setSelIcon(null);
       stopSelectionAudio();
       if (storage) saveText(storage, '');
@@ -573,6 +599,7 @@ export default function App() {
       setSchedState({ state: 'idle', resetAt: null, playhead: 0, chunks: [] });
       setJobError('');
       if (playerEngineRef.current) playerEngineRef.current.reset();
+      mapRef.current.clear();
       setSelIcon(null);
       stopSelectionAudio();
       if (services) {
@@ -675,6 +702,7 @@ export default function App() {
   }, [chunks.length]);
   useEffect(() => {
     if (playerEngineRef.current) playerEngineRef.current.reset();
+    mapRef.current.clear();
     setSelIcon(null);
     stopSelectionAudio();
   }, [provider.id, settings.voice, settings.chunkSize]);
@@ -699,6 +727,7 @@ export default function App() {
       setJobError(m);
       logEvent(m);
     }
+    buildChunkMap(idx);
   }, [playerState.index, schedState.state]);
 
   const isDefaultOrder = order.join() === DEFAULT_ORDER.join();
@@ -1189,6 +1218,33 @@ export default function App() {
       setSelBusy(false);
     }
   };
+  const buildChunkMap = async (index) => {
+    if (mapRef.current.has(index)) return;
+    mapRef.current.set(index, { state: 'building' });
+    const data = playerDataRef.current;
+    const chunk = data.chunks[index];
+    if (chunk == null) { mapRef.current.delete(index); return; }
+    try {
+      if (!services) throw new Error('No services yet.');
+      const key = await services.makeKey({ text: chunk, voice: data.settings.voice, provider: data.provider });
+      const bytes = await services.cache.get(key);
+      if (!bytes) { mapRef.current.delete(index); return; }
+      const { channels, sampleRate } = await decodeChunk(bytes);
+      const silence = findSilences(mixToMono(channels), sampleRate);
+      const weights = charWeights(chunk);
+      const map = buildTimeMap(sentenceRanges(chunk), silence, { weightAt: (i) => weights[i] });
+      if (map.ok) {
+        mapRef.current.set(index, { state: 'ok', timeToIndex: map.timeToIndex });
+        logEvent(`Highlight map chunk ${index + 1}: silence map`);
+      } else {
+        mapRef.current.set(index, { state: 'fallback' });
+        logEvent(`Highlight map chunk ${index + 1}: estimated (${map.reason})`);
+      }
+    } catch (e) {
+      mapRef.current.set(index, { state: 'fallback' });
+      logEvent(`Highlight map chunk ${index + 1}: estimated (${e && e.message ? e.message : 'error'})`);
+    }
+  };
   const panelClass = (id, extra) =>
     'panel ' + extra + (dragId === id ? ' dragging' : '') + (drop && drop.id === id ? ' drop-' + drop.side : '');
 
@@ -1272,7 +1328,7 @@ export default function App() {
           </div>
           <textarea ref={textRef} value={text} spellCheck={settings.spellCheck} onChange={(e) => { setText(e.target.value); setSelectedChars(0); }} onSelect={(e) => { const s = e.target.selectionStart; const t = e.target.selectionEnd; setSelectedChars(t > s ? t - s : 0); }} onMouseUp={(e) => { const ex = e.clientX; const ey = e.clientY; setTimeout(() => { const ta = e.target; const s = ta.selectionStart; const t = ta.selectionEnd; const sel = t > s ? ta.value.slice(s, t) : ''; if (!sel) { setSelIcon(null); return; } const p = selectionTopRight(ta) || { x: ex, y: ey }; setSelIcon({ x: p.x, y: p.y, text: sel }); }, 0); }} style={{ fontSize: `${textZoom}%`, display: reading ? 'none' : undefined }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} className={textDropActive ? 'drop-active' : ''} />
           {reading ? (
-            <TextReadView chunk={readChunk} mode={settings.highlightMode} engineRef={playerEngineRef} textZoom={textZoom} onZoom={setTextZoom} onSelectText={setSelectedChars} onSelectIcon={setSelIcon} />
+            <TextReadView chunk={readChunk} mode={settings.highlightMode} engineRef={playerEngineRef} chunkIndex={reading ? playerState.index : 0} mapRef={mapRef} textZoom={textZoom} onZoom={setTextZoom} onSelectText={setSelectedChars} onSelectIcon={setSelIcon} />
           ) : null}
           <div className="stats" style={{ justifyContent: 'flex-end' }}>
             <span>{plural(stats.characters, 'character')}</span>
