@@ -1379,13 +1379,24 @@ export default function App() {
               const err = schedState.chunks[i] ? schedState.chunks[i].error : null;
               return (
                 <div key={i} className={`chunk-row ${st} ${i === activeRowIndex(playerState) ? "playing" : ""}`} aria-current={i === activeRowIndex(playerState) ? "true" : undefined} onClick={() => jumpToChunk(i)} style={{ cursor: 'pointer' }} title="Jump to this chunk">
+                  <div className="chunk-bar"><div className={`chunk-bar-fill ${st === 'generating' ? 'generating' : ''}`} style={{ width: (st === 'queued' ? 0 : (st === 'playing' && i === activeRowIndex(playerState) ? Math.min(100, Math.max(0, playerState.duration ? playerState.position / playerState.duration * 100 : 0)) : 100)) + '%', opacity: (st === 'ready' || st === 'played') ? 0.4 : 1, background: st === 'failed' ? 'var(--danger)' : undefined }} /></div>
                   <div className="chunk-head">
                     <span className={`badge ${st}`}>{st}</span>
                     <span className="chunk-num">#{i + 1}</span>
                     <span className="chunk-actions">
                       {st === 'failed' ? <button onClick={(e) => { e.stopPropagation(); handleRetry(i); }}>Retry</button> : null}
+                      {i === activeRowIndex(playerState) && (reading || schedState.state === 'generating' || schedState.state === 'paused') ? (
+                        <>
+                          <button className="icon-btn chunk-download" disabled={!canPause && !canResume} title={canResume ? resumeReason : pauseReason} onClick={(e) => { e.stopPropagation(); (canResume ? handleResume() : handlePause()); }} aria-label="Pause or resume reading">
+                            {canResume ? <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 7l8 5-8 5z" /></svg> : <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 7h3v10H8zM13 7h3v10h-3z" /></svg>}
+                          </button>
+                          <button className="icon-btn chunk-download" disabled={!canCancel} title={cancelReason} onClick={(e) => { e.stopPropagation(); handleCancel(); }} aria-label="Cancel reading">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 7l10 10M17 7L7 17" /></svg>
+                          </button>
+                        </>
+                      ) : null}
                       <button className="icon-btn chunk-download" disabled={st !== 'ready'} title={st === 'ready' ? 'Download this chunk' : `Chunk ${i + 1} is not ready yet: no audio in the cache.`} onClick={(e) => { e.stopPropagation(); handleDownloadChunk(i); }} aria-label={`Download chunk ${i + 1}`}>
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8.5 12.5L12 16l3.5-3.5" /></svg>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 7v8M8.5 11.5L12 15l3.5-3.5" /></svg>
                       </button>
                     </span>
                   </div>

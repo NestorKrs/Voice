@@ -1,3 +1,6 @@
+## 0.1.99-alpha - 2026-11-09
+- Reader chunk rows: per-chunk progress bar and Pause/Resume/Cancel icons on the active row.
+
 ## 0.1.98-alpha - 2026-11-09
 - Selected-character count moved from Job panel to bottom status bar.
 

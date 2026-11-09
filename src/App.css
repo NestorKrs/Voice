@@ -36,6 +36,10 @@
 .chunk-row.generating { border-left-color: #c9ad5b; }
 .chunk-row.failed { border-left-color: #c9605f; }
 .chunk-row.playing { outline: 2px solid #4fa9a2; outline-offset: -2px; border-color: #4fa9a2; background: #182322; }
+.chunk-bar { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; margin-bottom: 4px; }
+.chunk-bar-fill { height: 100%; background: var(--accent); transition: width 0.1s linear; }
+.chunk-bar-fill.generating { animation: chunkbarpulse 1.2s linear infinite; background: linear-gradient(90deg, var(--accent), var(--muted), var(--accent)); background-size: 200% 100%; }
+@keyframes chunkbarpulse { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .text-panel textarea.drop-active { outline: 2px solid #4fa9a2; outline-offset: -2px; border-color: #4fa9a2; background: rgba(79, 169, 162, 0.18); }
 .icon-btn { width: 28px; height: 28px; border-radius: 50%; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--bg); border: 1px solid var(--line); color: var(--muted); }
 .sel-speaker { position: fixed; width: 28px; height: 28px; border-radius: 50%; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--bg); border: 1px solid var(--line); color: var(--accent); z-index: 5; }
