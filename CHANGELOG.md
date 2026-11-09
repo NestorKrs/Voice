@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.79-alpha - 2026-11-09
+- Job panel: Pause and Cancel now each take half the panel width.
+
 ## 0.1.78-alpha - 2026-11-09
 - Settings drawer Storage title: cache size back to two decimals (e.g. 123.04 MB), and the duplicate size under Audio cache is removed.
 

@@ -127,4 +127,5 @@
 
 .playerbar .notice { color: var(--accent); }
 .job-toggle { min-width: 88px; transition: border-color var(--ease), color var(--ease), box-shadow var(--ease); }
+.job-panel .row button { flex: 1; min-width: 0; }
 .row .job-toggle.is-paused { border-color: var(--accent); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
