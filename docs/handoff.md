@@ -3,48 +3,44 @@
 Date: 2026-11-09 (end of day). Owner: @Eleven. Plan: docs/plan.md. Rules: AGENTS.md.
 
 ## Version and git
-- package.json: 0.1.64-alpha. CHANGELOG has entries 0.1.0 to 0.1.64, no gaps, `# Changelog` at line 1.
-- Commit status NOT confirmed: the sandbox has no .git, so run `git -C ~/Work/Voice log --oneline -5` and `git status --short` on the P75.
-- Backup counter in docs/backup-log.md is 15 (BACKUP DUE).
+- package.json: 0.1.78-alpha. CHANGELOG has entries 0.1.0 to 0.1.78, no gaps (0.1.65-0.1.78 added today), `# Changelog` at line 1. First entry matches package.json.
+- Commit status NOT confirmed: the sandbox has no .git, so run `git -C ~/Work/Voice log --oneline -5` and `git status --short` on the P75. The owner ran vship/live checks during the day; which of 0.1.65-0.1.78 are committed is not known here.
+- Backup counter in docs/backup-log.md is 29 (BACKUP DUE, long overdue).
 - docs/codebase-map.md and docs/lessons.md do not exist.
 
-## What exists (all unit tested with mocks)
-- textPipeline, speechClient (one retry on 429-other or 5xx, never 4xx, daily-cap detection), audioCache (IndexedDB + memory store, bytes in and out), requestCounter, settingsStore (settings incl. fontWeight, highlightMode, spellCheck, downloadFormat, key, text in localStorage), textStats, providers (Fish + HeyGen built in, owner-added free models), audioFormat (PCM to WAV, audio type from bytes, PCM_DEFAULT_RATE/PCM_DEFAULT_CHANNELS).
-- scheduler, followPlayback, playerCore, playerEngine, panelLayout, panelWidths, wiring (the only file that imports readKey).
-- mp3Encoder.js: createMp3Encoder (1152-sample blocks, lazy lamejs import), encodeMp3, floatToInt16, pcmToInt16Channels, wavToInt16.
-- chunkDownload.js: chunkFileName, audioKind, toWavBytes, encodeWav, convertChunk (one shared format converter).
-- zipStore.js: crc32, createZip, zipChunks (async generator, stored ZIP, UTF-8 names).
-- joinAudio.js: stripId3, wavHeader, wavParts, joinMode, sameAs.
-- App.jsx (1190 lines): top bar with provider select and Requests today; Text / Reader / Job panels (drag to reorder, drag handles to resize); bottom player bar; Settings drawer (key, voice, chunk size, lookahead, daily limit 50/1000, font weight, highlight mode, spell check, chunk download format, reset layout, cache size and clear); status bar with a 20-line event log.
-- Reader: each chunk row has a Download icon button (the old Play is gone); the panel bottom has "Download all chunks" (ZIP) and "Download all joined", always visible below the scrolling chunk list.
-- Text pane highlight: a read-only view polls playerEngine.getState() with requestAnimationFrame; src/highlight.js picks the range and the weighted character index. Sentences mode pulls back 0.15s; words mode leads 0.12s.
-- Playback is HTMLAudioElement slots, NOT Web Audio. File loading: drop or Load reads .txt/.md/.doc as plain text. No .docx/.pdf parsing.
+## What was done today (Settings drawer redesign, in small steps)
+- 0.1.65: drawer controls grouped into cards (Connection, Voice, Reading, Display, Downloads, Storage & layout), sticky header with X close, sticky Save settings footer, 400px wide, --danger for destructive buttons.
+- 0.1.66-0.1.74: removed helper/status texts card by card; API key field full-width; Save/Clear key half and half with no divider; Display controls aligned at 144px; label renamed to Download format; storage buttons equal width.
+- 0.1.75: all drawer buttons share the Save/Clear key hover; clicking outside the drawer (e.g. into the text) closes it and runs the existing Save settings handler (X and gear toggle close without saving).
+- 0.1.76: drawer slides in from the right on the cogwheel (0.3s) and out to the right on close.
+- 0.1.77: Storage title shows the live cache size in parentheses; Save settings also closes the drawer; slide-out 0.5s, slide-in 0.3s.
+- 0.1.78: size in the title back to two decimals (e.g. STORAGE (123.04 MB) & LAYOUT); the duplicate size under Audio cache removed.
+- Unchanged throughout: every handler, state and control behaviour; handleSaveSettings at App.jsx:409 still the only save path.
 
 ## Verified
-- npm test in the sandbox: 201 tests pass, 0 fail (2026-11-09). New modules covered: mp3Encoder (6), chunkDownload convertChunk (5), zipStore (5), joinAudio (12).
+- npm test in the sandbox after every step: 201 tests pass, 0 fail (last run 2026-11-09, 0.1.78).
 - Build and lint: NOT RUN here (no node_modules or network). The owner's vship run is the real check.
-- Live: 0.1.60 to 0.1.64 are untested live.
+- Live: the owner saw and approved each visual step on the P75 as it went (0.1.65-0.1.77 behaviour confirmed by their replies); 0.1.78 title/size not yet reported live.
 
 ## Owner must test live
-1. Per-chunk download: Fish as MP3, Fish as WAV (decoded), HeyGen as WAV; the row shows the exact reason when a chunk is not ready.
-2. ZIP: the file opens in the OS archive tool with all ready chunks; the files play.
-3. Joined: Fish joined MP3 plays start to end and the duration looks right; HeyGen joined MP3; Fish joined WAV (large file); HeyGen joined WAV.
-4. Cancel in the save dialog; the disabled titles on both buttons.
-5. The Reader panel buttons stay visible while the chunk list scrolls.
-6. Reload keeps the download format setting.
+1. Slide: cogwheel slides the drawer in (0.3s); X, gear, click-away and Save settings slide it out (0.5s); Save settings saves and survives a reload.
+2. Click into the text with the drawer open: it closes and saves; clicking inside the drawer does not close it.
+3. Storage title: size updates when the drawer opens and after Clear audio cache.
+4. Earlier unreported live items: per-chunk downloads (Fish MP3/WAV, HeyGen WAV), ZIP opens and plays, joined MP3/WAV play start to end, cancel in the save dialog, reload keeps download format.
 
 ## Known bugs
 - None confirmed in code. Known gaps, not bugs: .docx/.pdf not parsed; a .doc read as text is likely garbage; no shortcuts; no request log or time heard/remaining in the Job panel.
 
 ## Open decisions
 - Final app name; voice list UI for Fish (HeyGen has 10); whether short texts need a special mode; paid fallback model; whether the weighted timing needs tuning after a live listen.
+- Whether the X close and gear toggle should also auto-save (currently only click-away and the Save button save).
 
 ## Next steps in order
-1. Owner: run build and lint (vship) and commit 0.1.64.
-2. Live test list above.
-3. Backup: the counter is 15; make a source backup, then tell Hermes "voice task: backup done, counter 0, label <x>, <date>".
+1. Owner: run build and lint (vship) and commit whatever of 0.1.65-0.1.78 is not yet committed; check `git status --short`.
+2. Backup first: the counter is 29; make a source backup, then tell Hermes "voice task: backup done, counter 0, label <x>, <date>".
+3. Live test list above.
 4. Phase 5 leftovers: request log and time heard/remaining in the Job panel.
 5. Phase 6: .docx/.pdf (mammoth, pdfjs-dist), playback shortcuts, README and app rename.
 
-## Files not yet committed
-From the sandbox (no .git): src/App.jsx, src/App.css, src/audioFormat.js, src/chunkDownload.js, src/mp3Encoder.js, src/zipStore.js, src/joinAudio.js, tests/chunkDownload.test.mjs, tests/mp3Encoder.test.mjs, tests/zipStore.test.mjs, tests/joinAudio.test.mjs, tests/settingsStore.test.mjs, package.json, CHANGELOG.md, docs/backup-log.md, README.md, docs/handoff.md (this file). Owner checks `git status --short`.
+## Files changed this session (commit status to check on the P75)
+src/App.jsx, src/App.css, package.json, CHANGELOG.md, docs/backup-log.md, docs/handoff.md (this file). Older pending files from the previous handoff may still be uncommitted; owner checks `git status --short`.
