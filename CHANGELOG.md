@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.90 - 2026-11-09
+- Added src/silenceMap.js: a pure module that finds the real pauses in a chunk's decoded audio (10 ms RMS frames, relative threshold, leadIn and tail reported separately).
+
 ## 0.1.89 - 2026-11-09
 - Requests today now refreshes at once after a speaker icon request (success, failure or cap error).
 
