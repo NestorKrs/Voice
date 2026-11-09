@@ -6,9 +6,9 @@ import { chunkText } from './textPipeline.js';
 import { selectionReadState } from './selectionSpeech.js';
 import { findMatches, nextIndex } from './textFind.js';
 import { scrollTextareaToIndex } from './textScroll.js';
-import { highlightRange, charWeights, charAtFraction, sentenceRanges } from './highlight.js';
+import { highlightRange, charWeights, charAtFraction } from './highlight.js';
 import { findSilences } from './silenceMap.js';
-import { buildTimeMap } from './timeMap.js';
+import { alignTimeMap } from './alignMap.js';
 import { createScheduler } from './scheduler.js';
 import { createServices } from './wiring.js';
 import { createPlayerEngine } from './playerEngine.js';
@@ -153,7 +153,10 @@ function TextReadView({ chunk, mode, engineRef, chunkIndex, mapRef, textZoom, on
         const position = mode === 'sentences' ? Math.max(0, rawPosition - SENTENCE_DELAY) : rawPosition + (mode === 'words' ? WORD_LEAD_SECONDS : 0);
         const fraction = duration > 0 ? Math.min(1, Math.max(0, position / duration)) : 0;
         const char = charAtFraction(weights, fraction);
-        const offset = mapped ? entry.timeToIndex(rawPosition + MAP_WORD_LEAD) : char;
+        const mappedTime = (s.duration > 0 && entry && entry.mapDuration > 0)
+          ? rawPosition * (entry.mapDuration / s.duration)
+          : rawPosition;
+        const offset = mapped ? entry.timeToIndex(mappedTime + MAP_WORD_LEAD) : char;
         setHlRange((prev) => {
           const next = highlightRange(chunk, mode, offset);
           return prev && prev.start === next.start && prev.end === next.end ? prev : next;
@@ -1232,17 +1235,17 @@ export default function App() {
       if (!services) throw new Error('No services yet.');
       const key = await services.makeKey({ text: chunk, voice: data.settings.voice, provider: data.provider });
       const bytes = await services.cache.get(key);
-      if (!bytes) { mapRef.current.delete(index); logEvent('Highlight map chunk ' + index + ': no cached audio yet (estimated)'); return; }
+      if (!bytes) { mapRef.current.delete(index); logEvent('Highlight map chunk ' + (index + 1) + ': no cached audio yet (estimated)'); return; }
       const { channels, sampleRate } = await decodeChunk(bytes);
       const silence = findSilences(mixToMono(channels), sampleRate);
       const weights = charWeights(chunk);
-      const map = buildTimeMap(sentenceRanges(chunk), silence, { weightAt: (i) => weights[i] });
-      if (map.ok) {
-        mapRef.current.set(index, { state: 'ok', timeToIndex: map.timeToIndex });
-        logEvent(`Highlight map chunk ${index + 1}: silence map`);
+      const result = alignTimeMap(chunk, silence, { weightAt: (i) => weights[i] });
+      if (result.ok) {
+        mapRef.current.set(index, { state: 'ok', timeToIndex: result.timeToIndex, mapDuration: silence.duration });
+        logEvent('Highlight map chunk ' + (index + 1) + ': aligned ' + result.anchors + ' of ' + result.breaks + ' breaks, ' + result.silences + ' pauses');
       } else {
         mapRef.current.set(index, { state: 'fallback' });
-        logEvent(`Highlight map chunk ${index + 1}: estimated (${map.reason})`);
+        logEvent('Highlight map chunk ' + (index + 1) + ': estimated (' + result.reason + ')');
       }
     } catch (e) {
       mapRef.current.set(index, { state: 'fallback' });

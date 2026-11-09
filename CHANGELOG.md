@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.95 - 2026-11-09
+- Highlight now uses alignTimeMap (break-to-pause alignment) instead of the timeMap.js map, and corrects the decoded-audio/player length difference before looking up the character; log lines now read "aligned X of Y breaks, Z pauses".
+
 ## 0.1.94 - 2026-11-09
 - Added src/alignMap.js: alignTimeMap matches the punctuation breaks of a chunk text to the real pauses in its audio by dynamic programming (skippable breaks, long-pause bonus), so one wrong pause no longer shifts every later break.
 
