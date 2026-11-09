@@ -26,6 +26,49 @@ const services = storage ? createServices({ storage }) : null;
 
 const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
 
+// Top-right corner of the textarea selection: the end of the first selected
+// line (the newline when the selection wraps, otherwise the selection end).
+function selectionTopRight(ta) {
+  const s = ta.selectionStart;
+  const t = ta.selectionEnd;
+  const start = Math.min(s, t);
+  const end = Math.max(s, t);
+  if (start === end) return null;
+  const text = ta.value;
+  const nl = text.indexOf('\n', start);
+  const idx = nl !== -1 && nl < end ? nl : end;
+  const css = getComputedStyle(ta);
+  const div = document.createElement('div');
+  const props = ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing', 'lineHeight', 'textTransform', 'wordSpacing', 'textIndent', 'tabSize', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'boxSizing'];
+  for (const p of props) div.style[p] = css[p];
+  div.style.position = 'absolute';
+  div.style.visibility = 'hidden';
+  div.style.top = '-99999px';
+  div.style.left = '-99999px';
+  div.style.width = ta.clientWidth + 'px';
+  div.style.whiteSpace = 'pre-wrap';
+  div.style.wordWrap = 'break-word';
+  div.style.overflowWrap = 'break-word';
+  div.textContent = text.slice(0, idx);
+  const span = document.createElement('span');
+  span.textContent = '.';
+  div.appendChild(span);
+  document.body.appendChild(div);
+  let x = 0;
+  let y = 0;
+  try {
+    x = span.offsetLeft;
+    y = span.offsetTop;
+  } finally {
+    div.remove();
+  }
+  const rect = ta.getBoundingClientRect();
+  return {
+    x: rect.left + (parseFloat(css.borderLeftWidth) || 0) + (parseFloat(css.paddingLeft) || 0) + x,
+    y: rect.top + (parseFloat(css.borderTopWidth) || 0) + (parseFloat(css.paddingTop) || 0) + y,
+  };
+}
+
 // Local state keeps the chunk list from re-rendering on every slider move.
 function FontWeightControl({ initial, onCommit }) {
   const [value, setValue] = useState(initial);
@@ -111,7 +154,13 @@ function TextReadView({ chunk, mode, engineRef, textZoom, onZoom, onSelectText, 
       setTimeout(() => {
         const sel = window.getSelection().toString();
         if (!sel) { onSelectIcon(null); return; }
-        onSelectIcon({ x, y, text: sel });
+        let p = null;
+        try {
+          const rect = window.getSelection().getRangeAt(0).getBoundingClientRect();
+          if (rect) p = { x: rect.right, y: rect.top };
+        } catch {}
+        if (!p) p = { x, y };
+        onSelectIcon({ x: p.x, y: p.y, text: sel });
       }, 0);
       const selNow = window.getSelection();
       onSelectText(selNow ? selNow.toString().length : 0);
@@ -1188,7 +1237,7 @@ export default function App() {
         const playing = !!selAudioRef.current;
         const title = !st.ok ? st.reason : (selBusy ? 'Generating...' : (playing ? 'Stop' : 'Read selection'));
         const left = Math.max(0, Math.min(selIcon.x + 8, window.innerWidth - 40));
-        const top = Math.max(0, Math.min(selIcon.y + 12, window.innerHeight - 40));
+        const top = Math.max(0, Math.min(selIcon.y - 40, window.innerHeight - 40));
         return (
           <button type="button" className="sel-speaker" style={{ left: left, top: top }} title={title} disabled={!st.ok} onMouseDown={(e) => e.preventDefault()} onClick={handleReadSelection}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
@@ -1220,7 +1269,7 @@ export default function App() {
             {findQuery ? <button type="button" className="find-clear" onClick={handleFindClear} disabled={reading} title="Clear find query" aria-label="Clear find query">×</button> : null}
             {reading ? <span className="find-reason">Find works when reading is stopped</span> : null}
           </div>
-          <textarea ref={textRef} value={text} spellCheck={settings.spellCheck} onChange={(e) => { setText(e.target.value); setSelectedChars(0); }} onSelect={(e) => { const s = e.target.selectionStart; const t = e.target.selectionEnd; setSelectedChars(t > s ? t - s : 0); }} onMouseUp={(e) => { const x = e.clientX; const y = e.clientY; setTimeout(() => { const ta = e.target; const s = ta.selectionStart; const t = ta.selectionEnd; const sel = t > s ? ta.value.slice(s, t) : ''; if (!sel) { setSelIcon(null); return; } setSelIcon({ x, y, text: sel }); }, 0); }} style={{ fontSize: `${textZoom}%`, display: reading ? 'none' : undefined }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} className={textDropActive ? 'drop-active' : ''} />
+          <textarea ref={textRef} value={text} spellCheck={settings.spellCheck} onChange={(e) => { setText(e.target.value); setSelectedChars(0); }} onSelect={(e) => { const s = e.target.selectionStart; const t = e.target.selectionEnd; setSelectedChars(t > s ? t - s : 0); }} onMouseUp={(e) => { const ex = e.clientX; const ey = e.clientY; setTimeout(() => { const ta = e.target; const s = ta.selectionStart; const t = ta.selectionEnd; const sel = t > s ? ta.value.slice(s, t) : ''; if (!sel) { setSelIcon(null); return; } const p = selectionTopRight(ta) || { x: ex, y: ey }; setSelIcon({ x: p.x, y: p.y, text: sel }); }, 0); }} style={{ fontSize: `${textZoom}%`, display: reading ? 'none' : undefined }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} className={textDropActive ? 'drop-active' : ''} />
           {reading ? (
             <TextReadView chunk={readChunk} mode={settings.highlightMode} engineRef={playerEngineRef} textZoom={textZoom} onZoom={setTextZoom} onSelectText={setSelectedChars} onSelectIcon={setSelIcon} />
           ) : null}

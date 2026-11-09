@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.88 - 2026-11-09
+- Selection speaker icon now sits at the top-right corner of the selection (above it), not below it.
+
 ## 0.1.87 - 2026-11-09
 - Selection speaker icon now works: appears after a selection, reads it aloud, stops on a second press, hides on outside mousedown, Esc, scroll and text/provider/voice changes, and yields to main playback.
 
