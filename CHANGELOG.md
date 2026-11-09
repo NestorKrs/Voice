@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.62-alpha - 2026-11-09
+- Job panel: download the ready chunks as one ZIP (stored, no compression); the save dialog opens first, chunks with no audio are skipped and logged.
+
 ## 0.1.61-alpha - 2026-11-09
 - Chunk download can now encode MP3 in the browser from PCM/WAV (lazy lamejs import), and one shared convertChunk handles every format pair.
 

@@ -12,6 +12,7 @@ import { RATES, activeRowIndex } from './playerCore.js';
 import { allProviders, loadCustomProviders, getProvider, providerLabel } from './providers.js';
 import { chunkFileName, audioKind, convertChunk } from './chunkDownload.js';
 import { encodeMp3 } from './mp3Encoder.js';
+import { createZip, zipChunks } from './zipStore.js';
 import { DEFAULT_ORDER, movePanel, stepPanel, loadOrder, saveOrder, resetOrder } from './panelLayout.js';
 import { DEFAULT_WIDTHS, clampWidths, usableWidth, resizeFromHandle, columnsTemplate, loadWidths, saveWidths, resetWidths } from './panelWidths.js';
 
@@ -129,6 +130,7 @@ export default function App() {
   const [textDropActive, setTextDropActive] = useState(false);
   const [selectedChars, setSelectedChars] = useState(0);
   const [chunkNotes, setChunkNotes] = useState({});
+  const [zipRunning, setZipRunning] = useState(false);
 
   useEffect(() => {
     const preventBrowserZoom = (e) => { if (e.ctrlKey) e.preventDefault(); };
@@ -709,6 +711,20 @@ export default function App() {
     logEvent('Download format ' + value);
   };
 
+  const decodeChunk = async (b) => {
+    const Ctx = globalThis.AudioContext || globalThis.webkitAudioContext;
+    if (!Ctx) throw new Error('This browser cannot decode MP3 audio.');
+    const ctx = new Ctx();
+    try {
+      const decoded = await ctx.decodeAudioData(b.slice().buffer);
+      const channels = [];
+      for (let c = 0; c < decoded.numberOfChannels; c += 1) channels.push(decoded.getChannelData(c));
+      return { channels, sampleRate: decoded.sampleRate };
+    } finally {
+      if (typeof ctx.close === 'function') ctx.close().catch(() => {});
+    }
+  };
+
   const handleDownloadChunk = async (index) => {
     const n = index + 1;
     const fail = (msg) => {
@@ -726,22 +742,7 @@ export default function App() {
       }
       const format = settings.downloadFormat === 'wav' ? 'wav' : 'mp3';
       if (format === 'mp3' && audioKind(bytes) !== 'mp3') logEvent('Encoding MP3...');
-      const { bytes: out } = await convertChunk(bytes, format, {
-        decode: async (b) => {
-          const Ctx = globalThis.AudioContext || globalThis.webkitAudioContext;
-          if (!Ctx) throw new Error('This browser cannot decode MP3 audio.');
-          const ctx = new Ctx();
-          try {
-            const decoded = await ctx.decodeAudioData(b.slice().buffer);
-            const channels = [];
-            for (let c = 0; c < decoded.numberOfChannels; c += 1) channels.push(decoded.getChannelData(c));
-            return { channels, sampleRate: decoded.sampleRate };
-          } finally {
-            if (typeof ctx.close === 'function') ctx.close().catch(() => {});
-          }
-        },
-        encodeMp3,
-      });
+      const { bytes: out } = await convertChunk(bytes, format, { decode: decodeChunk, encodeMp3 });
       const name = chunkFileName(index, chunks.length, format);
       if (typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
         let handle = null;
@@ -784,6 +785,82 @@ export default function App() {
     }
   };
 
+  const handleDownloadZip = async () => {
+    if (zipRunning) return;
+    setZipRunning(true);
+    try {
+      const format = settings.downloadFormat === 'wav' ? 'wav' : 'mp3';
+      const name = `voice-chunks-${format}.zip`;
+      let writable = null;
+      if (typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
+        try {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: name,
+            types: [{ description: 'ZIP archive', accept: { 'application/zip': ['.zip'] } }],
+          });
+          writable = await handle.createWritable();
+        } catch (e) {
+          if (e && e.name === 'AbortError') {
+            logEvent('Download cancelled');
+            return;
+          }
+          throw e;
+        }
+      } else {
+        logEvent('Save dialog not available here; used the browser download instead');
+      }
+      const ready = [];
+      const skipped = [];
+      for (let i = 0; i < chunks.length; i += 1) {
+        if (schedState.chunks[i] && schedState.chunks[i].status === 'ready') ready.push(i);
+        else skipped.push(i + 1);
+      }
+      const files = [];
+      let processed = 0;
+      for (const i of ready) {
+        try {
+          const key = await services.makeKey({ text: chunks[i], voice: settings.voice, provider });
+          const bytes = await services.cache.get(key);
+          if (!bytes) { skipped.push(i + 1); continue; }
+          const { bytes: out, ext } = await convertChunk(bytes, format, { decode: decodeChunk, encodeMp3 });
+          files.push({ name: chunkFileName(i, chunks.length, ext), bytes: out });
+        } catch (e) {
+          const m = e && e.message ? e.message : 'error';
+          logEvent(`Chunk ${i + 1} conversion failed: ${m}`);
+        }
+        processed += 1;
+        if (processed % 10 === 0) logEvent(`ZIP: preparing ${processed} of ${chunks.length}`);
+      }
+      if (skipped.length) logEvent(`Skipped chunks ${skipped.join(', ')} (no audio)`);
+      let totalBytes = 0;
+      if (writable) {
+        for await (const piece of zipChunks(files)) {
+          await writable.write(piece);
+          totalBytes += piece.length;
+        }
+        await writable.close();
+      } else {
+        const zip = createZip(files);
+        totalBytes = zip.length;
+        const blob = new Blob([zip], { type: 'application/zip' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      logEvent(`ZIP saved: ${files.length} chunks, ${Math.round(totalBytes / 1024 / 1024)} MB`);
+    } catch (e) {
+      const m = e && e.message ? e.message : 'error';
+      logEvent(m);
+    } finally {
+      setZipRunning(false);
+    }
+  };
+
   const panelClass = (id, extra) =>
     'panel ' + extra + (dragId === id ? ' dragging' : '') + (drop && drop.id === id ? ' drop-' + drop.side : '');
 
@@ -797,6 +874,7 @@ export default function App() {
     cancelled: 'Cancelled',
   }[schedState.state] || 'Idle';
   const jobLive = schedState.chunks.length > 0;
+  const readyCount = schedState.chunks.filter((c) => c.status === 'ready').length;
   const canPause = jobLive && (schedState.state === 'generating' || schedState.state === 'idle');
   const canResume = ['paused', 'cancelled', 'waiting_reset', 'error'].includes(schedState.state);
   const canCancel = jobLive && ['generating', 'idle', 'paused'].includes(schedState.state);
@@ -883,14 +961,15 @@ export default function App() {
             <span className="panel-title">Job</span>
           </div>
           <div className="state">{stateWord}{schedState.state === 'idle' && schedState.chunks.some((c) => c.status === 'ready') ? ' - window filled' : ''}</div>
-          <div>Chunks ready {schedState.chunks.filter((c) => c.status === 'ready').length} / {chunks.length}</div>
-          <div className="progress"><div className="bar" style={{ width: chunks.length ? `${(schedState.chunks.filter((c) => c.status === 'ready').length / chunks.length) * 100}%` : '0%' }} /></div>
+          <div>Chunks ready {readyCount} / {chunks.length}</div>
+          <div className="progress"><div className="bar" style={{ width: chunks.length ? `${(readyCount / chunks.length) * 100}%` : '0%' }} /></div>
           <div>Requests today: {usedToday}</div>
           {schedState.state === 'waiting_reset' ? <div>Reset: {new Date(schedState.resetAt).toLocaleString()}<br />Audio already made is kept.</div> : null}
           {jobError ? <div className="notice">{jobError}</div> : null}
           <div className="row">
             <button className={'job-toggle' + (schedState.state === 'paused' ? ' is-paused' : '')} onClick={canResume ? handleResume : handlePause} disabled={!canPause && !canResume} title={canResume ? resumeReason : pauseReason}>{canResume ? 'Resume' : 'Pause'}</button>
             <button onClick={handleCancel} disabled={!canCancel} title={cancelReason}>Cancel</button>
+            <button onClick={handleDownloadZip} disabled={zipRunning || readyCount === 0} title={zipRunning ? 'ZIP is being prepared.' : readyCount === 0 ? 'No chunk has audio in the cache yet.' : 'Download the ready chunks as one ZIP.'}>Download ready chunks (ZIP) - {readyCount} of {chunks.length}</button>
           </div>
           {selectedChars > 0 ? <div style={{ marginTop: 'auto' }}>Selected: {plural(selectedChars, 'character')}</div> : null}
         </section>
