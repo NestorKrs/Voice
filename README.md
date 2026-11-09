@@ -4,7 +4,7 @@ Personal, single-user, browser-only text-to-speech reader. The owner pastes or l
 
 Models: Fish Audio (fish-audio/s2.1-pro-free:free) and HeyGen (heygen/heygen-voice-1-turbo:free), switchable in Settings. Only models whose ID ends in :free can be called (enforced in src/providers.js).
 
-Status: Alpha. The current version is in package.json and the history in CHANGELOG.md.
+Status: Beta. The current version is in package.json and the history in CHANGELOG.md.
 
 Features:
 - Chunked reading with the next chunks made ahead.

@@ -1,3 +1,6 @@
+## 0.2.0-beta - 2026-11-09
+- Project moves from alpha to beta testing; version 0.2.0-beta.
+
 ## 0.1.105-alpha - 2026-11-09
 - Text fullscreen: a floating exit button in the top-right corner closes it with the mouse.
 
