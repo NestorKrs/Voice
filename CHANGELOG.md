@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.85-alpha - 2026-11-09
+- Reader panel: the Download card sits closer to the panel edges with tighter padding, and its label is "Download".
+
+## 0.1.84-alpha - 2026-11-09
+- Reader panel: the two download buttons now sit in a Downloads card with a separator, and their labels are shortened to "All chunks" and "All joined".
+
 ## 0.1.83-alpha - 2026-11-09
 - Settings Display card: the Font leading slider now also drives the reading view line spacing, so the row distance persists while reading.
 
