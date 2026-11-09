@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.83-alpha - 2026-11-09
+- Settings Display card: the Font leading slider now also drives the reading view line spacing, so the row distance persists while reading.
+
 ## 0.1.82-alpha - 2026-11-09
 - Settings Display card: a Font leading slider next to Font weight adjusts the text panel line spacing (1.0-2.5) and is saved with the settings.
 
