@@ -10,7 +10,8 @@ import { createPlayerEngine } from './playerEngine.js';
 import { newlyReady, readyFlags, playheadToSend } from './followPlayback.js';
 import { RATES, activeRowIndex } from './playerCore.js';
 import { allProviders, loadCustomProviders, getProvider, providerLabel } from './providers.js';
-import { chunkFileName, audioKind, toWavBytes, encodeWav } from './chunkDownload.js';
+import { chunkFileName, audioKind, convertChunk } from './chunkDownload.js';
+import { encodeMp3 } from './mp3Encoder.js';
 import { DEFAULT_ORDER, movePanel, stepPanel, loadOrder, saveOrder, resetOrder } from './panelLayout.js';
 import { DEFAULT_WIDTHS, clampWidths, usableWidth, resizeFromHandle, columnsTemplate, loadWidths, saveWidths, resetWidths } from './panelWidths.js';
 
@@ -723,30 +724,24 @@ export default function App() {
         fail(`Chunk ${n} is not ready yet: no audio in the cache.`);
         return;
       }
-      const kind = audioKind(bytes);
       const format = settings.downloadFormat === 'wav' ? 'wav' : 'mp3';
-      if (format === 'mp3' && kind !== 'mp3') {
-        fail('MP3 is not available for this chunk: this provider gives PCM/WAV audio. Choose WAV in Settings.');
-        return;
-      }
-      let out = null;
-      if (format === 'mp3') {
-        out = bytes;
-      } else if (kind === 'wav' || kind === 'pcm') {
-        out = toWavBytes(bytes, kind);
-      } else {
-        const Ctx = globalThis.AudioContext || globalThis.webkitAudioContext;
-        if (!Ctx) throw new Error('This browser cannot decode MP3 audio.');
-        const ctx = new Ctx();
-        try {
-          const decoded = await ctx.decodeAudioData(bytes.slice().buffer);
-          const channels = [];
-          for (let c = 0; c < decoded.numberOfChannels; c += 1) channels.push(decoded.getChannelData(c));
-          out = encodeWav(channels, decoded.sampleRate);
-        } finally {
-          if (typeof ctx.close === 'function') ctx.close().catch(() => {});
-        }
-      }
+      if (format === 'mp3' && audioKind(bytes) !== 'mp3') logEvent('Encoding MP3...');
+      const { bytes: out } = await convertChunk(bytes, format, {
+        decode: async (b) => {
+          const Ctx = globalThis.AudioContext || globalThis.webkitAudioContext;
+          if (!Ctx) throw new Error('This browser cannot decode MP3 audio.');
+          const ctx = new Ctx();
+          try {
+            const decoded = await ctx.decodeAudioData(b.slice().buffer);
+            const channels = [];
+            for (let c = 0; c < decoded.numberOfChannels; c += 1) channels.push(decoded.getChannelData(c));
+            return { channels, sampleRate: decoded.sampleRate };
+          } finally {
+            if (typeof ctx.close === 'function') ctx.close().catch(() => {});
+          }
+        },
+        encodeMp3,
+      });
       const name = chunkFileName(index, chunks.length, format);
       if (typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
         let handle = null;

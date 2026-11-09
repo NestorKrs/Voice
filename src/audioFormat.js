@@ -1,4 +1,7 @@
-export function pcmToWav(pcm, sampleRate = 44100, channels = 1) {
+export const PCM_DEFAULT_RATE = 44100;
+export const PCM_DEFAULT_CHANNELS = 1;
+
+export function pcmToWav(pcm, sampleRate = PCM_DEFAULT_RATE, channels = PCM_DEFAULT_CHANNELS) {
   const len = pcm.byteLength - (pcm.byteLength % (2 * channels));
   const out = new Uint8Array(44 + len);
   const v = new DataView(out.buffer);
@@ -24,7 +27,7 @@ export function parsePcmFormat(contentType) {
   const ct = String(contentType || '');
   const rate = Number((/rate=(\d+)/i.exec(ct) || [])[1]);
   const ch = Number((/channels=(\d+)/i.exec(ct) || [])[1]);
-  return { sampleRate: rate > 0 ? rate : 44100, channels: ch > 0 ? ch : 1 };
+  return { sampleRate: rate > 0 ? rate : PCM_DEFAULT_RATE, channels: ch > 0 ? ch : PCM_DEFAULT_CHANNELS };
 }
 
 export function audioMime(bytes) {

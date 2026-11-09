@@ -84,3 +84,63 @@ test('audioKind on small fake mp3/wav/pcm byte arrays', () => {
   assert.equal(audioKind(mp3sync), 'mp3');
   assert.equal(audioKind(pcm), 'pcm');
 });
+
+import { convertChunk } from '../src/chunkDownload.js';
+
+const fakeMp3Bytes = new Uint8Array([0xff, 0xfb, 0x90, 0x00]);
+const fakePcmBytes = new Uint8Array([0, 0, 1, 0]);
+const fakeWavBytes = encodeWav([new Float32Array([0, 1])], 8000);
+
+test('convertChunk mp3 to mp3 is unchanged', async () => {
+  const deps = {
+    decode: async () => { throw new Error('should not decode'); },
+    encodeMp3: async () => { throw new Error('should not encode'); },
+  };
+  const out = await convertChunk(fakeMp3Bytes, 'mp3', deps);
+  assert.equal(out.ext, 'mp3');
+  assert.equal(out.bytes, fakeMp3Bytes);
+});
+
+test('convertChunk pcm to mp3 calls the encoder once', async () => {
+  let calls = 0;
+  let rate = 0;
+  const deps = {
+    decode: async () => { throw new Error('should not decode'); },
+    encodeMp3: async (channels, sampleRate) => { calls += 1; rate = sampleRate; return new Uint8Array([1, 2, 3]); },
+  };
+  const out = await convertChunk(fakePcmBytes, 'mp3', deps);
+  assert.equal(out.ext, 'mp3');
+  assert.equal(calls, 1);
+  assert.equal(rate, 44100);
+  assert.deepEqual([...out.bytes], [1, 2, 3]);
+});
+
+test('convertChunk mp3 to wav calls decode', async () => {
+  let decoded = 0;
+  const deps = {
+    decode: async () => { decoded += 1; return { channels: [new Float32Array([0, 1])], sampleRate: 8000 }; },
+    encodeMp3: async () => { throw new Error('should not encode'); },
+  };
+  const out = await convertChunk(fakeMp3Bytes, 'wav', deps);
+  assert.equal(out.ext, 'wav');
+  assert.equal(decoded, 1);
+  assert.equal(out.bytes.byteLength, 44 + 4);
+});
+
+test('convertChunk wav to wav is unchanged', async () => {
+  const deps = {
+    decode: async () => { throw new Error('should not decode'); },
+    encodeMp3: async () => { throw new Error('should not encode'); },
+  };
+  const out = await convertChunk(fakeWavBytes, 'wav', deps);
+  assert.equal(out.ext, 'wav');
+  assert.equal(out.bytes, fakeWavBytes);
+});
+
+test('convertChunk surfaces a throwing decode message', async () => {
+  const deps = {
+    decode: async () => { throw new Error('decode boom'); },
+    encodeMp3: async () => { throw new Error('should not encode'); },
+  };
+  await assert.rejects(() => convertChunk(fakeMp3Bytes, 'wav', deps), /decode boom/);
+});

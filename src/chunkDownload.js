@@ -1,4 +1,5 @@
-import { audioMime, pcmToWav } from './audioFormat.js';
+import { audioMime, pcmToWav, PCM_DEFAULT_RATE } from './audioFormat.js';
+import { pcmToInt16Channels, wavToInt16 } from './mp3Encoder.js';
 
 export function chunkFileName(index, total, ext) {
   const width = Math.max(3, String(total).length);
@@ -55,4 +56,27 @@ export function encodeWav(float32Channels, sampleRate) {
     }
   }
   return out;
+}
+
+export async function convertChunk(bytes, format, deps) {
+  const kind = audioKind(bytes);
+  if (format === 'mp3') {
+    if (kind === 'mp3') return { bytes, ext: 'mp3' };
+    if (kind === 'pcm') {
+      const int16 = pcmToInt16Channels(bytes);
+      return { bytes: await deps.encodeMp3(int16, PCM_DEFAULT_RATE), ext: 'mp3' };
+    }
+    if (kind === 'wav') {
+      const { channels, sampleRate } = wavToInt16(bytes);
+      return { bytes: await deps.encodeMp3(channels, sampleRate), ext: 'mp3' };
+    }
+  } else if (format === 'wav') {
+    if (kind === 'wav') return { bytes, ext: 'wav' };
+    if (kind === 'pcm') return { bytes: toWavBytes(bytes, 'pcm'), ext: 'wav' };
+    if (kind === 'mp3') {
+      const decoded = await deps.decode(bytes);
+      return { bytes: encodeWav(decoded.channels, decoded.sampleRate), ext: 'wav' };
+    }
+  }
+  throw new Error('Unsupported download format: ' + format);
 }

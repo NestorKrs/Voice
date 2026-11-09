@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.61-alpha - 2026-11-09
+- Chunk download can now encode MP3 in the browser from PCM/WAV (lazy lamejs import), and one shared convertChunk handles every format pair.
+
 ## 0.1.60-alpha - 2026-11-09
 - Reader: each chunk row's Play button is now a Download icon button; Settings chooses MP3 or WAV, and WAV is decoded from MP3 in the browser when needed.
 
