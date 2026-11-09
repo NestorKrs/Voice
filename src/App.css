@@ -18,6 +18,8 @@
 .reason, .notice { color: var(--muted); font-size: 12px; }
 .privacy { color: var(--muted); font-size: 11px; }
 .chunk-list { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; }
+.reader-actions { flex: none; display: flex; gap: 8px; }
+.reader-actions button { flex: 1; }
 .chunk-row { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px solid var(--line); border-left-width: 3px; border-radius: 6px; background: var(--bg); transition: border-color var(--ease); }
 .chunk-row.ready { border-left-color: #3f8f6a; }
 .chunk-row.generating { border-left-color: #c9ad5b; }

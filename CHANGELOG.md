@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.64-alpha - 2026-11-09
+- Reader panel: the two download buttons moved to the bottom of the panel, are always visible, and are renamed "Download all chunks" and "Download all joined".
+
 ## 0.1.63-alpha - 2026-11-09
 - Job panel: download the whole text as one joined audio file (MP3 concatenated or encoded, WAV streamed); the save dialog opens first and the status bar shows progress.
 
