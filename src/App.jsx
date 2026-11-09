@@ -3,6 +3,7 @@ import { APP_VERSION } from './version.js';
 import { loadSettings, saveSettings, loadText, saveText, hasKey, saveKey, clearKey } from './settingsStore.js';
 import { computeStats } from './textStats.js';
 import { chunkText } from './textPipeline.js';
+import { selectionReadState } from './selectionSpeech.js';
 import { findMatches, nextIndex } from './textFind.js';
 import { scrollTextareaToIndex } from './textScroll.js';
 import { highlightRange, charWeights, charAtFraction } from './highlight.js';
@@ -12,7 +13,7 @@ import { createPlayerEngine } from './playerEngine.js';
 import { newlyReady, readyFlags, playheadToSend } from './followPlayback.js';
 import { RATES, activeRowIndex } from './playerCore.js';
 import { allProviders, loadCustomProviders, getProvider, providerLabel } from './providers.js';
-import { PCM_DEFAULT_RATE, PCM_DEFAULT_CHANNELS } from './audioFormat.js';
+import { PCM_DEFAULT_RATE, PCM_DEFAULT_CHANNELS, audioMime } from './audioFormat.js';
 import { chunkFileName, audioKind, convertChunk } from './chunkDownload.js';
 import { createMp3Encoder, encodeMp3, pcmToInt16Channels } from './mp3Encoder.js';
 import { createZip, zipChunks } from './zipStore.js';
@@ -148,6 +149,9 @@ export default function App() {
   const [textZoom, setTextZoom] = useState(100);
   const [textDropActive, setTextDropActive] = useState(false);
   const [selectedChars, setSelectedChars] = useState(0);
+  const [selIcon, setSelIcon] = useState(null);
+  const [selBusy, setSelBusy] = useState(false);
+  const selAudioRef = useRef(null);
   const [findQuery, setFindQuery] = useState('');
   const [findIndex, setFindIndex] = useState(-1);
   const [chunkNotes, setChunkNotes] = useState({});
@@ -1066,6 +1070,47 @@ export default function App() {
     }
   };
 
+  const stopSelectionAudio = () => {
+    const a = selAudioRef.current;
+    if (a) { try { a.pause(); } catch {} try { a.src = ''; } catch {} }
+    selAudioRef.current = null;
+    setSelBusy(false);
+  };
+  const handleReadSelection = async () => {
+    if (selBusy) return;
+    if (selAudioRef.current) { stopSelectionAudio(); return; }
+    if (!selIcon) return;
+    const st = selectionReadState(selIcon.text, settings.chunkSize);
+    if (!st.ok) { setStatus(st.reason); logEvent(st.reason); return; }
+    setSelBusy(true);
+    try {
+      if (playerEngineRef.current) try { playerEngineRef.current.pause(); } catch {}
+      const key = services.makeKey({ text: st.text, voice: settings.voice, provider });
+      let bytes = null;
+      let hit = false;
+      try { hit = await services.cache.has(key); } catch { hit = false; }
+      if (hit) {
+        bytes = await services.cache.get(key);
+      } else {
+        const r = await services.speak({ input: st.text, voice: settings.voice, provider });
+        if (r && r.attempts) try { services.counter.add(r.attempts); } catch {}
+        if (!r || !r.ok) { setStatus(r && r.error ? r.error.message : 'Speak failed'); return; }
+        bytes = r.bytes;
+        try { await services.cache.put(key, bytes); } catch {}
+      }
+      const url = URL.createObjectURL(new Blob([bytes], { type: audioMime(bytes) }));
+      const audio = new Audio(url);
+      selAudioRef.current = audio;
+      audio.onended = () => { URL.revokeObjectURL(url); selAudioRef.current = null; setSelBusy(false); };
+      audio.onerror = () => { URL.revokeObjectURL(url); selAudioRef.current = null; setSelBusy(false); setStatus('Audio error'); };
+      await audio.play();
+      logEvent('Read selection: ' + st.text.length + ' chars, ' + (hit ? 'cache hit' : 'cache miss'));
+    } catch (e) {
+      setStatus(e && e.message ? e.message : String(e));
+    } finally {
+      setSelBusy(false);
+    }
+  };
   const panelClass = (id, extra) =>
     'panel ' + extra + (dragId === id ? ' dragging' : '') + (drop && drop.id === id ? ' drop-' + drop.side : '');
 

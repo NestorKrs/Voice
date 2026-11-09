@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.86 - 2026-11-09
+- Selection speaker icon groundwork: selectionReadState module and tests; App state and handler.
+
 ## 0.1.85-alpha - 2026-11-09
 - Reader panel: the Download card sits closer to the panel edges with tighter padding, and its label is "Download".
 
