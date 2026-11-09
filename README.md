@@ -10,7 +10,7 @@ Features:
 - Chunked reading with the next chunks made ahead.
 - Audio cache in the browser (IndexedDB), so a chunk is never requested twice.
 - Player with play, pause, stop, previous, next, seek, speed and volume.
-- The playing chunk is highlighted (word or sentence, switchable in Settings; word timing is weighted so it lingers on pauses).
+- The playing chunk is highlighted (word or sentence, switchable in Settings); the highlight follows the real pauses in the audio, found by decoding the chunk and aligning its punctuation breaks to those pauses, and falls back to the old estimate when that fails.
 - Select any text and a speaker icon reads just that selection aloud (cached like a chunk).
 - A daily request limit setting (50 or 1000).
 - A font weight slider (100-800) using the variable font.
