@@ -175,6 +175,15 @@
     background: var(--bg);
 }
 
+/* Fullscreen shows only the text itself: hide the panel chrome and controls. */
+.app.text-fullscreen-mode .text-panel .panel-head,
+.app.text-fullscreen-mode .text-panel .find-row,
+.app.text-fullscreen-mode .text-panel .stats,
+.app.text-fullscreen-mode .text-panel .row,
+.app.text-fullscreen-mode .text-panel .reason {
+    display: none;
+}
+
 .app.text-fullscreen-mode .sel-speaker {
     z-index: 101;
 }

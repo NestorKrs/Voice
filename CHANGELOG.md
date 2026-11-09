@@ -1,3 +1,6 @@
+## 0.1.104-alpha - 2026-11-09
+- Text fullscreen: only the textarea stays visible (the reading view while playing); the panel title, find row, stats, buttons and reason are hidden.
+
 ## 0.1.103-alpha - 2026-11-09
 - Text fullscreen: a toggle button next to Clear, the Ctrl+Shift+Space handler listens in the capture phase and also accepts event.code Space, and the status bar log shows 'Text fullscreen on/off'.
 
