@@ -1,3 +1,6 @@
+## 0.1.96-alpha - 2026-11-09
+- Highlight map: retry failed maps and log the real reason.
+
 # Changelog
 
 ## 0.1.95 - 2026-11-09

@@ -114,6 +114,7 @@ const WORD_LEAD_SECONDS = 0.12;
 // A chunk with a silence map already follows the real voice, so its highlight
 // gets no sentence delay and no word lead. Kept as a constant so it can be tuned.
 const MAP_WORD_LEAD = 0;
+const MAP_MAX_TRIES = 2;
 
 // Decoded audio arrives as one Float32Array per channel; findSilences wants mono.
 function mixToMono(channels) {
@@ -498,6 +499,10 @@ export default function App() {
     stopSelectionAudio();
     logEvent(`Jump to chunk ${index + 1} pressed`);
     if (playerEngineRef.current) playerEngineRef.current.jump(index);
+    const entry = mapRef.current.get(index);
+    if (entry && entry.state === 'fallback' && (entry.tries || 0) < MAP_MAX_TRIES) {
+      mapRef.current.delete(index);
+    }
   };
 
   const handleSaveKey = () => {
@@ -1226,8 +1231,16 @@ export default function App() {
     }
   };
   const buildChunkMap = async (index) => {
-    if (mapRef.current.has(index)) return;
-    mapRef.current.set(index, { state: 'building' });
+    const existing = mapRef.current.get(index);
+    if (existing && (existing.state !== 'fallback' || (existing.tries || 1) >= MAP_MAX_TRIES)) {
+      if (existing.state === 'fallback' && (existing.tries || 1) >= MAP_MAX_TRIES && !existing.gaveUp) {
+        mapRef.current.set(index, { ...existing, gaveUp: true });
+        logEvent('Highlight map chunk ' + (index + 1) + ': giving up after ' + MAP_MAX_TRIES + ' tries');
+      }
+      return;
+    }
+    const tries = existing ? (existing.tries || 1) + 1 : 1;
+    mapRef.current.set(index, { state: 'building', tries });
     const data = playerDataRef.current;
     const chunk = data.chunks[index];
     if (chunk == null) { mapRef.current.delete(index); return; }
@@ -1244,12 +1257,13 @@ export default function App() {
         mapRef.current.set(index, { state: 'ok', timeToIndex: result.timeToIndex, mapDuration: silence.duration });
         logEvent('Highlight map chunk ' + (index + 1) + ': aligned ' + result.anchors + ' of ' + result.breaks + ' breaks, ' + result.silences + ' pauses');
       } else {
-        mapRef.current.set(index, { state: 'fallback' });
-        logEvent('Highlight map chunk ' + (index + 1) + ': estimated (' + result.reason + ')');
+        mapRef.current.set(index, { state: 'fallback', tries });
+        logEvent('Highlight map chunk ' + (index + 1) + ': estimated (' + result.reason + '), try ' + tries);
       }
     } catch (e) {
-      mapRef.current.set(index, { state: 'fallback' });
-      logEvent(`Highlight map chunk ${index + 1}: estimated (${e && e.message ? e.message : 'error'})`);
+      const reason = (e && e.message ? e.message : 'unknown error').slice(0, 80);
+      mapRef.current.set(index, { state: 'fallback', tries });
+      logEvent('Highlight map chunk ' + (index + 1) + ': estimated (' + reason + '), try ' + tries);
     }
   };
   const panelClass = (id, extra) =>
