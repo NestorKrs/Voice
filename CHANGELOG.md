@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.87 - 2026-11-09
+- Selection speaker icon now works: appears after a selection, reads it aloud, stops on a second press, hides on outside mousedown, Esc, scroll and text/provider/voice changes, and yields to main playback.
+
 ## 0.1.86 - 2026-11-09
 - Selection speaker icon groundwork: selectionReadState module and tests; App state and handler.
 

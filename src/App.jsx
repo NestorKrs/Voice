@@ -69,7 +69,7 @@ const WORD_LEAD_SECONDS = 0.12;
 // Read-only view of the chunk being read. It polls the player engine with
 // requestAnimationFrame because the engine emits position updates only about
 // 4 times a second, which made the word highlight lag the voice.
-function TextReadView({ chunk, mode, engineRef, textZoom, onZoom, onSelectText }) {
+function TextReadView({ chunk, mode, engineRef, textZoom, onZoom, onSelectText, onSelectIcon }) {
   const [hlRange, setHlRange] = useState(null);
   const hlRef = useRef(null);
   const selectingRef = useRef(false);
@@ -103,15 +103,22 @@ function TextReadView({ chunk, mode, engineRef, textZoom, onZoom, onSelectText }
     if (hlRef.current) hlRef.current.scrollIntoView({ block: 'nearest' });
   }, [hlRange]);
   useEffect(() => {
-    const onUp = () => {
+    const onUp = (ev) => {
       if (!selectingRef.current) return;
       selectingRef.current = false;
-      const sel = window.getSelection();
-      onSelectText(sel ? sel.toString().length : 0);
+      const x = ev.clientX;
+      const y = ev.clientY;
+      setTimeout(() => {
+        const sel = window.getSelection().toString();
+        if (!sel) { onSelectIcon(null); return; }
+        onSelectIcon({ x, y, text: sel });
+      }, 0);
+      const selNow = window.getSelection();
+      onSelectText(selNow ? selNow.toString().length : 0);
     };
     window.addEventListener('mouseup', onUp);
     return () => window.removeEventListener('mouseup', onUp);
-  }, [onSelectText]);
+  }, [onSelectText, onSelectIcon]);
   const r = hlRange || { start: 0, end: 0 };
   return (
     <div
@@ -187,6 +194,7 @@ export default function App() {
   const [order, setOrder] = useState(() => (storage ? loadOrder(storage) : [...DEFAULT_ORDER]));
   const fileInputRef = useRef(null);
   const textRef = useRef(null);
+  const textPanelRef = useRef(null);
   const findInputRef = useRef(null);
   const findLoggedRef = useRef(false);
   const [customProviders] = useState(() => (storage ? loadCustomProviders(storage) : []));
@@ -286,6 +294,8 @@ export default function App() {
       }
       setSchedState({ state: 'idle', resetAt: null, playhead: 0, chunks: [] });
       if (playerEngineRef.current) playerEngineRef.current.stop();
+      setSelIcon(null);
+      stopSelectionAudio();
       setJobError('');
       setNotice('Provider: ' + providerLabel(next) + '. Press Start Reading to continue.');
     } catch (e) {
@@ -296,6 +306,7 @@ export default function App() {
   };
 
   const handleStart = async () => {
+    stopSelectionAudio();
     logEvent('Start Reading pressed');
     setNotice('');
     if (!services) return;
@@ -358,6 +369,7 @@ export default function App() {
   };
 
   const handleResume = () => {
+    stopSelectionAudio();
     logEvent('Resume pressed');
     try {
       if (schedulerRef.current) {
@@ -406,6 +418,7 @@ export default function App() {
   };
 
   const jumpToChunk = (index) => {
+    stopSelectionAudio();
     logEvent(`Jump to chunk ${index + 1} pressed`);
     if (playerEngineRef.current) playerEngineRef.current.jump(index);
   };
@@ -484,6 +497,8 @@ export default function App() {
     logEvent('Clear pressed');
     try {
       setText('');
+      setSelIcon(null);
+      stopSelectionAudio();
       if (storage) saveText(storage, '');
     } catch (e) {
       const m = e && e.message ? e.message : 'error';
@@ -509,6 +524,8 @@ export default function App() {
       setSchedState({ state: 'idle', resetAt: null, playhead: 0, chunks: [] });
       setJobError('');
       if (playerEngineRef.current) playerEngineRef.current.reset();
+      setSelIcon(null);
+      stopSelectionAudio();
       if (services) {
         services.cache.clear()
           .then(() => services.cache.totalBytes())
@@ -528,7 +545,7 @@ export default function App() {
     const file = e && e.target && e.target.files && e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => { setText(String(reader.result || '')); };
+    reader.onload = () => { setText(String(reader.result || '')); setSelIcon(null); stopSelectionAudio(); };
     reader.readAsText(file);
     e.target.value = '';
   };
@@ -609,7 +626,16 @@ export default function App() {
   }, [chunks.length]);
   useEffect(() => {
     if (playerEngineRef.current) playerEngineRef.current.reset();
+    setSelIcon(null);
+    stopSelectionAudio();
   }, [provider.id, settings.voice, settings.chunkSize]);
+  useEffect(() => {
+    const panel = textPanelRef.current;
+    if (!panel) return undefined;
+    const onScroll = () => setSelIcon(null);
+    panel.addEventListener('scroll', onScroll, true);
+    return () => panel.removeEventListener('scroll', onScroll, true);
+  }, []);
   useEffect(() => {
     const sched = schedulerRef.current;
     if (!sched) return;
@@ -1078,8 +1104,10 @@ export default function App() {
   };
   const handleReadSelection = async () => {
     if (selBusy) return;
+    setSelIcon(null);
     if (selAudioRef.current) { stopSelectionAudio(); return; }
     if (!selIcon) return;
+    const startedAt = Date.now();
     const st = selectionReadState(selIcon.text, settings.chunkSize);
     if (!st.ok) { setStatus(st.reason); logEvent(st.reason); return; }
     setSelBusy(true);
@@ -1104,7 +1132,7 @@ export default function App() {
       audio.onended = () => { URL.revokeObjectURL(url); selAudioRef.current = null; setSelBusy(false); };
       audio.onerror = () => { URL.revokeObjectURL(url); selAudioRef.current = null; setSelBusy(false); setStatus('Audio error'); };
       await audio.play();
-      logEvent('Read selection: ' + st.text.length + ' chars, ' + (hit ? 'cache hit' : 'cache miss'));
+      logEvent('Read selection: ' + st.text.length + ' chars, ' + (hit ? 'cache hit' : 'cache miss') + ', ' + (Date.now() - startedAt) + ' ms');
     } catch (e) {
       setStatus(e && e.message ? e.message : String(e));
     } finally {
@@ -1142,7 +1170,7 @@ export default function App() {
   const readChunk = reading && chunks[playerState.index] ? chunks[playerState.index] : '';
 
   return (
-    <div className="app" onClick={(e) => { if (drawerOpen && !e.target.closest('.drawer') && !e.target.closest('.settings-btn')) { handleSaveSettings(); setDrawerOpen(false); } }}>
+    <div className="app" onClick={(e) => { if (drawerOpen && !e.target.closest('.drawer') && !e.target.closest('.settings-btn')) { handleSaveSettings(); setDrawerOpen(false); } }} onMouseDown={(e) => { if (selIcon && !e.target.closest('.sel-speaker')) setSelIcon(null); }} onKeyDown={(e) => { if (e.key === 'Escape') setSelIcon(null); }}>
       <header className="topbar">
         <span className="title">Voice</span>
         <span className="version">v{APP_VERSION}</span>
@@ -1155,8 +1183,20 @@ export default function App() {
         </span>
         <button className="settings-btn" onClick={() => setDrawerOpen((o) => !o)} title="Settings"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.03 7.03 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 14 2h-4a.5.5 0 0 0-.49.42l-.36 2.54c-.58.23-1.12.54-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.62 8.48a.5.5 0 0 0 .12.64l2.03 1.58c-.04.3-.06.62-.06.94s.02.64.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.43.34.69.24l2.39-.96c.5.39 1.05.71 1.63.94l.36 2.54c.05.23.25.4.49.4h4c.24 0 .44-.17.49-.4l.36-2.54c.58-.23 1.12-.54 1.63-.94l2.39.96c.26.1.55 0 .69-.24l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg></button>
       </header>
+      {selIcon ? (() => {
+        const st = selectionReadState(selIcon.text, settings.chunkSize);
+        const playing = !!selAudioRef.current;
+        const title = !st.ok ? st.reason : (selBusy ? 'Generating...' : (playing ? 'Stop' : 'Read selection'));
+        const left = Math.max(0, Math.min(selIcon.x + 8, window.innerWidth - 40));
+        const top = Math.max(0, Math.min(selIcon.y + 12, window.innerHeight - 40));
+        return (
+          <button type="button" className="sel-speaker" style={{ left: left, top: top }} title={title} disabled={!st.ok} onMouseDown={(e) => e.preventDefault()} onClick={handleReadSelection}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
+          </button>
+        );
+      })() : null}
       <div className={'columns' + (resizing ? ' resizing' : '')} ref={columnsRef} style={{ gridTemplateColumns: columnsTemplate(shown) }}>
-        <section className={panelClass('text', 'text-panel')} style={{ gridColumn: order.indexOf('text') * 2 + 1, gridRow: 1 }} onDragOver={onPanelDragOver('text')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('text')}>
+        <section className={panelClass('text', 'text-panel')} ref={textPanelRef} style={{ gridColumn: order.indexOf('text') * 2 + 1, gridRow: 1 }} onDragOver={onPanelDragOver('text')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('text')}>
           <div className="panel-head">
             <span className="grip" role="button" tabIndex={0} draggable="true" title="Drag to move this panel. Keyboard: Alt+Left or Alt+Right." aria-label="Move the Text panel" onDragStart={onGripDragStart('text')} onDragEnd={onGripDragEnd} onKeyDown={onGripKeyDown('text')} />
             <span className="panel-title">Text</span>
@@ -1180,9 +1220,9 @@ export default function App() {
             {findQuery ? <button type="button" className="find-clear" onClick={handleFindClear} disabled={reading} title="Clear find query" aria-label="Clear find query">×</button> : null}
             {reading ? <span className="find-reason">Find works when reading is stopped</span> : null}
           </div>
-          <textarea ref={textRef} value={text} spellCheck={settings.spellCheck} onChange={(e) => { setText(e.target.value); setSelectedChars(0); }} onSelect={(e) => { const s = e.target.selectionStart; const t = e.target.selectionEnd; setSelectedChars(t > s ? t - s : 0); }} style={{ fontSize: `${textZoom}%`, display: reading ? 'none' : undefined }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} className={textDropActive ? 'drop-active' : ''} />
+          <textarea ref={textRef} value={text} spellCheck={settings.spellCheck} onChange={(e) => { setText(e.target.value); setSelectedChars(0); }} onSelect={(e) => { const s = e.target.selectionStart; const t = e.target.selectionEnd; setSelectedChars(t > s ? t - s : 0); }} onMouseUp={(e) => { const x = e.clientX; const y = e.clientY; setTimeout(() => { const ta = e.target; const s = ta.selectionStart; const t = ta.selectionEnd; const sel = t > s ? ta.value.slice(s, t) : ''; if (!sel) { setSelIcon(null); return; } setSelIcon({ x, y, text: sel }); }, 0); }} style={{ fontSize: `${textZoom}%`, display: reading ? 'none' : undefined }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} className={textDropActive ? 'drop-active' : ''} />
           {reading ? (
-            <TextReadView chunk={readChunk} mode={settings.highlightMode} engineRef={playerEngineRef} textZoom={textZoom} onZoom={setTextZoom} onSelectText={setSelectedChars} />
+            <TextReadView chunk={readChunk} mode={settings.highlightMode} engineRef={playerEngineRef} textZoom={textZoom} onZoom={setTextZoom} onSelectText={setSelectedChars} onSelectIcon={setSelIcon} />
           ) : null}
           <div className="stats" style={{ justifyContent: 'flex-end' }}>
             <span>{plural(stats.characters, 'character')}</span>
@@ -1258,12 +1298,12 @@ export default function App() {
         <div className="col-handle" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Resize the middle and right panels" title="Drag to resize. Keyboard: Left or Right arrow, Shift for bigger steps." style={{ gridColumn: 4, gridRow: 1 }} onPointerDown={onHandlePointerDown(1)} onPointerMove={onHandlePointerMove} onPointerUp={onHandlePointerUp} onPointerCancel={onHandlePointerUp} onKeyDown={onHandleKeyDown(1)} />
       </div>
       <footer className="playerbar">
-        <button onClick={() => playerEngineRef.current && playerEngineRef.current.prev()} disabled={!playerState.total || playerState.index === 0}><svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M6 6h2v12H6zM9.5 12l8.5 6V6z'/></svg></button>
+        <button onClick={() => { stopSelectionAudio(); playerEngineRef.current && playerEngineRef.current.prev(); }} disabled={!playerState.total || playerState.index === 0}><svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M6 6h2v12H6zM9.5 12l8.5 6V6z'/></svg></button>
         {playerState.status === 'playing'
           ? <button className="play-primary play-active" onClick={() => playerEngineRef.current && playerEngineRef.current.pause()}><svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M6 5h4v14H6zM14 5h4v14h-4z'/></svg></button>
-          : <button className="play-primary" onClick={() => { if (audioRef.current) { audioRef.current.pause(); if (audioUrl) { URL.revokeObjectURL(audioUrl); setAudioUrl(null); } } if (playerEngineRef.current) playerEngineRef.current.play(); }} disabled={!playerState.total}><svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M8 5v14l11-7z'/></svg></button>}
+          : <button className="play-primary" onClick={() => { stopSelectionAudio(); if (audioRef.current) { audioRef.current.pause(); if (audioUrl) { URL.revokeObjectURL(audioUrl); setAudioUrl(null); } } if (playerEngineRef.current) playerEngineRef.current.play(); }} disabled={!playerState.total}><svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M8 5v14l11-7z'/></svg></button>}
         <button onClick={() => playerEngineRef.current && playerEngineRef.current.stop()} disabled={!playerState.total}><svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M6 6h12v12H6z'/></svg></button>
-        <button onClick={() => playerEngineRef.current && playerEngineRef.current.next()} disabled={!playerState.total || playerState.index >= playerState.total - 1}><svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M6 6l8.5 6L6 18zM16 6h2v12h-2z'/></svg></button>
+        <button onClick={() => { stopSelectionAudio(); playerEngineRef.current && playerEngineRef.current.next(); }} disabled={!playerState.total || playerState.index >= playerState.total - 1}><svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M6 6l8.5 6L6 18zM16 6h2v12h-2z'/></svg></button>
         <input className="seek" type="range" min="0" max={playerState.duration || 0} step="any" value={Math.min(playerState.position, playerState.duration || 0)} onChange={(e) => playerEngineRef.current && playerEngineRef.current.seek(Number(e.target.value))} disabled={!playerState.duration} aria-label="Seek" />
         <input type="range" min="0" max="1" step="0.01" value={playerState.volume} onChange={(e) => playerEngineRef.current && playerEngineRef.current.setVolume(Number(e.target.value))} aria-label="Volume" />
 <span className="now rate-label">{Math.round(playerState.volume * 100)}%</span>
