@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.94 - 2026-11-09
+- Added src/alignMap.js: alignTimeMap matches the punctuation breaks of a chunk text to the real pauses in its audio by dynamic programming (skippable breaks, long-pause bonus), so one wrong pause no longer shifts every later break.
+
 ## 0.1.93 - 2026-11-09
 - Highlight map is now triggered by the player (reading + chunk index + status) instead of the scheduler playhead effect, so every playing chunk gets a map; a chunk with no cached audio yet logs "no cached audio yet (estimated)".
 

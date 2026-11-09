@@ -1,9 +1,10 @@
 # Backup log
 
-Counter: 44 (merged behavior changes since the last backup)
+Counter: 1 (merged behavior changes since the last backup)
 
 | Date | Version | Label | Changes since previous backup |
 | --- | --- | --- | --- |
+| 2026-11-09 | 0.1.93-alpha | highlight-map | backup made |
 | 2026-11-08 | 0.1.49-alpha | v0.1.49-alpha | backup made |
 | 2026-11-06 | 0.1.13-alpha | v0.1.13-alpha | backup |
 | 2026-11-05 | 0.1.10-alpha | v0.1.10-alpha | Cache read path fix |
