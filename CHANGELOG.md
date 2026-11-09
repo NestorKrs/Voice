@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.63-alpha - 2026-11-09
+- Job panel: download the whole text as one joined audio file (MP3 concatenated or encoded, WAV streamed); the save dialog opens first and the status bar shows progress.
+
 ## 0.1.62-alpha - 2026-11-09
 - Job panel: download the ready chunks as one ZIP (stored, no compression); the save dialog opens first, chunks with no audio are skipped and logged.
 

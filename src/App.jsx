@@ -10,9 +10,11 @@ import { createPlayerEngine } from './playerEngine.js';
 import { newlyReady, readyFlags, playheadToSend } from './followPlayback.js';
 import { RATES, activeRowIndex } from './playerCore.js';
 import { allProviders, loadCustomProviders, getProvider, providerLabel } from './providers.js';
+import { PCM_DEFAULT_RATE, PCM_DEFAULT_CHANNELS } from './audioFormat.js';
 import { chunkFileName, audioKind, convertChunk } from './chunkDownload.js';
-import { encodeMp3 } from './mp3Encoder.js';
+import { createMp3Encoder, encodeMp3, pcmToInt16Channels } from './mp3Encoder.js';
 import { createZip, zipChunks } from './zipStore.js';
+import { stripId3, wavHeader, wavParts, joinMode, sameAs } from './joinAudio.js';
 import { DEFAULT_ORDER, movePanel, stepPanel, loadOrder, saveOrder, resetOrder } from './panelLayout.js';
 import { DEFAULT_WIDTHS, clampWidths, usableWidth, resizeFromHandle, columnsTemplate, loadWidths, saveWidths, resetWidths } from './panelWidths.js';
 
@@ -131,6 +133,7 @@ export default function App() {
   const [selectedChars, setSelectedChars] = useState(0);
   const [chunkNotes, setChunkNotes] = useState({});
   const [zipRunning, setZipRunning] = useState(false);
+  const [joinedRunning, setJoinedRunning] = useState(false);
 
   useEffect(() => {
     const preventBrowserZoom = (e) => { if (e.ctrlKey) e.preventDefault(); };
@@ -725,6 +728,8 @@ export default function App() {
     }
   };
 
+  const convertDeps = { decode: decodeChunk, encodeMp3 };
+
   const handleDownloadChunk = async (index) => {
     const n = index + 1;
     const fail = (msg) => {
@@ -742,7 +747,7 @@ export default function App() {
       }
       const format = settings.downloadFormat === 'wav' ? 'wav' : 'mp3';
       if (format === 'mp3' && audioKind(bytes) !== 'mp3') logEvent('Encoding MP3...');
-      const { bytes: out } = await convertChunk(bytes, format, { decode: decodeChunk, encodeMp3 });
+      const { bytes: out } = await convertChunk(bytes, format, convertDeps);
       const name = chunkFileName(index, chunks.length, format);
       if (typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
         let handle = null;
@@ -822,7 +827,7 @@ export default function App() {
           const key = await services.makeKey({ text: chunks[i], voice: settings.voice, provider });
           const bytes = await services.cache.get(key);
           if (!bytes) { skipped.push(i + 1); continue; }
-          const { bytes: out, ext } = await convertChunk(bytes, format, { decode: decodeChunk, encodeMp3 });
+          const { bytes: out, ext } = await convertChunk(bytes, format, convertDeps);
           files.push({ name: chunkFileName(i, chunks.length, ext), bytes: out });
         } catch (e) {
           const m = e && e.message ? e.message : 'error';
@@ -861,6 +866,122 @@ export default function App() {
     }
   };
 
+  const handleDownloadJoined = async () => {
+    if (zipRunning || joinedRunning) return;
+    setJoinedRunning(true);
+    let writable = null;
+    let parts = null;
+    try {
+      const format = settings.downloadFormat === 'wav' ? 'wav' : 'mp3';
+      const name = `voice-joined.${format}`;
+      if (typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
+        try {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: name,
+            types: [{ description: format.toUpperCase() + ' audio', accept: { [format === 'mp3' ? 'audio/mpeg' : 'audio/wav']: ['.' + format] } }],
+          });
+          writable = await handle.createWritable();
+        } catch (e) {
+          if (e && e.name === 'AbortError') { logEvent('Download cancelled'); return; }
+          throw e;
+        }
+      } else {
+        parts = [];
+        logEvent('Save dialog not available here; the whole file is built in memory');
+      }
+      const bytes0 = await services.cache.get(await services.makeKey({ text: chunks[0], voice: settings.voice, provider }));
+      if (!bytes0) throw new Error('Chunk 1 has no audio in the cache.');
+      const kind0 = audioKind(bytes0);
+      let sampleRate0 = null;
+      let channels0 = null;
+      if (kind0 === 'wav') { const p = wavParts(bytes0); sampleRate0 = p.sampleRate; channels0 = p.channels; }
+      else if (kind0 === 'pcm') { sampleRate0 = PCM_DEFAULT_RATE; channels0 = PCM_DEFAULT_CHANNELS; }
+      const first = { kind: kind0, sampleRate: sampleRate0, channels: channels0 };
+      const mode = joinMode(kind0, format);
+      let perChunk = bytes0.length;
+      if (mode === 'wav-stream') perChunk = wavParts(bytes0).data.length;
+      else if (mode === 'mp3-encode') {
+        const dataBytes = kind0 === 'wav' ? wavParts(bytes0).data.length : bytes0.length;
+        perChunk = (dataBytes / (sampleRate0 * channels0 * 2)) * 16 * 1024;
+      }
+      logEvent(`Joined file: about ${Math.max(0, Math.round((perChunk * chunks.length) / 1024 / 1024))} MB`);
+      let encoder = null;
+      if (mode === 'mp3-encode') encoder = await createMp3Encoder(channels0, sampleRate0);
+      let totalBytes = 0;
+      if (writable && mode === 'wav-stream') await writable.write(new Uint8Array(44));
+      for (let i = 0; i < chunks.length; i += 1) {
+        let bytes = bytes0;
+        if (i > 0) {
+          const key = await services.makeKey({ text: chunks[i], voice: settings.voice, provider });
+          bytes = await services.cache.get(key);
+          if (!bytes) throw new Error(`Chunk ${i + 1} has no audio in the cache.`);
+          const kind = audioKind(bytes);
+          let sampleRate = null;
+          let channels = null;
+          if (kind === 'wav') { const p = wavParts(bytes); sampleRate = p.sampleRate; channels = p.channels; }
+          else if (kind === 'pcm') { sampleRate = PCM_DEFAULT_RATE; channels = PCM_DEFAULT_CHANNELS; }
+          sameAs(first, { kind, sampleRate, channels }, i + 1);
+        }
+        try {
+          if (mode === 'mp3-concat') {
+            const out = i === 0 ? bytes : stripId3(bytes);
+            if (writable) await writable.write(out); else parts.push(out);
+            totalBytes += out.length;
+          } else if (mode === 'wav-stream') {
+            const wav = (await convertChunk(bytes, 'wav', convertDeps)).bytes;
+            const p = wavParts(wav);
+            if (writable) await writable.write(p.data); else parts.push(p.data);
+            totalBytes += p.data.length;
+          } else {
+            const wav = (await convertChunk(bytes, 'wav', convertDeps)).bytes;
+            const p = wavParts(wav);
+            const enc = encoder.encode(pcmToInt16Channels(p.data, p.channels));
+            if (writable) await writable.write(enc); else parts.push(enc);
+            totalBytes += enc.length;
+          }
+        } catch (e) {
+          const m = e && e.message ? e.message : 'error';
+          throw new Error(`Chunk ${i + 1}: ${m}`);
+        }
+        if ((i + 1) % 5 === 0) logEvent(`Joined: ${i + 1} of ${chunks.length}`);
+      }
+      if (mode === 'mp3-encode') {
+        const tail = encoder.flush();
+        if (writable) await writable.write(tail); else parts.push(tail);
+        totalBytes += tail.length;
+      }
+      if (mode === 'wav-stream') {
+        const header = wavHeader(totalBytes, first.channels, first.sampleRate);
+        if (writable) {
+          await writable.write({ type: 'seek', position: 0 });
+          await writable.write(header);
+        } else {
+          parts.unshift(header);
+        }
+      }
+      if (writable) {
+        await writable.close();
+      } else {
+        const blob = new Blob(parts, { type: format === 'mp3' ? 'audio/mpeg' : 'audio/wav' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      logEvent(`Joined file saved: ${Math.max(0, Math.round(totalBytes / 1024 / 1024))} MB`);
+    } catch (e) {
+      const m = e && e.message ? e.message : 'error';
+      if (writable) { try { await writable.abort(); } catch { } }
+      logEvent(m);
+    } finally {
+      setJoinedRunning(false);
+    }
+  };
+
   const panelClass = (id, extra) =>
     'panel ' + extra + (dragId === id ? ' dragging' : '') + (drop && drop.id === id ? ' drop-' + drop.side : '');
 
@@ -875,6 +996,12 @@ export default function App() {
   }[schedState.state] || 'Idle';
   const jobLive = schedState.chunks.length > 0;
   const readyCount = schedState.chunks.filter((c) => c.status === 'ready').length;
+  const notReadyChunks = [];
+  for (let i = 0; i < chunks.length; i += 1) {
+    if (!(schedState.chunks[i] && schedState.chunks[i].status === 'ready')) notReadyChunks.push(i + 1);
+  }
+  const allChunksReady = notReadyChunks.length === 0;
+  const notReadyTitle = 'Chunks ' + notReadyChunks.slice(0, 5).join(', ') + (notReadyChunks.length > 5 ? ' and ' + (notReadyChunks.length - 5) + ' more' : '') + ' are not ready yet.';
   const canPause = jobLive && (schedState.state === 'generating' || schedState.state === 'idle');
   const canResume = ['paused', 'cancelled', 'waiting_reset', 'error'].includes(schedState.state);
   const canCancel = jobLive && ['generating', 'idle', 'paused'].includes(schedState.state);
@@ -969,7 +1096,8 @@ export default function App() {
           <div className="row">
             <button className={'job-toggle' + (schedState.state === 'paused' ? ' is-paused' : '')} onClick={canResume ? handleResume : handlePause} disabled={!canPause && !canResume} title={canResume ? resumeReason : pauseReason}>{canResume ? 'Resume' : 'Pause'}</button>
             <button onClick={handleCancel} disabled={!canCancel} title={cancelReason}>Cancel</button>
-            <button onClick={handleDownloadZip} disabled={zipRunning || readyCount === 0} title={zipRunning ? 'ZIP is being prepared.' : readyCount === 0 ? 'No chunk has audio in the cache yet.' : 'Download the ready chunks as one ZIP.'}>Download ready chunks (ZIP) - {readyCount} of {chunks.length}</button>
+            <button onClick={handleDownloadZip} disabled={zipRunning || joinedRunning || readyCount === 0} title={zipRunning || joinedRunning ? 'A download is being prepared.' : readyCount === 0 ? 'No chunk has audio in the cache yet.' : 'Download the ready chunks as one ZIP.'}>Download ready chunks (ZIP) - {readyCount} of {chunks.length}</button>
+            <button onClick={handleDownloadJoined} disabled={zipRunning || joinedRunning || !allChunksReady} title={zipRunning || joinedRunning ? 'A download is being prepared.' : allChunksReady ? 'Download the whole text as one joined audio file.' : notReadyTitle}>Download joined file</button>
           </div>
           {selectedChars > 0 ? <div style={{ marginTop: 'auto' }}>Selected: {plural(selectedChars, 'character')}</div> : null}
         </section>
