@@ -1381,7 +1381,7 @@ export default function App() {
               const err = schedState.chunks[i] ? schedState.chunks[i].error : null;
               return (
                 <div key={i} className={`chunk-row ${st} ${i === activeRowIndex(playerState) ? "playing" : ""}`} aria-current={i === activeRowIndex(playerState) ? "true" : undefined} onClick={() => jumpToChunk(i)} style={{ cursor: 'pointer' }} title="Jump to this chunk">
-                  <div className="chunk-bar"><div className={`chunk-bar-fill ${st === 'generating' ? 'generating' : ''}`} style={{ width: (st === 'queued' ? 0 : (st === 'playing' && i === activeRowIndex(playerState) ? Math.min(100, Math.max(0, playerState.duration ? playerState.position / playerState.duration * 100 : 0)) : 100)) + '%', opacity: (st === 'ready' || st === 'played') ? 0.4 : 1, background: st === 'failed' ? 'var(--danger)' : undefined }} /></div>
+                  <div className="chunk-bar"><div className={`chunk-bar-fill ${st === 'generating' ? 'generating' : ''}`} style={{ width: (st === 'queued' ? 0 : (st === 'generating' ? 0 : (st === 'playing' && i === activeRowIndex(playerState) ? Math.min(100, Math.max(0, playerState.duration ? playerState.position / playerState.duration * 100 : 0)) : 100))) + '%', opacity: (st === 'ready' || st === 'played') ? 0.4 : 1, background: st === 'failed' ? 'var(--danger)' : undefined }} /></div>
                   <div className="chunk-head">
                     <span className={`badge ${st}`}>{st}</span>
                     <span className="chunk-num">#{i + 1}</span>
@@ -1411,8 +1411,8 @@ export default function App() {
           </div>
           {(jobError || noteState) ? (
             <div className={'job-note' + (jobError || schedState.state === 'error' ? ' job-note-error' : '')}>
-              {jobError ? <span>{jobError}</span> : <span>{stateWord}{schedState.state === 'waiting_reset' ? ' - ' + new Date(schedState.resetAt).toLocaleString() : ''}{schedState.state === 'error' && firstChunkError ? ' - ' + firstChunkError : ''}</span>}
-              {canResume ? <button disabled={!canResume} title={resumeReason} onClick={handleResume}>Resume</button> : null}
+              {jobError ? <span>{jobError}</span> : <span>{schedState.state === 'cancelled' ? 'CANCELLED' : 'PAUSED (chunk #' + (schedState.chunks.findIndex((c) => c && c.status !== 'ready') + 1 || playerState.index + 1) + ')'}{schedState.state === 'waiting_reset' ? ' - ' + new Date(schedState.resetAt).toLocaleString() : ''}{schedState.state === 'error' && firstChunkError ? ' - ' + firstChunkError : ''}</span>}
+              {canResume ? <div className="reader-actions"><button disabled={!canResume} title={resumeReason} onClick={handleResume}>Resume</button></div> : null}
             </div>
           ) : null}
           <div className="reader-card">
