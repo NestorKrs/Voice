@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.82-alpha - 2026-11-09
+- Settings Display card: a Font leading slider next to Font weight adjusts the text panel line spacing (1.0-2.5) and is saved with the settings.
+
 ## 0.1.81-alpha - 2026-11-09
 - Text panel find: the match is selected and scrolled into the middle of the textarea while typing and on Previous/Next, and the selection uses the accent colour.
 

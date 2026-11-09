@@ -19,7 +19,7 @@ test('defaults', () => {
 test('round trip', () => {
   const s = makeStorage();
   saveSettings(s, { voice: 'v', chunkSize: 500, lookahead: 3 });
-  assert.deepEqual(loadSettings(s), { voice: 'v', provider: 'fish', voices: { fish: 'v' }, chunkSize: 500, lookahead: 3, dailyLimit: 50, fontWeight: 400, highlightMode: 'words', spellCheck: true, downloadFormat: 'mp3' });
+  assert.deepEqual(loadSettings(s), { voice: 'v', provider: 'fish', voices: { fish: 'v' }, chunkSize: 500, lookahead: 3, dailyLimit: 50, fontWeight: 400, leading: 1.6, highlightMode: 'words', spellCheck: true, downloadFormat: 'mp3' });
 });
 
 test('broken JSON', () => {
@@ -156,6 +156,34 @@ test('invalid fontWeight does not reset other settings', () => {
   assert.equal(l.chunkSize, 500);
   assert.equal(l.lookahead, 3);
   assert.equal(l.fontWeight, 400);
+});
+test('leading default is 1.6', () => {
+  const s = makeStorage();
+  assert.equal(loadSettings(s).leading, 1.6);
+  assert.equal(DEFAULT_SETTINGS.leading, 1.6);
+});
+test('leading accepts 1, 1.6 and 2.5', () => {
+  for (const v of [1, 1.6, 2.5]) {
+    const s = makeStorage();
+    saveSettings(s, { voice: 'v', leading: v });
+    assert.equal(loadSettings(s).leading, v, String(v));
+  }
+});
+test('leading invalid falls back to the default', () => {
+  for (const v of [0.9, 2.6, '1.6', undefined]) {
+    const s = makeStorage();
+    saveSettings(s, { voice: 'v', leading: v });
+    assert.equal(loadSettings(s).leading, 1.6, String(v));
+  }
+});
+test('invalid leading does not reset other settings', () => {
+  const s = makeStorage();
+  saveSettings(s, { voice: 'v', chunkSize: 500, lookahead: 3, leading: 9 });
+  const l = loadSettings(s);
+  assert.equal(l.voice, 'v');
+  assert.equal(l.chunkSize, 500);
+  assert.equal(l.lookahead, 3);
+  assert.equal(l.leading, 1.6);
 });
 test('highlightMode default is words', () => {
   const s = makeStorage();

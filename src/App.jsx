@@ -41,6 +41,22 @@ function FontWeightControl({ initial, onCommit }) {
   );
 }
 
+// Local state keeps the chunk list from re-rendering on every slider move.
+function LeadingControl({ initial, onCommit }) {
+  const [value, setValue] = useState(initial);
+  useEffect(() => {
+    document.body.style.setProperty('--leading', String(value));
+  }, [value]);
+  const commit = () => onCommit(value);
+  return (
+    <div className="row">
+      <input className="leading-slider" type="range" min="1" max="2.5" step="0.1" value={value} aria-label="Font leading"
+        onChange={(e) => setValue(Number(e.target.value))}
+        onPointerUp={commit} onKeyUp={commit} />
+    </div>
+  );
+}
+
 // The TTS pauses between sentences, so the linear estimate reaches the next
 // sentence before the voice does. Pull the sentence highlight back by this.
 const SENTENCE_DELAY = 0.15;
@@ -152,6 +168,10 @@ export default function App() {
   useEffect(() => {
     document.body.style.setProperty('--font-weight', String(settings.fontWeight));
   }, [settings.fontWeight]);
+  // The drawer mounts lazily, so the stored leading has to be applied here too.
+  useEffect(() => {
+    document.body.style.setProperty('--leading', String(settings.leading));
+  }, [settings.leading]);
   const [schedState, setSchedState] = useState({ state: 'idle', resetAt: null, playhead: 0, chunks: [] });
   const [usedToday, setUsedToday] = useState(() => (services ? services.counter.count() : 0));
   const [jobError, setJobError] = useState('');
@@ -732,6 +752,16 @@ export default function App() {
     logEvent('Font weight ' + value);
   };
 
+  const handleLeadingCommit = (value) => {
+    if (!storage || value === settings.leading) return;
+    if (!saveSettings(storage, { ...settings, leading: value })) {
+      logEvent('Could not save the font leading');
+      return;
+    }
+    setSettings(loadSettings(storage));
+    logEvent('Font leading ' + value);
+  };
+
   const handleHighlightModeChange = (value) => {
     if (value !== 'words' && value !== 'sentences' && value !== 'none') return;
     if (!storage || value === settings.highlightMode) return;
@@ -1247,6 +1277,10 @@ export default function App() {
             <div className="settings-row">
               <div className="row-text"><span className="row-label">Font weight</span></div>
               <div className="row-control"><FontWeightControl initial={settings.fontWeight} onCommit={handleFontWeightCommit} /></div>
+            </div>
+            <div className="settings-row">
+              <div className="row-text"><span className="row-label">Font leading</span></div>
+              <div className="row-control"><LeadingControl initial={settings.leading} onCommit={handleLeadingCommit} /></div>
             </div>
             <div className="settings-row">
               <div className="row-text"><span className="row-label">Highlight on reading</span></div>
