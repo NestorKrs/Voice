@@ -1,3 +1,9 @@
+## 0.1.98-alpha - 2026-11-09
+- Selected-character count moved from Job panel to bottom status bar.
+
+## 0.1.97-alpha - 2026-11-09
+- Top bar: "Requests today" shown as a teal pill, "(estimate)" removed.
+
 ## 0.1.96-alpha - 2026-11-09
 - Highlight map: retry failed maps and log the real reason.
 

@@ -1305,8 +1305,8 @@ export default function App() {
           {providers.map((p) => (<option key={p.id} value={p.id}>{providerLabel(p)}</option>))}
         </select>
         {switchLocked ? <span className="provider-reason">Wait for the request or press Cancel.</span> : null}
-        <span className="requests" title={services ? new Date(services.counter.resetAt()).toLocaleString() : ''}>
-          Requests today: {usedToday} / {settings.dailyLimit} (estimate)
+        <span className="req-pill" title={services ? new Date(services.counter.resetAt()).toLocaleString() : ''}>
+          Requests today: {usedToday} / {settings.dailyLimit}
         </span>
         <button className="settings-btn" onClick={() => setDrawerOpen((o) => !o)} title="Settings"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.03 7.03 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 14 2h-4a.5.5 0 0 0-.49.42l-.36 2.54c-.58.23-1.12.54-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.62 8.48a.5.5 0 0 0 .12.64l2.03 1.58c-.04.3-.06.62-.06.94s.02.64.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.43.34.69.24l2.39-.96c.5.39 1.05.71 1.63.94l.36 2.54c.05.23.25.4.49.4h4c.24 0 .44-.17.49-.4l.36-2.54c.58-.23 1.12-.54 1.63-.94l2.39.96c.26.1.55 0 .69-.24l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg></button>
       </header>
@@ -1419,7 +1419,6 @@ export default function App() {
             <button className={'job-toggle' + (schedState.state === 'paused' ? ' is-paused' : '')} onClick={canResume ? handleResume : handlePause} disabled={!canPause && !canResume} title={canResume ? resumeReason : pauseReason}>{canResume ? 'Resume' : 'Pause'}</button>
             <button onClick={handleCancel} disabled={!canCancel} title={cancelReason}>Cancel</button>
           </div>
-          {selectedChars > 0 ? <div style={{ marginTop: 'auto' }}>Selected: {plural(selectedChars, 'character')}</div> : null}
         </section>
         <div className="col-handle" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Resize the left and middle panels" title="Drag to resize. Keyboard: Left or Right arrow, Shift for bigger steps." style={{ gridColumn: 2, gridRow: 1 }} onPointerDown={onHandlePointerDown(0)} onPointerMove={onHandlePointerMove} onPointerUp={onHandlePointerUp} onPointerCancel={onHandlePointerUp} onKeyDown={onHandleKeyDown(0)} />
         <div className="col-handle" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Resize the middle and right panels" title="Drag to resize. Keyboard: Left or Right arrow, Shift for bigger steps." style={{ gridColumn: 4, gridRow: 1 }} onPointerDown={onHandlePointerDown(1)} onPointerMove={onHandlePointerMove} onPointerUp={onHandlePointerUp} onPointerCancel={onHandlePointerUp} onKeyDown={onHandleKeyDown(1)} />
@@ -1542,6 +1541,7 @@ export default function App() {
         </aside>
       <div className="statusbar" onClick={() => setShowEvents((v) => !v)}>
         {events[0] || 'ready'}
+        {selectedChars > 0 ? <span className="status-selected">Selected: {selectedChars} chars</span> : null}
       </div>
       {showEvents ? (
         <div className="eventlist">
