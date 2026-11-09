@@ -1292,6 +1292,8 @@ export default function App() {
   const pauseReason = canPause ? 'Stop making new audio. The request in progress finishes. Audio already made keeps playing.' : (!jobLive ? 'No job yet. Press Start Reading.' : 'Nothing to pause (' + stateWord + ').');
   const resumeReason = canResume ? 'Continue making audio from the chunk that is playing now.' : 'Nothing to resume (' + stateWord + ').';
   const cancelReason = canCancel ? 'Stop the job. Audio already made is kept.' : (!jobLive ? 'No job yet.' : 'Nothing to cancel (' + stateWord + ').');
+  const noteState = ['paused', 'waiting_reset', 'cancelled', 'error'].includes(schedState.state);
+  const firstChunkError = (schedState.chunks.map((c) => c && c.error && c.error.message).find(Boolean)) || '';
 
   const reading = playerState.total > 0 && (playerState.status === 'playing' || playerState.status === 'paused');
   const readChunk = reading && chunks[playerState.index] ? chunks[playerState.index] : '';
@@ -1407,9 +1409,9 @@ export default function App() {
               );
             })}
           </div>
-          {(jobError || schedState.state === 'paused' || schedState.state === 'waiting_reset') ? (
-            <div className={'job-note' + (jobError ? ' job-note-error' : '')}>
-              {jobError ? <span>{jobError}</span> : <span>{stateWord}{schedState.state === 'waiting_reset' ? ' - ' + new Date(schedState.resetAt).toLocaleString() : ''}</span>}
+          {(jobError || noteState) ? (
+            <div className={'job-note' + (jobError || schedState.state === 'error' ? ' job-note-error' : '')}>
+              {jobError ? <span>{jobError}</span> : <span>{stateWord}{schedState.state === 'waiting_reset' ? ' - ' + new Date(schedState.resetAt).toLocaleString() : ''}{schedState.state === 'error' && firstChunkError ? ' - ' + firstChunkError : ''}</span>}
               {canResume ? <button disabled={!canResume} title={resumeReason} onClick={handleResume}>Resume</button> : null}
             </div>
           ) : null}
@@ -1421,24 +1423,7 @@ export default function App() {
             </div>
           </div>
         </section>
-        <section className={panelClass('job', 'job-panel')} style={{ gridColumn: order.indexOf('job') * 2 + 1, gridRow: 1 }} onDragOver={onPanelDragOver('job')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('job')}>
-          <div className="panel-head">
-            <span className="grip" role="button" tabIndex={0} draggable="true" title="Drag to move this panel. Keyboard: Alt+Left or Alt+Right." aria-label="Move the Job panel" onDragStart={onGripDragStart('job')} onDragEnd={onGripDragEnd} onKeyDown={onGripKeyDown('job')} />
-            <span className="panel-title">Job</span>
-          </div>
-          <div className="state">{stateWord}{schedState.state === 'idle' && schedState.chunks.some((c) => c.status === 'ready') ? ' - window filled' : ''}</div>
-          <div>Chunks ready {readyCount} / {chunks.length}</div>
-          <div className="progress"><div className="bar" style={{ width: chunks.length ? `${(readyCount / chunks.length) * 100}%` : '0%' }} /></div>
-          <div>Requests today: {usedToday}</div>
-          {schedState.state === 'waiting_reset' ? <div>Reset: {new Date(schedState.resetAt).toLocaleString()}<br />Audio already made is kept.</div> : null}
-          {jobError ? <div className="notice">{jobError}</div> : null}
-          <div className="row">
-            <button className={'job-toggle' + (schedState.state === 'paused' ? ' is-paused' : '')} onClick={canResume ? handleResume : handlePause} disabled={!canPause && !canResume} title={canResume ? resumeReason : pauseReason}>{canResume ? 'Resume' : 'Pause'}</button>
-            <button onClick={handleCancel} disabled={!canCancel} title={cancelReason}>Cancel</button>
-          </div>
-        </section>
-        <div className="col-handle" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Resize the left and middle panels" title="Drag to resize. Keyboard: Left or Right arrow, Shift for bigger steps." style={{ gridColumn: 2, gridRow: 1 }} onPointerDown={onHandlePointerDown(0)} onPointerMove={onHandlePointerMove} onPointerUp={onHandlePointerUp} onPointerCancel={onHandlePointerUp} onKeyDown={onHandleKeyDown(0)} />
-        <div className="col-handle" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Resize the middle and right panels" title="Drag to resize. Keyboard: Left or Right arrow, Shift for bigger steps." style={{ gridColumn: 4, gridRow: 1 }} onPointerDown={onHandlePointerDown(1)} onPointerMove={onHandlePointerMove} onPointerUp={onHandlePointerUp} onPointerCancel={onHandlePointerUp} onKeyDown={onHandleKeyDown(1)} />
+                <div className="col-handle" role="separator" aria-orientation="vertical" tabIndex={0} aria-label="Resize the two panels" title="Drag to resize. Keyboard: Left or Right arrow, Shift for bigger steps." style={{ gridColumn: 2, gridRow: 1 }} onPointerDown={onHandlePointerDown(0)} onPointerMove={onHandlePointerMove} onPointerUp={onHandlePointerUp} onPointerCancel={onHandlePointerUp} onKeyDown={onHandleKeyDown(0)} />
       </div>
       <footer className="playerbar">
         <button onClick={() => { stopSelectionAudio(); playerEngineRef.current && playerEngineRef.current.prev(); }} disabled={!playerState.total || playerState.index === 0}><svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M6 6h2v12H6zM9.5 12l8.5 6V6z'/></svg></button>

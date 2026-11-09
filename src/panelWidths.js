@@ -1,90 +1,60 @@
-export const SIDE_MIN_PX = 290;
-export const SIDE_MAX_PCT = 30;
-export const MID_MIN_PX = 280;
-export const MID_MAX_PCT = 80;
-export const DEFAULT_WIDTHS = { left: 25, right: 25 };
+export const SIDE_MIN_PX = 280;
+export const SIDE_MAX_PCT = 80;
+export const MID_MIN_PX = 0;
+export const MID_MAX_PCT = 0;
+export const DEFAULT_WIDTHS = { left: 33.33, right: 66.67 };
 export const WIDTHS_KEY = 'voice.panelWidths';
 
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+const SUM_EPS = 1e-6;
 
 export function middlePct(w) {
   return 100 - w.left - w.right;
 }
 
 export function usableWidth(clientWidth, padding = 12, handle = 12) {
-  return Math.max(0, clientWidth - 2 * padding - 2 * handle);
+  return Math.max(0, clientWidth - 2 * padding - 1 * handle);
 }
 
 export function limitsFor(usablePx) {
   if (!Number.isFinite(usablePx) || usablePx <= 0) return null;
-  const sideMin = (SIDE_MIN_PX / usablePx) * 100;
-  const midMin = (MID_MIN_PX / usablePx) * 100;
-  if (sideMin > SIDE_MAX_PCT) return null;
-  if (2 * sideMin + midMin > 100) return null;
-  return { sideMin, sideMax: SIDE_MAX_PCT, midMin, midMax: MID_MAX_PCT };
-}
-
-function distribute(need, roomA, roomB) {
-  let a = Math.min(roomA, need / 2);
-  const b = Math.min(roomB, need - a);
-  a = Math.min(roomA, need - b);
-  return [a, b];
+  const sideMin = (280 / usablePx) * 100;
+  if (2 * sideMin > 100) return null;
+  return { sideMin, sideMax: 80 };
 }
 
 export function clampWidths(w, usablePx) {
+  if (!w || typeof w !== 'object' || Array.isArray(w)) return { ...DEFAULT_WIDTHS };
+  if (!Number.isFinite(w.left) || !Number.isFinite(w.right)) return { ...DEFAULT_WIDTHS };
+  if (Math.abs(w.left + w.right - 100) > 1e-6) return { ...DEFAULT_WIDTHS };
   const lim = limitsFor(usablePx);
   if (!lim) return { ...DEFAULT_WIDTHS };
-  const rawLeft = Number.isFinite(w && w.left) ? w.left : DEFAULT_WIDTHS.left;
-  const rawRight = Number.isFinite(w && w.right) ? w.right : DEFAULT_WIDTHS.right;
-  let left = clamp(rawLeft, lim.sideMin, lim.sideMax);
-  let right = clamp(rawRight, lim.sideMin, lim.sideMax);
-  const sumMin = 100 - lim.midMax;
-  const sumMax = 100 - lim.midMin;
-  const sum = left + right;
-  if (sum < sumMin) {
-    const [a, b] = distribute(sumMin - sum, lim.sideMax - left, lim.sideMax - right);
-    left += a;
-    right += b;
-  } else if (sum > sumMax) {
-    const [a, b] = distribute(sum - sumMax, left - lim.sideMin, right - lim.sideMin);
-    left -= a;
-    right -= b;
-  }
+  const left = clamp(w.left, lim.sideMin, lim.sideMax);
+  const right = 100 - left;
   return { left, right };
 }
 
-export function resizeFromHandle(widths, handle, deltaPx, usablePx) {
+export function resizeFromHandle(widths, index, deltaPx, usablePx) {
+  if (index !== 0) return widths ? { ...widths } : { ...DEFAULT_WIDTHS };
+  const base = clampWidths(widths, usablePx);
   const lim = limitsFor(usablePx);
   if (!lim) return { ...DEFAULT_WIDTHS };
-  const base = clampWidths(widths, usablePx);
   const d = (deltaPx / usablePx) * 100;
-  const sumMin = 100 - lim.midMax;
-  const sumMax = 100 - lim.midMin;
-  if (handle === 0) {
-    const lo = Math.max(lim.sideMin, sumMin - base.right);
-    const hi = Math.min(lim.sideMax, sumMax - base.right);
-    return { left: clamp(base.left + d, lo, hi), right: base.right };
-  }
-  const lo = Math.max(lim.sideMin, sumMin - base.left);
-  const hi = Math.min(lim.sideMax, sumMax - base.left);
-  return { left: base.left, right: clamp(base.right - d, lo, hi) };
+  const left = clamp(base.left + d, lim.sideMin, lim.sideMax);
+  return { left, right: 100 - left };
 }
 
 const fmt = (n) => String(Number(n.toFixed(3)));
 
-export function columnsTemplate(w, handlePx = 12) {
-  return 'minmax(0, ' + fmt(w.left) + 'fr) ' + handlePx + 'px minmax(0, ' + fmt(middlePct(w)) + 'fr) ' + handlePx + 'px minmax(0, ' + fmt(w.right) + 'fr)';
+export function columnsTemplate(w) {
+  return 'minmax(0, ' + fmt(w.left) + 'fr) 12px minmax(0, ' + fmt(w.right) + 'fr)';
 }
 
 export function loadWidths(storage) {
   try {
     const raw = storage.getItem(WIDTHS_KEY);
     if (!raw) return { ...DEFAULT_WIDTHS };
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === 'object' && Number.isFinite(parsed.left) && Number.isFinite(parsed.right)) {
-      return { left: parsed.left, right: parsed.right };
-    }
-    return { ...DEFAULT_WIDTHS };
+    return clampWidths(JSON.parse(raw), 1e9);
   } catch {
     return { ...DEFAULT_WIDTHS };
   }
@@ -92,7 +62,9 @@ export function loadWidths(storage) {
 
 export function saveWidths(storage, w) {
   try {
-    if (!w || !Number.isFinite(w.left) || !Number.isFinite(w.right)) return false;
+    if (!w || typeof w !== 'object' || Array.isArray(w)) return false;
+    if (!Number.isFinite(w.left) || !Number.isFinite(w.right)) return false;
+    if (Math.abs(w.left + w.right - 100) > 1e-6) return false;
     storage.setItem(WIDTHS_KEY, JSON.stringify({ left: w.left, right: w.right }));
     return true;
   } catch {

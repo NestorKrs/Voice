@@ -1,4 +1,4 @@
-export const DEFAULT_ORDER = ['text', 'reader', 'job'];
+export const DEFAULT_ORDER = ['text', 'reader'];
 export const ORDER_KEY = 'voice.panelOrder';
 
 export function normalizeOrder(saved) {

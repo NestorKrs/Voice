@@ -1,3 +1,6 @@
+## 0.1.101-alpha - 2026-11-09
+- Two panels: Job panel removed; job errors, pause state and Resume live in the Reader note.
+
 ## 0.1.100-alpha - 2026-11-09
 - Reader pane: .job-note strip for errors and paused/cap state.
 
