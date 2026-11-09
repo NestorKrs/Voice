@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.91 - 2026-11-09
+- Added src/timeMap.js: buildTimeMap turns findSilences pauses into a playback-time to character-index map (longest pauses kept, weighted inside a sentence, holds during a pause).
+
 ## 0.1.90 - 2026-11-09
 - Added src/silenceMap.js: a pure module that finds the real pauses in a chunk's decoded audio (10 ms RMS frames, relative threshold, leadIn and tail reported separately).
 
