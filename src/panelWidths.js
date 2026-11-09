@@ -1,4 +1,4 @@
-export const SIDE_MIN_PX = 220;
+export const SIDE_MIN_PX = 290;
 export const SIDE_MAX_PCT = 30;
 export const MID_MIN_PX = 280;
 export const MID_MAX_PCT = 80;

@@ -67,7 +67,7 @@ test('clampWidths: missing or invalid values use the defaults', () => {
 });
 
 test('clampWidths: every rule holds across many inputs and widths, and the result is stable', () => {
-  for (const usable of [740, 800, 1000, 1200, 2000, 3000]) {
+  for (const usable of [970, 1000, 1200, 2000, 3000]) {
     const lim = limitsFor(usable);
     assert.ok(lim, 'limits exist at ' + usable);
     for (let left = 0; left <= 100; left += 5) {
