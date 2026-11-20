@@ -19,7 +19,7 @@ A personal, single-user, browser-only text-to-speech reader. The owner pastes ve
 3. If a step fails or is unclear: STOP. Paste the RAW error. Wait for the owner. Do not guess and do not work around it.
 4. Always paste RAW command output, never a summary. If you did not run a command, write NOT RUN. Never invent output.
 5. Bugs: first do a read-only diagnosis (paste the code and the raw evidence, name the root cause). Fix only after the owner says go.
-6. Do not add dependencies unless the task names them. Approved later: `mammoth` (docx), `pdfjs-dist` (pdf).
+6. Do not add dependencies unless the task names them.
 7. Never run git commands that change anything (no add, commit, push, reset, checkout, stash). Reading (`git status`, `git log`) is fine if a .git exists. At the end of each task write a READY TO COMMIT list: exact file names and one suggested commit message ending with the new version. The owner commits from the P75.
 
 ## Commands (run in /workspace/voice)

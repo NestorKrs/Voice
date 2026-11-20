@@ -16,10 +16,11 @@ Features:
 - A font weight slider (100-800) using the variable font.
 - Draggable and resizable panels.
 - A status bar with an event log.
-- Loads .txt, .md, .doc and text/plain files as plain text.
+- Loads .txt and .md files (drag and drop, or the Load button) as plain text.
 - Download: each ready chunk, all ready chunks as one ZIP, or the whole text as one joined audio file (MP3 or WAV, chosen in Settings).
 
 Run: npm install, then npm run dev, then open http://127.0.0.1:5180/. Tests: npm test.
+Web build: npm run build makes dist/, built for the path /voice/app/ (set in vite.config.js).
 
 Key: The OpenRouter API key is typed into Settings and stays in this browser's localStorage. It is never written to a file.
 

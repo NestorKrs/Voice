@@ -1382,7 +1382,7 @@ export default function App() {
             <button className="icon-btn" title="Load file (.txt .md .doc)" onClick={() => fileInputRef.current && fileInputRef.current.click()}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg></button>
             <button className="icon-btn" title="Clear text" onClick={handleClearText}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
             <button className="icon-btn" title="Fullscreen text (Ctrl+Shift+Space)" aria-label="Toggle text fullscreen" onClick={() => setTextFullscreen((v) => !v)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-          <input ref={fileInputRef} type="file" accept=".txt,.md,.doc,text/plain" style={{display:"none"}} onChange={handleLoadFile} />
+          <input ref={fileInputRef} type="file" accept=".txt,.md,text/plain" style={{display:"none"}} onChange={handleLoadFile} />
           </div>
           {startReason ? <div className="reason">{startReason}</div> : null}
           {textFullscreen ? (

@@ -1,3 +1,6 @@
+## 0.2.1-beta - 2026-11-20
+- Web build uses base /voice/app/; Load and drop accept only .txt and .md
+
 ## 0.2.0-beta - 2026-11-09
 - Project moves from alpha to beta testing; version 0.2.0-beta.
 
