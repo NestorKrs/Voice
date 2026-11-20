@@ -1,8 +1,12 @@
 node_modules
+docs/plan.md
 dist
 .env
 .env.*
 *.mp3
+*.zip
+*.wav
 *.tar.zst
 .stignore
 .stfolder
+.obsidian

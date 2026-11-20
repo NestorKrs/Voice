@@ -28,8 +28,6 @@
 ## 0.1.96-alpha - 2026-11-09
 - Highlight map: retry failed maps and log the real reason.
 
-# Changelog
-
 ## 0.1.102-alpha - 2026-11-09
 - Ctrl+Shift+Space shows the Text panel fullscreen; fix: the panel was hidden together with its parent .columns. Reader, player bar, status bar and settings are hidden while it is on.
 
