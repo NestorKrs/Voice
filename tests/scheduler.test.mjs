@@ -312,3 +312,24 @@ test('same playhead twice does not request again', async () => {
   assert.equal(maxInFlight, 1);
   assert.equal(new Set(requested).size, requested.length, 'no index requested twice');
 });
+
+test('cache get and put failures log and do not crash', async () => {
+  const chunks = ['a'];
+  const logs = [];
+  let hasCalls = 0;
+  const cache = {
+    async get() { throw new Error('read boom'); },
+    async has() { hasCalls += 1; if (hasCalls === 1) return false; throw new Error('read boom'); },
+    async put() { throw new Error('write boom'); },
+  };
+  const speak = async () => ({ ok: true, bytes: new ArrayBuffer(1), attempts: 1 });
+  const counter = { add() {}, resetAt() { return 0; } };
+  const makeKey = async ({ text }) => 'k:' + text;
+  const s = createScheduler({ chunks, voice: 'v', lookahead: 1, cache, speak, counter, makeKey, onLog: (m) => logs.push(m) });
+  await s.start();
+  await wait(60);
+  assert.ok(logs.some((m) => m === 'Cache read failed chunk 1: read boom'), 'read log: ' + logs.join(' | '));
+  assert.ok(logs.some((m) => m === 'Cache write failed chunk 1: write boom'), 'write log: ' + logs.join(' | '));
+  assert.equal(s.getState().state, 'error');
+  assert.equal(s.getState().chunks[0].error.message, 'Could not save audio.');
+});

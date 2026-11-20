@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeCacheKey, createMemoryStore, createAudioCache } from '../src/audioCache.js';
+import { makeCacheKey, createMemoryStore, createAudioCache, createIdbStore } from '../src/audioCache.js';
 
 test('same input same key', async () => {
   const a = await makeCacheKey({ model: 'm', voice: 'v', text: 't' });
@@ -103,4 +103,29 @@ test('totalBytes adds sizes', async () => {
   await cache.put('a', new Uint8Array([1, 2]).buffer);
   await cache.put('b', new Uint8Array([1, 2, 3]).buffer);
   assert.equal(await cache.totalBytes(), 5);
+});
+
+test('idb open that never fires rejects after openTimeoutMs', async () => {
+  const realIdb = globalThis.indexedDB;
+  globalThis.indexedDB = { open: () => ({}) };
+  try {
+    const store = createIdbStore('voice-test', 10);
+    await assert.rejects(() => store.get('k'), /IndexedDB did not open within 5 s/);
+  } finally {
+    globalThis.indexedDB = realIdb;
+  }
+});
+
+test('idb open that fires onblocked rejects with the blocked message', async () => {
+  const realIdb = globalThis.indexedDB;
+  const req = {};
+  globalThis.indexedDB = { open: () => req };
+  try {
+    const store = createIdbStore('voice-test', 1000);
+    const pending = store.get('k');
+    req.onblocked();
+    await assert.rejects(() => pending, /IndexedDB blocked: close other Voice tabs/);
+  } finally {
+    globalThis.indexedDB = realIdb;
+  }
 });

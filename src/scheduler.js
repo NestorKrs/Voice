@@ -1,6 +1,6 @@
 import { nextResetUtcMs } from './requestCounter.js';
 
-export function createScheduler({ chunks, voice, lookahead, cache, speak, counter, makeKey, nowFn = Date.now, onChange = () => {} }) {
+export function createScheduler({ chunks, voice, lookahead, cache, speak, counter, makeKey, nowFn = Date.now, onChange = () => {}, onLog = () => {} }) {
   const list = Array.isArray(chunks) ? chunks.slice() : [];
   const state = {
     state: 'idle',
@@ -54,8 +54,9 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
         let hit = false;
         try {
           hit = await cache.has(key);
-        } catch {
+        } catch (e) {
           hit = false;
+          onLog('Cache read failed chunk ' + (idx + 1) + ': ' + (e && e.message ? e.message : String(e)));
         }
         if (hit) {
           state.chunks[idx].status = 'ready';
@@ -90,7 +91,8 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
         if (result && result.ok) {
           try {
             await cache.put(key, result.bytes);
-          } catch {
+          } catch (e) {
+            onLog('Cache write failed chunk ' + (idx + 1) + ': ' + (e && e.message ? e.message : String(e)));
             state.chunks[idx].status = 'failed';
             state.chunks[idx].error = { kind: 'cache', message: 'Could not save audio.' };
             state.state = 'error';
@@ -145,6 +147,7 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
             state.chunks[i].status = 'ready';
           }
         } catch (e) {
+          onLog('Cache read failed chunk ' + (i + 1) + ': ' + (e && e.message ? e.message : String(e)));
           state.state = 'error';
           state.chunks[i].status = 'failed';
           state.chunks[i].error = { kind: 'cache', message: (e && e.message ? e.message : String(e)).slice(0,300) };

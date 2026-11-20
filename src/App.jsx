@@ -22,6 +22,7 @@ import { createZip, zipChunks } from './zipStore.js';
 import { stripId3, wavHeader, wavParts, joinMode, sameAs } from './joinAudio.js';
 import { DEFAULT_ORDER, movePanel, stepPanel, loadOrder, saveOrder, resetOrder } from './panelLayout.js';
 import { DEFAULT_WIDTHS, clampWidths, usableWidth, resizeFromHandle, columnsTemplate, loadWidths, saveWidths, resetWidths } from './panelWidths.js';
+import { textFileRejection } from './fileTypes.js';
 
 const storage = typeof localStorage !== 'undefined' ? localStorage : null;
 const services = storage ? createServices({ storage }) : null;
@@ -416,6 +417,7 @@ export default function App() {
       speak: (a) => services.speak({ ...a, provider }),
       counter: services.counter,
       makeKey: (a) => services.makeKey({ ...a, provider }),
+      onLog: (msg) => logEvent(msg),
       onChange: (p) => {
         const fresh = newlyReady(readySeenRef.current, p.chunks);
         readySeenRef.current = readyFlags(p.chunks);
@@ -609,6 +611,8 @@ export default function App() {
   const handleDropFile = (e) => {
     const file = e && e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
     if (!file) return;
+    const rejection = textFileRejection(file.name);
+    if (rejection) { setNotice(rejection); logEvent(rejection); return; }
     e.preventDefault();
     setTextDropActive(false);
     const reader = new FileReader();
@@ -644,6 +648,8 @@ export default function App() {
   const handleLoadFile = (e) => {
     const file = e && e.target && e.target.files && e.target.files[0];
     if (!file) return;
+    const rejection = textFileRejection(file.name);
+    if (rejection) { setNotice(rejection); logEvent(rejection); return; }
     const reader = new FileReader();
     reader.onload = () => { setText(String(reader.result || '')); setSelIcon(null); stopSelectionAudio(); };
     reader.readAsText(file);
@@ -1379,7 +1385,7 @@ export default function App() {
           <div className="row">
             <button onClick={handleStart} disabled={!canStart} style={{ minWidth: '300px' }}>Start Reading</button>
             <span style={{ flex: 1 }} />
-            <button className="icon-btn" title="Load file (.txt .md .doc)" onClick={() => fileInputRef.current && fileInputRef.current.click()}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg></button>
+            <button className="icon-btn" title="Load file (.txt .md)" onClick={() => fileInputRef.current && fileInputRef.current.click()}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg></button>
             <button className="icon-btn" title="Clear text" onClick={handleClearText}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
             <button className="icon-btn" title="Fullscreen text (Ctrl+Shift+Space)" aria-label="Toggle text fullscreen" onClick={() => setTextFullscreen((v) => !v)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
           <input ref={fileInputRef} type="file" accept=".txt,.md,text/plain" style={{display:"none"}} onChange={handleLoadFile} />

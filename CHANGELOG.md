@@ -1,3 +1,6 @@
+## 0.2.2-beta - 2026-11-20
+- Reject files that are not .txt or .md; IndexedDB open no longer hangs; cache failures are logged in the status bar
+
 ## 0.2.1-beta - 2026-11-20
 - Web build uses base /voice/app/; Load and drop accept only .txt and .md
 

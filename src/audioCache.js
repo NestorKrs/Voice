@@ -22,16 +22,19 @@ export function createMemoryStore() {
   };
 }
 
-export function createIdbStore(dbName = 'voice-audio') {
+export function createIdbStore(dbName = 'voice-audio', openTimeoutMs = 5000) {
   const openDb = () => new Promise((resolve, reject) => {
     if (!globalThis.indexedDB) { reject(new Error('IndexedDB unavailable')); return; }
     const req = globalThis.indexedDB.open(dbName, 1);
+    const timer = setTimeout(() => reject(new Error('IndexedDB did not open within 5 s')), openTimeoutMs);
+    const done = () => clearTimeout(timer);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains('chunks')) db.createObjectStore('chunks');
     };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(new Error('IndexedDB unavailable'));
+    req.onsuccess = () => { done(); resolve(req.result); };
+    req.onerror = () => { done(); reject(new Error('IndexedDB unavailable')); };
+    req.onblocked = () => { done(); reject(new Error('IndexedDB blocked: close other Voice tabs')); };
   });
   const store = {
     async get(key) {
@@ -44,7 +47,7 @@ export function createIdbStore(dbName = 'voice-audio') {
           r.onsuccess = () => resolve(r.result ? r.result.bytes || r.result : null);
           r.onerror = () => reject(new Error('IndexedDB unavailable'));
         });
-      } catch { throw new Error('IndexedDB unavailable'); }
+      } catch (e) { throw new Error(e && e.message ? e.message : 'IndexedDB unavailable'); }
     },
     async put(key, bytes) {
       const db = await openDb();
@@ -98,7 +101,7 @@ export function createIdbStore(dbName = 'voice-audio') {
           };
           r.onerror = () => reject(new Error('IndexedDB unavailable'));
         });
-      } catch { throw new Error('IndexedDB unavailable'); }
+      } catch (e) { throw new Error(e && e.message ? e.message : 'IndexedDB unavailable'); }
     },
   };
   return store;
