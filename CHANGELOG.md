@@ -1,3 +1,6 @@
+## 0.2.7-beta - 2026-11-21
+- Phone top bar as a grid with explicit rows; player notice hidden, equal 40px slider labels
+
 ## 0.2.6-beta - 2026-11-21
 - Phone layout fix: Text row spacer hidden, provider select forced onto the second top-bar row
 
