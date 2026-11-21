@@ -1,3 +1,6 @@
+## 0.2.5-beta - 2026-11-21
+- Phone layout polish: full-height Text panel, one-line find and Start rows, two-row top bar, equal sliders
+
 ## 0.2.4-beta - 2026-11-21
 - Phone layout under 768px: panels stack, bars wrap, tap targets 44px, drawer full width
 
