@@ -15,6 +15,7 @@ Features:
 - A daily request limit setting (50 or 1000).
 - A font weight slider (100-800) using the variable font.
 - Draggable and resizable panels.
+- A phone layout under 768px: stacked panels, wrapping bars, larger tap targets.
 - A status bar with an event log.
 - Loads .txt and .md files (drag and drop, or the Load button) as plain text.
 - Download: each ready chunk, all ready chunks as one ZIP, or the whole text as one joined audio file (MP3 or WAV, chosen in Settings).

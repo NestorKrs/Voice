@@ -1,52 +1,59 @@
 # Voice handoff
 
-Date: 2026-11-21 (end of day). Owner: @Eleven. Plan: docs/plan.md. Rules: AGENTS.md.
+Date: 2026-11-22 (end of day). Owner: @Eleven. Plan: docs/plan.md. Rules: AGENTS.md.
 
 ## Version and git
-- package.json: 0.2.2-beta. First CHANGELOG entry is 0.2.2-beta (matches).
+- package.json: 0.2.7-beta. First CHANGELOG entry is 0.2.7-beta (matches).
 - Sandbox has no .git; run `git -C ~/Work/Voice log --oneline -5` and `git status --short` on the P75.
-- Backup counter in docs/backup-log.md is 14 (backup made at 0.1.93; 0.1.94-0.2.2 since). BACKUP DUE.
-- CHANGELOG.md is malformed: no `# Changelog` heading anywhere; 0.1.101 appears twice; 0.1.102 sits after 0.1.96; 0.1.95 has no entry; 0.1.90-0.1.94 lack `-alpha`. Reported, not fixed (good-night rule).
+- Backup counter in docs/backup-log.md is 0 (backup made 2026-11-22 at 0.2.7-beta).
+- CHANGELOG.md still has no `# Changelog` heading; older duplicate/order/suffix issues remain. Reported, not fixed (open decision).
 - docs/codebase-map.md and docs/lessons.md do not exist.
-- The previous handoff was stale at 0.2.0-beta; rewritten now.
 
-## What was done (0.2.1-0.2.2)
-- 0.2.1-beta: vite build base /voice/app/; Load and drop accept only .txt and .md.
-- 0.2.2-beta: src/fileTypes.js textFileRejection rejects any other name with an exact reason, wired into the drop and Load paths before any side effect; IndexedDB open has a 5 s timeout and a blocked reason; scheduler logs cache read/write failures with chunk number and reason.
+## What was done (0.2.4-0.2.7)
+- 0.2.4-beta: phone layout under 768px in one `@media (max-width: 768px)` block at the end of src/App.css: panels stack vertically, top bar/player bar/find row wrap, tap targets 44px, drawer full width, fullscreen text-panel overrides. The only App.jsx change was adding `className="start-btn"` to the Start Reading button.
+- 0.2.5-beta: Text panel `flex: 0 0 100%` with `min-height: 260px`; Reader `min-height: 50dvh` below it (reached by scrolling inside `.columns`); find row on one line; stats line hidden; Start Reading and the three icons on one nowrap row at 40px; two-row top bar; volume and speed sliders equal width.
+- 0.2.6-beta: hid the text-row spacer span; provider select forced onto the second top-bar row.
+- 0.2.7-beta: top bar became a three-column grid with explicit rows (title/version, pill left + cogwheel right, provider dropdown, reason); player notice span hidden on mobile; both slider labels 40px.
+- Each step kept lines 1-194 of src/App.css byte-for-byte and added no second `@media` block.
 
 ## Verified
-- npm test: 250 pass, 0 fail (2026-11-21, 0.2.2-beta).
-- node --check on changed .js files: OK. App.jsx not checkable here (JSX, no node_modules).
+- npm test: 252 pass, 0 fail (2026-11-22, 0.2.7-beta).
+- All changes since 0.2.3 are CSS inside the media block; `diff <(head -194 before) <(head -194 src/App.css)` printed nothing each time, so no node --check or App.jsx duplicate check was needed.
 - Build and lint: NOT RUN here. Owner's vship is the real check.
-- Live: nothing from 0.2.1-0.2.2 reported live yet.
+- Live: nothing from 0.2.4-0.2.7 tested live yet.
 
 ## Owner must test live
-1. App opens with no black screen, no red console errors.
-2. Drop a .docx/.pdf/other file: exact rejection reason in notice and status bar; current session (player, cache, scheduler) untouched.
-3. Load button: accept list is .txt,.md; a rejected name does not clear the text.
-4. Serve dist/ from /voice/app/ and open it.
-5. IndexedDB blocked or slow: exact reason in the status bar, no hang.
-6. Cache read/write failure: exact reason with chunk number in the status bar log.
-7. Normal reading, highlight, downloads still work.
+1. At 450px and 360px, portrait and landscape: nothing scrolls sideways.
+2. Text panel fills above the player bar; the reader appears only after scrolling down.
+3. Find input, count and up/down arrows on one line.
+4. No stats line; the disabled reason under Start Reading still shows.
+5. Start Reading and the three icon buttons on one row.
+6. Top bar: title+version / requests pill left and cogwheel right / provider dropdown; the cogwheel is clearly visible.
+7. Player bar: two rows, no gap beside the speed slider, volume and speed take equal space, no notice text.
+8. Settings drawer fits and Save settings stays visible.
+9. Fullscreen toggle and exit work.
+10. Desktop looks exactly as before; normal reading, highlight and downloads still work.
 
 ## Known bugs
 - None confirmed in code.
-- Known gaps, not bugs: .docx/.pdf not parsed; no shortcuts beyond fullscreen; no request log or time heard/remaining in the Reader note.
-- CHANGELOG.md malformed as above (docs bug, not code).
+- Touch gaps: panel reorder uses HTML5 drag-and-drop (no touch path); the selection speaker depends on mouseup (touch selection is unreliable).
+- Single breakpoint (768px); widths between 769px and desktop are unchanged.
+- Non-bugs/gaps: .docx/.pdf not parsed; no shortcuts beyond fullscreen; CHANGELOG formatting issues above.
 
 ## Open decisions
+- Whether to add touch equivalents for the grip drag and the selection speaker.
+- Whether 768px stays the only breakpoint.
+- Whether to fix CHANGELOG.md (heading, duplicates, order, suffixes) as a docs-only task.
 - Whether to delete src/timeMap.js and its test once the owner is happy with alignMap.
-- Whether the highlight needs tuning after a live listen.
-- Final app name; voice list UI for Fish; whether short texts need a special mode; paid fallback model.
-- Whether to fix CHANGELOG.md as a docs-only task.
+- Final app name; voice list UI for Fish; paid fallback model; short-text mode.
 
 ## Next steps in order
-1. Owner: vship (lint, build, tests), commit, check git status.
-2. Work through the live test list above.
-3. Backup (counter 14): make source backup, then tell Hermes "voice task: backup done, counter 0, label <x>, <date>".
-4. Docs-only: fix CHANGELOG.md (heading, duplicate 0.1.101, order, missing 0.1.95, `-alpha` suffixes) and update the AGENTS.md versioning rule from `-alpha` to `-beta`.
+1. Owner: vship (lint, build, tests), commit, check `git status --short` on the P75.
+2. Work through the live test list at 450px and 360px.
+3. Decide on touch equivalents (grip drag, selection speaker).
+4. Docs-only: fix CHANGELOG.md and review the AGENTS.md versioning wording.
 5. Phase 5 leftovers: request log and time heard/remaining.
-6. Phase 6: .docx/.pdf (mammoth, pdfjs-dist), playback shortcuts, README/app rename.
+6. Phase 6: .docx/.pdf parsing, playback shortcuts, README/app rename.
 
 ## Files changed this session (commit status to check on the P75)
-src/App.jsx, src/audioCache.js, src/fileTypes.js, src/scheduler.js, tests/audioCache.test.mjs, tests/fileTypes.test.mjs, tests/scheduler.test.mjs, tests/viteBase.test.mjs, vite.config.js, package.json, CHANGELOG.md, docs/backup-log.md, docs/handoff.md (this file). Older pending files from the previous handoff may still be uncommitted; owner checks `git status --short`.
+src/App.css, src/App.jsx, package.json, CHANGELOG.md, docs/backup-log.md, docs/handoff.md (this file), README.md. Older pending files from earlier sessions may still be uncommitted: src/audioCache.js, src/fileTypes.js, src/scheduler.js, tests/audioCache.test.mjs, tests/fileTypes.test.mjs, tests/scheduler.test.mjs, tests/viteBase.test.mjs, tests/favicon.test.mjs, index.html, public/, vite.config.js, AGENTS.md. Owner checks `git status --short`.
