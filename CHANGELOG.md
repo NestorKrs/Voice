@@ -1,3 +1,6 @@
+## 0.2.3-beta - 2026-11-21
+- Favicon and touch icon added for the browser tab
+
 ## 0.2.2-beta - 2026-11-20
 - Reject files that are not .txt or .md; IndexedDB open no longer hangs; cache failures are logged in the status bar
 
