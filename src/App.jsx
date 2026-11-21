@@ -1383,7 +1383,7 @@ export default function App() {
             <span>{stats.fitsToday ? 'Fits today' : `Needs ${stats.daysNeeded} days`}</span>
           </div>
           <div className="row">
-            <button onClick={handleStart} disabled={!canStart} style={{ minWidth: '300px' }}>Start Reading</button>
+            <button onClick={handleStart} disabled={!canStart} className="start-btn" style={{ minWidth: '300px' }}>Start Reading</button>
             <span style={{ flex: 1 }} />
             <button className="icon-btn" title="Load file (.txt .md)" onClick={() => fileInputRef.current && fileInputRef.current.click()}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg></button>
             <button className="icon-btn" title="Clear text" onClick={handleClearText}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>

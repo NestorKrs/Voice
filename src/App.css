@@ -190,3 +190,44 @@
 .app.text-fullscreen-mode .sel-speaker {
     z-index: 101;
 }
+
+/* Phone layout (<=768px): stack the panels, wrap the bars and enlarge tap targets. Desktop rules above are unchanged. */
+@media (max-width: 768px) {
+  html, body { overflow-x: hidden; }
+  .app { height: 100dvh; }
+
+  .columns { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; grid-template-columns: none !important; }
+  .col-handle, .grip { display: none; }
+
+  .text-panel { flex: none; min-height: 60dvh; }
+  .reader-panel { flex: none; max-height: 40dvh; }
+  .reader-panel .chunk-list { flex: 1; min-height: 0; overflow-y: auto; }
+  .reader-panel .reader-card { margin-top: auto; }
+
+  .topbar { flex-wrap: wrap; gap: 8px; padding: 8px 12px; }
+  .req-pill { margin-left: 0; }
+
+  .playerbar { flex-wrap: wrap; gap: 8px; padding: 8px 12px; }
+  .playerbar > * { order: 3; }
+  .playerbar button { order: 1; min-width: 0; flex: 1; }
+  .playerbar .seek { order: 2; flex-basis: 100%; }
+
+  .icon-btn,
+  .chunk-row .icon-btn.chunk-download,
+  .settings-btn,
+  .drawer .close-btn,
+  .job-toggle,
+  .sel-speaker { min-width: 44px; min-height: 44px; }
+  .chunk-row button { min-height: 44px; }
+
+  .find-row { flex-wrap: wrap; }
+  .find-row .find-input { flex-basis: 100%; }
+  .text-panel textarea, .text-panel .text-read { font-size: 16px !important; }
+  .start-btn { width: 100%; min-width: 0 !important; }
+
+  .drawer { width: 100vw; }
+
+  .statusbar { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .app.text-fullscreen-mode .text-panel { min-height: 0; max-height: none; }
+}

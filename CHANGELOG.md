@@ -1,3 +1,6 @@
+## 0.2.4-beta - 2026-11-21
+- Phone layout under 768px: panels stack, bars wrap, tap targets 44px, drawer full width
+
 ## 0.2.3-beta - 2026-11-21
 - Favicon and touch icon added for the browser tab
 
