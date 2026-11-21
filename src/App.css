@@ -209,8 +209,8 @@
   .topbar .title, .topbar .version { order: 0; }
   .topbar .settings-btn { order: 1; margin-left: auto; width: 36px; height: 36px; min-width: 36px; min-height: 36px; }
   .topbar .settings-btn svg { width: 16px; height: 16px; }
-  .topbar .provider-select { flex: 1 1 0; min-width: 0; }
-  .topbar .req-pill { order: 2; margin: 0; font-size: 11px; padding: 3px 10px; line-height: 1.2; height: auto; }
+  .topbar .provider-select { flex: 1 1 60%; min-width: 0; }
+  .topbar .req-pill { order: 2; flex: none; margin: 0; font-size: 11px; padding: 3px 10px; line-height: 1.2; height: auto; }
 
   .playerbar { flex-wrap: wrap; gap: 8px; padding: 8px 12px; }
   .playerbar > * { order: 3; }
@@ -237,6 +237,7 @@
   .text-panel textarea, .text-panel .text-read { font-size: 16px !important; }
   .text-panel .stats { display: none; }
   .text-panel .row { flex-wrap: nowrap; align-items: center; gap: 8px; }
+  .text-panel .row > span { display: none !important; }
   .start-btn { flex: 1 1 0; width: auto; min-width: 0 !important; }
   .text-panel .row .icon-btn { flex: none; width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
 

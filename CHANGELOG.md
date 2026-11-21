@@ -1,3 +1,6 @@
+## 0.2.6-beta - 2026-11-21
+- Phone layout fix: Text row spacer hidden, provider select forced onto the second top-bar row
+
 ## 0.2.5-beta - 2026-11-21
 - Phone layout polish: full-height Text panel, one-line find and Start rows, two-row top bar, equal sliders
 
