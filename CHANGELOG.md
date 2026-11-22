@@ -1,3 +1,6 @@
+## 0.2.8-beta - 2026-11-22
+- Phone settings: requests chip in the drawer header, Provider dropdown at the top of the Voice card; top bar originals hidden on phones
+
 ## 0.2.7-beta - 2026-11-21
 - Phone top bar as a grid with explicit rows; player notice hidden, equal 40px slider labels
 

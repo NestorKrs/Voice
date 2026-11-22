@@ -1469,6 +1469,9 @@ export default function App() {
         <aside className={drawerOpen ? 'drawer open' : 'drawer'}>
           <div className="drawer-header">
             <h3>Settings</h3>
+            <span className="req-pill mobile-only" title={services ? new Date(services.counter.resetAt()).toLocaleString() : ''}>
+              Requests today: {usedToday} / {settings.dailyLimit}
+            </span>
             <button className="close-btn" onClick={() => setDrawerOpen(false)} aria-label="Close settings" title="Close settings">×</button>
           </div>
           <section className="settings-card">
@@ -1486,6 +1489,15 @@ export default function App() {
           </section>
           <section className="settings-card">
             <div className="card-label">Voice</div>
+            <div className="mobile-only">
+              <div className="settings-row">
+                <div className="row-text"><span className="row-label">Provider</span></div>
+                <select className="provider-select" value={provider.id} onChange={(e) => handleProviderChange(e.target.value)} disabled={switchLocked} title={switchLocked ? 'Wait for the current request to finish, or press Cancel.' : 'Choose the voice provider (free models only).'} aria-label="Voice provider">
+                  {providers.map((p) => (<option key={p.id} value={p.id}>{providerLabel(p)}</option>))}
+                </select>
+              </div>
+              {switchLocked ? <span className="provider-reason">Wait for the request or press Cancel.</span> : null}
+            </div>
             <div className="settings-row">
               <div className="row-text"><span className="row-label">Voice ({provider.label})</span></div>
               {Array.isArray(provider.voices) && provider.voices.length ? (
