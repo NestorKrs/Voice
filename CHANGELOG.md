@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.17-beta - 2026-11-22
+- Mobile: player seek 2/3 width, speed slider 1/3 width on same row (corrected)
+
+## 0.2.16-beta - 2026-11-22
+- Mobile: player seek 2/3 width, speed slider 1/3 width on same row; speed label hidden
+
 ## 0.2.15-beta - 2026-11-22
 - Mobile: player seek bar 2/3 width, speed slider 1/3 width, speed label hidden; text panel horizontal padding reduced
 
