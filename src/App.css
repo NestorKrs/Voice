@@ -225,7 +225,6 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 
 /* Text fullscreen mode: only the Text panel stays, fixed over the window */
 .app.text-fullscreen-mode .topbar,
-.app.text-fullscreen-mode .playerbar,
 .app.text-fullscreen-mode .statusbar,
 .app.text-fullscreen-mode .eventlist,
 .app.text-fullscreen-mode .drawer,
@@ -252,8 +251,33 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
     display: none;
 }
 
-/* Mouse exit for fullscreen: a floating button in the top-right corner. */
-.fullscreen-exit { position: fixed; top: 12px; right: 12px; z-index: 102; }
+/* Mouse exit for fullscreen: same floating round button as play/pause, bottom-right. */
+.fullscreen-exit { position: fixed; right: 24px; bottom: 32px; z-index: 102; width: 48px; height: 48px; }
+
+/* Fullscreen keeps only the play/pause button, floating clear of the edges. */
+.app.text-fullscreen-mode .playerbar {
+  position: fixed;
+  left: 24px;
+  bottom: 32px;
+  z-index: 102;
+  display: flex;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+.app.text-fullscreen-mode .playerbar > *:not(.play-primary) { display: none; }
+.app.text-fullscreen-mode .playerbar .play-primary {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 
 .app.text-fullscreen-mode .sel-speaker {
     z-index: 101;

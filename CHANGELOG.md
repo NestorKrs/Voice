@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.27-beta - 2026-11-22
+- Text fullscreen: play/pause and exit buttons are the same 48px round size, both offset 24px from the sides and 32px from the bottom
+
+## 0.2.26-beta - 2026-11-22
+- Text fullscreen keeps a floating play/pause button in the bottom-left corner on desktop and mobile; the fullscreen exit button gets more margin
+
+## 0.2.25-beta - 2026-11-22
+- Settings: "Audio cache" is now just "Catch"; the fullscreen exit button moved from the top-right to the bottom-right corner with a margin
+
 ## 0.2.24-beta - 2026-11-22
 - Settings drawer now spreads over the full height with more room between rows and a little more between sections
 
