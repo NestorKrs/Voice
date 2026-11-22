@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.28-beta - 2026-11-22
+- Settings labels shortened: "Cache", "Clear", "Save" and "Clear"; removed the blue mobile tap-highlight
+
 ## 0.2.27-beta - 2026-11-22
 - Text fullscreen: play/pause and exit buttons are the same 48px round size, both offset 24px from the sides and 32px from the bottom
 

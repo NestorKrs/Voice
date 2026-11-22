@@ -13,7 +13,7 @@
   --ease: 0.25s ease;
   --font: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', monospace;
 }
-* { box-sizing: border-box; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.5 var(--font); font-weight: var(--font-weight, 400); }
 button { font: inherit; color: var(--accent-text); background: var(--accent-fill); border: 1px solid var(--accent); border-radius: 6px; padding: 6px 12px; cursor: pointer; transition: border-color var(--ease), background var(--ease), color var(--ease); }

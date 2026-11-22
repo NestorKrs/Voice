@@ -1481,8 +1481,8 @@ export default function App() {
             </div>
             <div className="settings-row buttons-row">
               <div className="row">
-                <button className="btn-primary" onClick={handleSaveKey}>Save key</button>
-                <button className="btn-danger" onClick={handleClearKey}>Clear key</button>
+                <button className="btn-primary" onClick={handleSaveKey}>Save</button>
+                <button className="btn-danger" onClick={handleClearKey}>Clear</button>
               </div>
             </div>
           </section>
@@ -1627,8 +1627,8 @@ export default function App() {
           </section>
           <section className="settings-card">
             <div className="settings-row">
-              <div className="row-text"><span className="row-label">Catch ({(cacheSize / 1024 / 1024).toFixed(2)} MB)</span></div>
-              <button className="btn-danger storage-btn short-btn" onClick={handleClearCache}>Clear Catch</button>
+              <div className="row-text"><span className="row-label">Cache ({(cacheSize / 1024 / 1024).toFixed(2)} MB)</span></div>
+              <button className="btn-danger storage-btn short-btn" onClick={handleClearCache}>Clear</button>
             </div>
           </section>
           <div className="settings-footer">
