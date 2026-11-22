@@ -95,14 +95,22 @@
 .drawer .settings-row select,
 .drawer .segmented-text-picker { width: 144px; flex: none; background: var(--bg); }
 .drawer .settings-row input.api-key-input { width: auto; flex: 1; }
-.drawer .settings-row.buttons-row { justify-content: flex-end; }
-.drawer .buttons-row .row { flex: none; display: flex; gap: 8px; }
-.drawer .buttons-row button { flex: none; min-width: 144px; }
+.drawer .settings-row.buttons-row { padding: 6px 0 0; }
+.drawer .buttons-row .row { flex: 1; display: flex; gap: 8px; }
+.drawer .buttons-row button { flex: 1; min-width: 0; }
 .drawer .storage-btn { width: 144px; flex: none; }
 .drawer .short-input { width: 144px; flex: none; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; font: inherit; font-size: 12px; color: inherit; }
 .drawer .tiny-input { width: 60px; flex: none; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; font: inherit; font-size: 12px; color: inherit; text-align: right; }
+/* Chunk size and lookahead share one row */
+.drawer .settings-row.duo { gap: 12px; }
+.drawer .settings-row.duo .row-text { margin-right: 0; }
+.drawer .settings-row.duo input.tiny-input { flex: 1 1 0; width: auto; min-width: 56px; }
+/* Number inputs: no stepper arrows */
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .drawer .short-btn { width: 144px; flex: none; }
-.drawer .settings-footer { position: sticky; bottom: 0; margin-top: 8px; padding: 16px; background: var(--panel); border-top: 1px solid var(--line); z-index: 1; }
+.drawer .settings-footer { position: sticky; bottom: 0; margin-top: 8px; padding: 12px 16px; background: var(--panel); border-top: 1px solid var(--line); z-index: 1; display: flex; align-items: center; justify-content: center; }
 .drawer .footer-save { width: 100%; }
 .drawer .btn-primary { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--panel)); border-color: var(--accent); }
 .drawer .btn-secondary { color: var(--muted); background: var(--panel); border-color: var(--line); }
@@ -332,9 +340,9 @@
   .drawer .settings-row input.api-key-input { flex: 1 1 auto; width: auto; }
   .drawer .settings-row input.tiny-input { flex: 0 0 60px; width: 60px; }
   .drawer .settings-row input.short-input { flex: 0 0 144px; width: 144px; }
-  .drawer .settings-row.buttons-row { padding: 6px 0 0; justify-content: flex-end; }
-  .drawer .settings-row.buttons-row .row { flex: 0 0 auto; display: flex; gap: 8px; }
-  .drawer .buttons-row button { flex: 0 0 144px; }
+  .drawer .settings-row.buttons-row { padding: 6px 0 0; }
+  .drawer .settings-row.buttons-row .row { flex: 1; display: flex; gap: 8px; }
+  .drawer .buttons-row button { flex: 1; min-width: 0; }
   .drawer .storage-btn,
   .drawer .short-btn { flex: 0 0 144px; width: 144px; }
   .drawer .check-row { flex: 0 0 auto; }

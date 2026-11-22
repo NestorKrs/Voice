@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.23-beta - 2026-11-22
+- Settings drawer: Save key / Clear key split the row 50/50, Save settings is centred in its footer, the voice field stays on screen for providers without a voice list so switching providers no longer jumps, Chunk size and Lookahead share one row, and number inputs lost their stepper arrows
+
 ## 0.2.22-beta - 2026-11-22
 - Settings drawer: one text-button style for provider, daily limit, highlight and download format (icons kept on WAV/MP3); removed the reset layout control and its helpers, the section titles and the separator lines; cache size now sits next to the Audio cache label
 

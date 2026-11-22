@@ -1517,17 +1517,17 @@ export default function App() {
                 <select value={voiceInput} onChange={(e) => setVoiceInput(e.target.value)} aria-label="Voice" className="short-input">
                   {provider.voices.map((v) => (<option key={v} value={v}>{v}</option>))}
                 </select>
-              ) : null}
+              ) : (
+                <input type="text" value={voiceInput} onChange={(e) => setVoiceInput(e.target.value)} aria-label="Voice" className="short-input" placeholder="Default voice" />
+              )}
             </div>
           </section>
           <section className="settings-card">
-            <div className="settings-row">
+            <div className="settings-row duo">
               <div className="row-text"><span className="row-label">Chunk size</span></div>
-              <input type="number" value={chunkInput} onChange={(e) => setChunkInput(e.target.value)} className="tiny-input" />
-            </div>
-            <div className="settings-row">
+              <input type="number" value={chunkInput} onChange={(e) => setChunkInput(e.target.value)} className="tiny-input" aria-label="Chunk size" />
               <div className="row-text"><span className="row-label">Lookahead</span></div>
-              <input type="number" value={lookInput} onChange={(e) => setLookInput(e.target.value)} className="tiny-input" />
+              <input type="number" value={lookInput} onChange={(e) => setLookInput(e.target.value)} className="tiny-input" aria-label="Lookahead" />
             </div>
             <div className="settings-row">
               <div className="row-text"><span className="row-label">Daily limit</span></div>
