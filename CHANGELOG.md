@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.20-beta - 2026-11-22
+- Settings drawer mobile: label + input in one row per setting, tighter sections, no dividers, spellcheck hidden, reset layout hidden
+
 ## 0.2.19-beta - 2026-11-22
 - Settings drawer mobile layout: full-width inputs, wrapped rows, equal buttons, proper footer
 

@@ -1549,7 +1549,7 @@ export default function App() {
                 <option value="none">None</option>
               </select>
             </div>
-            <div className="settings-row">
+            <div className="settings-row mobile-hide">
               <div className="row-text"><span className="row-label">Spell check</span></div>
               <div className="check-row spell-control">
                 <label className="switch">
@@ -1575,7 +1575,7 @@ export default function App() {
               <div className="row-text"><span className="row-label">Audio cache</span></div>
               <button className="btn-danger storage-btn" onClick={handleClearCache}>Clear audio cache</button>
             </div>
-            <div className="settings-row">
+            <div className="settings-row mobile-hide">
               <div className="row-text"><span className="row-label">Panel layout</span></div>
               <button className="btn-secondary storage-btn" onClick={handleResetLayout} disabled={isDefaultOrder && isDefaultWidths} title={isDefaultOrder && isDefaultWidths ? 'The panels are already in the default order and size.' : 'Put the panels back in the default order and size.'}>Reset layout</button>
             </div>

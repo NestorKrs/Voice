@@ -270,6 +270,21 @@
   .drawer .settings-footer { padding: 12px; }
   .drawer .footer-save { width: 100%; }
 
+  /* Settings panel mobile: label + input in one row, tighter sections, no dividers */
+  .drawer .settings-card { margin: 4px 12px 0; padding: 6px 12px 8px; }
+  .drawer .card-label { margin: 4px 0 0; }
+  .drawer .card-label + .settings-row { border-top: 0; }
+  .drawer .settings-row { display: flex; align-items: center; flex-wrap: nowrap; gap: 10px; padding: 6px 0; border-top: 0; }
+  .drawer .row-text { flex: 0 0 auto; margin-bottom: 0; min-width: 0; }
+  .drawer .row-label { font-size: 13px; white-space: nowrap; }
+  .drawer .settings-row input,
+  .drawer .settings-row select,
+  .drawer .row-control { flex: 1 1 auto; width: auto; min-width: 0; }
+  .drawer .settings-row.buttons-row { padding: 6px 0 0; }
+  .drawer .settings-row.buttons-row .row { flex: none; width: 100%; }
+  .drawer .settings-row.mobile-hide { display: none; }
+  .drawer .footnote { margin-top: 4px; font-size: 10px; }
+
   .statusbar { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .statusbar:not(.err) { display: none; }
   .statusbar.err { display: flex; }
