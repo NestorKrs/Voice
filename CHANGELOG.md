@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.19-beta - 2026-11-22
+- Settings drawer mobile layout: full-width inputs, wrapped rows, equal buttons, proper footer
+
+## 0.2.18-beta - 2026-11-22
+- Highlight back on phones: removed phone-only override, uses saved setting
+- Player buttons equal width on mobile (4 columns)
+
 ## 0.2.17-beta - 2026-11-22
 - Mobile: player seek 2/3 width, speed slider 1/3 width on same row (corrected)
 

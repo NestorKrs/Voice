@@ -23,7 +23,6 @@ import { stripId3, wavHeader, wavParts, joinMode, sameAs } from './joinAudio.js'
 import { DEFAULT_ORDER, movePanel, stepPanel, loadOrder, saveOrder, resetOrder } from './panelLayout.js';
 import { DEFAULT_WIDTHS, clampWidths, usableWidth, resizeFromHandle, columnsTemplate, loadWidths, saveWidths, resetWidths } from './panelWidths.js';
 import { textFileRejection } from './fileTypes.js';
-import { isPhoneView } from './phoneView.js';
 
 const storage = typeof localStorage !== 'undefined' ? localStorage : null;
 const services = storage ? createServices({ storage }) : null;
@@ -303,7 +302,6 @@ export default function App() {
   const lastPlayheadRef = useRef(null);
   const mapRef = useRef(new Map());
   const timer = useRef(null);
-  const highlightModeEffective = isPhoneView() ? 'none' : settings.highlightMode;
   const statusIsError = jobError !== '' || schedState.state === 'error' || Object.keys(chunkNotes).length > 0;
 
   const logEvent = (msg) => {
@@ -762,11 +760,11 @@ export default function App() {
     }
   }, [playerState.index, schedState.state]);
   useEffect(() => {
-    if (highlightModeEffective === 'none') return;
+    if (settings.highlightMode === 'none') return;
     const isReading = playerState.total > 0 && (playerState.status === 'playing' || playerState.status === 'paused');
     if (!isReading) return;
     buildChunkMap(playerState.index);
-  }, [highlightModeEffective, playerState.total, playerState.index, playerState.status]);
+  }, [settings.highlightMode, playerState.total, playerState.index, playerState.status]);
 
   const isDefaultOrder = order.join() === DEFAULT_ORDER.join();
   const usablePx = usableWidth(boxWidth);
@@ -1377,7 +1375,7 @@ export default function App() {
           </div>
           <textarea ref={textRef} value={text} spellCheck={settings.spellCheck} onChange={(e) => { setText(e.target.value); setSelectedChars(0); }} onSelect={(e) => { const s = e.target.selectionStart; const t = e.target.selectionEnd; setSelectedChars(t > s ? t - s : 0); }} onMouseUp={(e) => { const ex = e.clientX; const ey = e.clientY; setTimeout(() => { const ta = e.target; const s = ta.selectionStart; const t = ta.selectionEnd; const sel = t > s ? ta.value.slice(s, t) : ''; if (!sel) { setSelIcon(null); return; } const p = selectionTopRight(ta) || { x: ex, y: ey }; setSelIcon({ x: p.x, y: p.y, text: sel }); }, 0); }} style={{ fontSize: `${textZoom}%`, display: reading ? 'none' : undefined }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} className={textDropActive ? 'drop-active' : ''} />
           {reading ? (
-            <TextReadView chunk={readChunk} mode={highlightModeEffective} engineRef={playerEngineRef} chunkIndex={reading ? playerState.index : 0} mapRef={mapRef} textZoom={textZoom} onZoom={setTextZoom} onSelectText={setSelectedChars} onSelectIcon={setSelIcon} />
+            <TextReadView chunk={readChunk} mode={settings.highlightMode} engineRef={playerEngineRef} chunkIndex={reading ? playerState.index : 0} mapRef={mapRef} textZoom={textZoom} onZoom={setTextZoom} onSelectText={setSelectedChars} onSelectIcon={setSelIcon} />
           ) : null}
           <div className="stats" style={{ justifyContent: 'flex-end' }}>
             <span>{plural(stats.characters, 'character')}</span>
