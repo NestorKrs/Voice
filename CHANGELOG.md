@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.14-beta - 2026-11-22
+- Fix undeclared setStatus in handleReadSelection: four failure/info calls replaced with setNotice + logEvent so selection read errors show in player-bar notice and status bar log instead of throwing ReferenceError
+
 ## 0.2.13-beta - 2026-11-22
 - Phone errors visible: status bar shows while a failure reason is set, with room reserved only then
 

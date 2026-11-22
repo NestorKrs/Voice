@@ -1225,7 +1225,7 @@ export default function App() {
     if (!selIcon) return;
     const startedAt = Date.now();
     const st = selectionReadState(selIcon.text, settings.chunkSize);
-    if (!st.ok) { setStatus(st.reason); logEvent(st.reason); return; }
+    if (!st.ok) { setNotice(st.reason); logEvent(st.reason); return; }
     setSelBusy(true);
     try {
       if (playerEngineRef.current) try { playerEngineRef.current.pause(); } catch {}
@@ -1238,7 +1238,7 @@ export default function App() {
       } else {
         const r = await services.speak({ input: st.text, voice: settings.voice, provider });
         if (r && r.attempts) try { services.counter.add(r.attempts); } catch {}
-        if (!r || !r.ok) { setStatus(r && r.error ? r.error.message : 'Speak failed'); return; }
+        if (!r || !r.ok) { setNotice(r && r.error ? r.error.message : 'Speak failed'); return; }
         bytes = r.bytes;
         try { await services.cache.put(key, bytes); } catch {}
       }
@@ -1246,11 +1246,11 @@ export default function App() {
       const audio = new Audio(url);
       selAudioRef.current = audio;
       audio.onended = () => { URL.revokeObjectURL(url); selAudioRef.current = null; setSelBusy(false); };
-      audio.onerror = () => { URL.revokeObjectURL(url); selAudioRef.current = null; setSelBusy(false); setStatus('Audio error'); };
+      audio.onerror = () => { URL.revokeObjectURL(url); selAudioRef.current = null; setSelBusy(false); setNotice('Audio error'); };
       await audio.play();
       logEvent('Read selection: ' + st.text.length + ' chars, ' + (hit ? 'cache hit' : 'cache miss') + ', ' + (Date.now() - startedAt) + ' ms');
     } catch (e) {
-      setStatus(e && e.message ? e.message : String(e));
+      setNotice(e && e.message ? e.message : String(e));
     } finally {
       setUsedToday(services.counter.count());
       setSelBusy(false);
