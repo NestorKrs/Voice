@@ -258,6 +258,8 @@
 
   .statusbar { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .statusbar:not(.err) { display: none; }
+  .statusbar.err { display: flex; }
+  .app:has(.statusbar.err) { padding-bottom: 28px; }
 
   .app.text-fullscreen-mode .text-panel { min-height: 0; max-height: none; }
 

@@ -1,3 +1,6 @@
+## 0.2.13-beta - 2026-11-22
+- Phone errors visible: status bar shows while a failure reason is set, with room reserved only then
+
 ## 0.2.12-beta - 2026-11-22
 - Lint cleanup only: three no-unused-expressions warnings in App.jsx rewritten, no behavior change
 

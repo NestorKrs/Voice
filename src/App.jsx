@@ -304,6 +304,7 @@ export default function App() {
   const mapRef = useRef(new Map());
   const timer = useRef(null);
   const highlightModeEffective = isPhoneView() ? 'none' : settings.highlightMode;
+  const statusIsError = jobError !== '' || schedState.state === 'error' || Object.keys(chunkNotes).length > 0;
 
   const logEvent = (msg) => {
     const line = `${new Date().toLocaleTimeString()} ${msg}`;
@@ -1585,7 +1586,7 @@ export default function App() {
             <button className="btn-primary footer-save" onClick={() => { handleSaveSettings(); setDrawerOpen(false); }}>Save settings</button>
           </div>
         </aside>
-      <div className="statusbar" onClick={() => setShowEvents((v) => !v)}>
+      <div className={statusIsError ? 'statusbar err' : 'statusbar'} onClick={() => setShowEvents((v) => !v)}>
         {events[0] || 'ready'}
         {selectedChars > 0 ? <span className="status-selected">Selected: {selectedChars} chars</span> : null}
       </div>
