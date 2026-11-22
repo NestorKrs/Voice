@@ -1,3 +1,6 @@
+## 0.2.11-beta - 2026-11-22
+- Highlight off on phones: effective mode forces none under 768px, map building skips; saved setting untouched
+
 ## 0.2.10-beta - 2026-11-22
 - Phone: the text panel row splits, speaker/talker icon left and the three icon buttons pushed to the right edge
 

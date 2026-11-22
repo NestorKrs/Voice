@@ -1,9 +1,10 @@
 # Backup log
 
-Counter: 3 (merged behavior changes since the last backup)
+Counter: 1 (merged behavior changes since the last backup)
 
 | Date | Version | Label | Changes since previous backup |
 | --- | --- | --- | --- |
+| 2026-11-22 | 0.2.10-beta | v0.2.10-beta | backup made |
 | 2026-11-22 | 0.2.7-beta | v0.2.7-beta | backup made |
 | 2026-11-21 | 0.2.3-beta | pre-mobile | backup made |
 | 2026-11-09 | 0.1.93-alpha | highlight-map | backup made |
