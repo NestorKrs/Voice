@@ -1,3 +1,6 @@
+## 0.2.12-beta - 2026-11-22
+- Lint cleanup only: three no-unused-expressions warnings in App.jsx rewritten, no behavior change
+
 ## 0.2.11-beta - 2026-11-22
 - Highlight off on phones: effective mode forces none under 768px, map building skips; saved setting untouched
 
