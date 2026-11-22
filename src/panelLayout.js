@@ -58,12 +58,3 @@ export function saveOrder(storage, order) {
     return false;
   }
 }
-
-export function resetOrder(storage) {
-  try {
-    storage.removeItem(ORDER_KEY);
-    return true;
-  } catch {
-    return false;
-  }
-}

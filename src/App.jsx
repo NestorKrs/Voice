@@ -20,8 +20,8 @@ import { chunkFileName, audioKind, convertChunk } from './chunkDownload.js';
 import { createMp3Encoder, encodeMp3, pcmToInt16Channels } from './mp3Encoder.js';
 import { createZip, zipChunks } from './zipStore.js';
 import { stripId3, wavHeader, wavParts, joinMode, sameAs } from './joinAudio.js';
-import { DEFAULT_ORDER, movePanel, stepPanel, loadOrder, saveOrder, resetOrder } from './panelLayout.js';
-import { DEFAULT_WIDTHS, clampWidths, usableWidth, resizeFromHandle, columnsTemplate, loadWidths, saveWidths, resetWidths } from './panelWidths.js';
+import { DEFAULT_ORDER, movePanel, stepPanel, loadOrder, saveOrder } from './panelLayout.js';
+import { DEFAULT_WIDTHS, clampWidths, usableWidth, resizeFromHandle, columnsTemplate, loadWidths, saveWidths } from './panelWidths.js';
 import { textFileRejection } from './fileTypes.js';
 
 const storage = typeof localStorage !== 'undefined' ? localStorage : null;
@@ -80,11 +80,9 @@ function FontWeightControl({ initial, onCommit }) {
   }, [value]);
   const commit = () => onCommit(value);
   return (
-    <div className="row">
-      <input className="weight-slider" type="range" min="100" max="800" step="100" value={value} aria-label="Font weight"
-        onChange={(e) => setValue(Number(e.target.value))}
-        onPointerUp={commit} onKeyUp={commit} />
-    </div>
+    <input className="weight-slider" type="range" min="100" max="800" step="100" value={value} aria-label="Font weight"
+      onChange={(e) => setValue(Number(e.target.value))}
+      onPointerUp={commit} onKeyUp={commit} />
   );
 }
 
@@ -96,11 +94,25 @@ function LeadingControl({ initial, onCommit }) {
   }, [value]);
   const commit = () => onCommit(value);
   return (
-    <div className="row">
-      <input className="leading-slider" type="range" min="1" max="2.5" step="0.1" value={value} aria-label="Font leading"
-        onChange={(e) => setValue(Number(e.target.value))}
-        onPointerUp={commit} onKeyUp={commit} />
-    </div>
+    <input className="leading-slider" type="range" min="1" max="2.5" step="0.1" value={value} aria-label="Font leading"
+      onChange={(e) => setValue(Number(e.target.value))}
+      onPointerUp={commit} onKeyUp={commit} />
+  );
+}
+
+// Plain text toggle for settings - the style the daily limit buttons use
+function TextToggle({ children, onClick, selected, disabled, title, ariaLabel }) {
+  return (
+    <button
+      className={`segmented-text-button ${selected ? 'active' : ''}`}
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      aria-label={ariaLabel}
+      aria-pressed={selected}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -766,10 +778,8 @@ export default function App() {
     buildChunkMap(playerState.index);
   }, [settings.highlightMode, playerState.total, playerState.index, playerState.status]);
 
-  const isDefaultOrder = order.join() === DEFAULT_ORDER.join();
   const usablePx = usableWidth(boxWidth);
   const shown = boxWidth ? clampWidths(widths, usablePx) : widths;
-  const isDefaultWidths = widths.left === DEFAULT_WIDTHS.left && widths.right === DEFAULT_WIDTHS.right;
 
   const commitWidths = (next) => {
     setWidths(next);
@@ -869,21 +879,6 @@ export default function App() {
     const next = stepPanel(order, id, e.key === 'ArrowLeft' ? -1 : 1);
     if (next.join() === order.join()) return;
     applyOrder(next, 'Moved panel ' + id + ' with the keyboard');
-  };
-
-  const handleResetLayout = () => {
-    logEvent('Reset layout pressed');
-    try {
-      if (storage) resetOrder(storage);
-      setOrder([...DEFAULT_ORDER]);
-      if (storage) resetWidths(storage);
-      setWidths({ ...DEFAULT_WIDTHS });
-      setNotice('Panel layout reset.');
-    } catch (e) {
-      const m = e && e.message ? e.message : 'error';
-      setJobError(m);
-      logEvent(m);
-    }
   };
 
   const handleFontWeightCommit = (value) => {
@@ -1480,7 +1475,6 @@ export default function App() {
             <button className="close-btn" onClick={() => setDrawerOpen(false)} aria-label="Close settings" title="Close settings">×</button>
           </div>
           <section className="settings-card">
-            <div className="card-label">Connection</div>
             <div className="settings-row">
               <div className="row-text"><span className="row-label">API key</span></div>
               <input className="api-key-input" type="password" value={keyInput} onChange={(e) => setKeyInput(e.target.value)} placeholder="••••••••" />
@@ -1493,61 +1487,108 @@ export default function App() {
             </div>
           </section>
           <section className="settings-card">
-            <div className="card-label">Voice</div>
-            <div className="mobile-only">
-              <div className="settings-row">
-                <div className="row-text"><span className="row-label">Provider</span></div>
-                <select className="provider-select" value={provider.id} onChange={(e) => handleProviderChange(e.target.value)} disabled={switchLocked} title={switchLocked ? 'Wait for the current request to finish, or press Cancel.' : 'Choose the voice provider (free models only).'} aria-label="Voice provider">
-                  {providers.map((p) => (<option key={p.id} value={p.id}>{providerLabel(p)}</option>))}
-                </select>
+            <div className="settings-row">
+              <div className="row-text"><span className="row-label">Provider</span></div>
+              <div className="segmented-text-picker wide">
+                <TextToggle
+                  onClick={() => handleProviderChange('fish')}
+                  selected={provider.id === 'fish'}
+                  disabled={switchLocked}
+                  title={switchLocked ? 'Wait for the current request to finish, or press Cancel.' : 'Fish Audio'}
+                  ariaLabel="Fish Audio"
+                >
+                  Fish Audio
+                </TextToggle>
+                <TextToggle
+                  onClick={() => handleProviderChange('heygen')}
+                  selected={provider.id === 'heygen'}
+                  disabled={switchLocked}
+                  title={switchLocked ? 'Wait for the current request to finish, or press Cancel.' : 'HeyGen'}
+                  ariaLabel="HeyGen"
+                >
+                  HeyGen
+                </TextToggle>
               </div>
-              {switchLocked ? <span className="provider-reason">Wait for the request or press Cancel.</span> : null}
             </div>
+            {switchLocked ? <span className="provider-reason">Wait for the request or press Cancel.</span> : null}
             <div className="settings-row">
               <div className="row-text"><span className="row-label">Voice ({provider.label})</span></div>
               {Array.isArray(provider.voices) && provider.voices.length ? (
-                <select value={voiceInput} onChange={(e) => setVoiceInput(e.target.value)} aria-label="Voice">
+                <select value={voiceInput} onChange={(e) => setVoiceInput(e.target.value)} aria-label="Voice" className="short-input">
                   {provider.voices.map((v) => (<option key={v} value={v}>{v}</option>))}
                 </select>
               ) : null}
             </div>
           </section>
           <section className="settings-card">
-            <div className="card-label">Reading</div>
             <div className="settings-row">
               <div className="row-text"><span className="row-label">Chunk size</span></div>
-              <input type="number" value={chunkInput} onChange={(e) => setChunkInput(e.target.value)} />
+              <input type="number" value={chunkInput} onChange={(e) => setChunkInput(e.target.value)} className="tiny-input" />
             </div>
             <div className="settings-row">
               <div className="row-text"><span className="row-label">Lookahead</span></div>
-              <input type="number" value={lookInput} onChange={(e) => setLookInput(e.target.value)} />
+              <input type="number" value={lookInput} onChange={(e) => setLookInput(e.target.value)} className="tiny-input" />
             </div>
             <div className="settings-row">
               <div className="row-text"><span className="row-label">Daily limit</span></div>
-              <select value={dailyInput} onChange={(e) => setDailyInput(Number(e.target.value))}>
-                <option value={50}>50</option>
-                <option value={1000}>1000</option>
-              </select>
+              <div className="segmented-text-picker">
+                <TextToggle
+                  onClick={() => setDailyInput(50)}
+                  selected={dailyInput === 50}
+                  title="50 requests per day"
+                  ariaLabel="50 requests per day"
+                >
+                  50
+                </TextToggle>
+                <TextToggle
+                  onClick={() => setDailyInput(1000)}
+                  selected={dailyInput === 1000}
+                  title="1000 requests per day (needs $10 lifetime credit)"
+                  ariaLabel="1000 requests per day"
+                >
+                  1000
+                </TextToggle>
+              </div>
             </div>
             <div className="footnote">1000 needs $10 of lifetime credit purchases on OpenRouter. The app cannot check this.</div>
           </section>
           <section className="settings-card">
-            <div className="card-label">Display</div>
             <div className="settings-row">
               <div className="row-text"><span className="row-label">Font weight</span></div>
-              <div className="row-control"><FontWeightControl initial={settings.fontWeight} onCommit={handleFontWeightCommit} /></div>
+              <FontWeightControl initial={settings.fontWeight} onCommit={handleFontWeightCommit} />
             </div>
             <div className="settings-row">
               <div className="row-text"><span className="row-label">Font leading</span></div>
-              <div className="row-control"><LeadingControl initial={settings.leading} onCommit={handleLeadingCommit} /></div>
+              <LeadingControl initial={settings.leading} onCommit={handleLeadingCommit} />
             </div>
             <div className="settings-row">
-              <div className="row-text"><span className="row-label">Highlight on reading</span></div>
-              <select value={highlightInput} onChange={(e) => handleHighlightModeChange(e.target.value)} aria-label="Highlight mode">
-                <option value="words">Words</option>
-                <option value="sentences">Sentences</option>
-                <option value="none">None</option>
-              </select>
+              <div className="row-text"><span className="row-label">Highlight</span></div>
+              <div className="segmented-text-picker wide-lg">
+                <TextToggle
+                  onClick={() => handleHighlightModeChange('none')}
+                  selected={highlightInput === 'none'}
+                  title="No highlight"
+                  ariaLabel="No highlight"
+                >
+                  None
+                </TextToggle>
+                <TextToggle
+                  onClick={() => handleHighlightModeChange('words')}
+                  selected={highlightInput === 'words'}
+                  title="Highlight words"
+                  ariaLabel="Highlight words"
+                >
+                  Words
+                </TextToggle>
+                <TextToggle
+                  onClick={() => handleHighlightModeChange('sentences')}
+                  selected={highlightInput === 'sentences'}
+                  title="Highlight sentences"
+                  ariaLabel="Highlight sentences"
+                >
+                  Sentences
+                </TextToggle>
+              </div>
             </div>
             <div className="settings-row mobile-hide">
               <div className="row-text"><span className="row-label">Spell check</span></div>
@@ -1560,24 +1601,34 @@ export default function App() {
             </div>
           </section>
           <section className="settings-card">
-            <div className="card-label">Downloads</div>
             <div className="settings-row">
               <div className="row-text"><span className="row-label">Download format</span></div>
-              <select value={downloadFormatInput} onChange={(e) => handleDownloadFormatChange(e.target.value)} aria-label="Download format">
-                <option value="mp3">MP3</option>
-                <option value="wav">WAV</option>
-              </select>
+              <div className="segmented-text-picker wide">
+                <TextToggle
+                  onClick={() => handleDownloadFormatChange('wav')}
+                  selected={downloadFormatInput === 'wav'}
+                  title="WAV format"
+                  ariaLabel="WAV format"
+                >
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                  <span>WAV</span>
+                </TextToggle>
+                <TextToggle
+                  onClick={() => handleDownloadFormatChange('mp3')}
+                  selected={downloadFormatInput === 'mp3'}
+                  title="MP3 format"
+                  ariaLabel="MP3 format"
+                >
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                  <span>MP3</span>
+                </TextToggle>
+              </div>
             </div>
           </section>
           <section className="settings-card">
-            <div className="card-label">Storage ({(cacheSize / 1024 / 1024).toFixed(2)} MB) & layout</div>
             <div className="settings-row">
-              <div className="row-text"><span className="row-label">Audio cache</span></div>
-              <button className="btn-danger storage-btn" onClick={handleClearCache}>Clear audio cache</button>
-            </div>
-            <div className="settings-row mobile-hide">
-              <div className="row-text"><span className="row-label">Panel layout</span></div>
-              <button className="btn-secondary storage-btn" onClick={handleResetLayout} disabled={isDefaultOrder && isDefaultWidths} title={isDefaultOrder && isDefaultWidths ? 'The panels are already in the default order and size.' : 'Put the panels back in the default order and size.'}>Reset layout</button>
+              <div className="row-text"><span className="row-label">Audio cache ({(cacheSize / 1024 / 1024).toFixed(2)} MB)</span></div>
+              <button className="btn-danger storage-btn short-btn" onClick={handleClearCache}>Clear Catch</button>
             </div>
           </section>
           <div className="settings-footer">

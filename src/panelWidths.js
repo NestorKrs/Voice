@@ -71,12 +71,3 @@ export function saveWidths(storage, w) {
     return false;
   }
 }
-
-export function resetWidths(storage) {
-  try {
-    storage.removeItem(WIDTHS_KEY);
-    return true;
-  } catch {
-    return false;
-  }
-}

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   SIDE_MIN_PX, SIDE_MAX_PCT, DEFAULT_WIDTHS, WIDTHS_KEY,
   middlePct, usableWidth, limitsFor, clampWidths, resizeFromHandle, columnsTemplate,
-  loadWidths, saveWidths, resetWidths,
+  loadWidths, saveWidths,
 } from '../src/panelWidths.js';
 import { DEFAULT_ORDER, normalizeOrder, movePanel, stepPanel, loadOrder } from '../src/panelLayout.js';
 
