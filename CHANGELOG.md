@@ -1,3 +1,6 @@
+## 0.2.10-beta - 2026-11-22
+- Phone: the text panel row splits, speaker/talker icon left and the three icon buttons pushed to the right edge
+
 ## 0.2.9-beta - 2026-11-22
 - Phone space cleanup: hide find row, TEXT label, speaker icon and status bar; two-row player grid; small scrolling reader list; Start Reading becomes a circular talking icon on phones
 

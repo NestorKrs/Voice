@@ -246,7 +246,7 @@
   .text-panel textarea, .text-panel .text-read { font-size: 16px !important; }
   .text-panel .stats { display: none; }
   .text-panel .row { flex-wrap: nowrap; align-items: center; gap: 8px; }
-  .text-panel .row > span { display: none !important; }
+  .text-panel .row > span { display: block; }
   .start-btn { flex: none; width: 40px; height: 40px; min-width: 40px !important; min-height: 40px; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
   .start-btn .start-label { display: none; }
   .start-btn svg.start-icon { display: block; }
