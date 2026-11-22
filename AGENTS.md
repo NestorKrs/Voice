@@ -39,7 +39,7 @@ Tests are named `*.test.mjs` and run with `node --test tests/*.test.mjs`. Add fo
 
 ## Versioning (mandatory)
 
-Format MAJOR.MINOR.PATCH-alpha, starting 0.1.0-alpha. Bump PATCH for every task that changes behavior, UI or fixes a bug. Bump MINOR for a big feature. Docs-only and tests-only tasks do not bump. The only source of truth is `version` in package.json; src/version.js reads it. Add one short line per bump to CHANGELOG.md (version, date, what changed). Before bumping, read the current version from package.json.
+Format MAJOR.MINOR.PATCH-beta, starting 0.1.0-alpha. Bump PATCH for every task that changes behavior, UI or fixes a bug. Bump MINOR for a big feature. Docs-only and tests-only tasks do not bump. The only source of truth is `version` in package.json; src/version.js reads it. Add one short line per bump to CHANGELOG.md (version, date, what changed). Before bumping, read the current version from package.json. The project moved from alpha to beta at 0.2.0.
 
 ## Backups
 

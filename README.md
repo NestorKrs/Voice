@@ -19,6 +19,11 @@ Features:
 - A status bar with an event log.
 - Loads .txt and .md files (drag and drop, or the Load button) as plain text.
 - Download: each ready chunk, all ready chunks as one ZIP, or the whole text as one joined audio file (MP3 or WAV, chosen in Settings).
+- Find in text with Previous/Next.
+- Font leading slider and spell check toggle.
+- Highlight mode (words, sentences or none).
+- Provider switch between Fish Audio and HeyGen.
+- Phone layout (highlight and the selection speaker icon are off on phones).
 
 Run: npm install, then npm run dev, then open http://127.0.0.1:5180/. Tests: npm test.
 Web build: npm run build makes dist/, built for the path /voice/app/ (set in vite.config.js).

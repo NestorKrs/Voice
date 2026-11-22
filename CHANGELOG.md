@@ -1,3 +1,5 @@
+# Changelog
+
 ## 0.2.13-beta - 2026-11-22
 - Phone errors visible: status bar shows while a failure reason is set, with room reserved only then
 
@@ -49,6 +51,9 @@
 ## 0.1.103-alpha - 2026-11-09
 - Text fullscreen: a toggle button next to Clear, the Ctrl+Shift+Space handler listens in the capture phase and also accepts event.code Space, and the status bar log shows 'Text fullscreen on/off'.
 
+## 0.1.102-alpha - 2026-11-09
+- Ctrl+Shift+Space shows the Text panel fullscreen; fix: the panel was hidden together with its parent .columns. Reader, player bar, status bar and settings are hidden while it is on.
+
 ## 0.1.101-alpha - 2026-11-09
 - Two panels: Job panel removed; job errors, pause state and Resume live in the Reader note.
 
@@ -67,37 +72,34 @@
 ## 0.1.96-alpha - 2026-11-09
 - Highlight map: retry failed maps and log the real reason.
 
-## 0.1.102-alpha - 2026-11-09
-- Ctrl+Shift+Space shows the Text panel fullscreen; fix: the panel was hidden together with its parent .columns. Reader, player bar, status bar and settings are hidden while it is on.
-
-## 0.1.101-alpha - 2026-11-09
+## 0.1.95-alpha - 2026-11-09
 - Highlight now uses alignTimeMap (break-to-pause alignment) instead of the timeMap.js map, and corrects the decoded-audio/player length difference before looking up the character; log lines now read "aligned X of Y breaks, Z pauses".
 
-## 0.1.94 - 2026-11-09
+## 0.1.94-alpha - 2026-11-09
 - Added src/alignMap.js: alignTimeMap matches the punctuation breaks of a chunk text to the real pauses in its audio by dynamic programming (skippable breaks, long-pause bonus), so one wrong pause no longer shifts every later break.
 
-## 0.1.93 - 2026-11-09
+## 0.1.93-alpha - 2026-11-09
 - Highlight map is now triggered by the player (reading + chunk index + status) instead of the scheduler playhead effect, so every playing chunk gets a map; a chunk with no cached audio yet logs "no cached audio yet (estimated)".
 
-## 0.1.92 - 2026-11-09
+## 0.1.92-alpha - 2026-11-09
 - Highlight now follows the real pauses: the playing chunk's cached audio is decoded, its silences are found and mapped to character indexes; word and sentence highlight use that map, falling back to the old estimate when a chunk's map cannot be built.
 
-## 0.1.91 - 2026-11-09
+## 0.1.91-alpha - 2026-11-09
 - Added src/timeMap.js: buildTimeMap turns findSilences pauses into a playback-time to character-index map (longest pauses kept, weighted inside a sentence, holds during a pause).
 
-## 0.1.90 - 2026-11-09
+## 0.1.90-alpha - 2026-11-09
 - Added src/silenceMap.js: a pure module that finds the real pauses in a chunk's decoded audio (10 ms RMS frames, relative threshold, leadIn and tail reported separately).
 
-## 0.1.89 - 2026-11-09
+## 0.1.89-alpha - 2026-11-09
 - Requests today now refreshes at once after a speaker icon request (success, failure or cap error).
 
-## 0.1.88 - 2026-11-09
+## 0.1.88-alpha - 2026-11-09
 - Selection speaker icon now sits at the top-right corner of the selection (above it), not below it.
 
-## 0.1.87 - 2026-11-09
+## 0.1.87-alpha - 2026-11-09
 - Selection speaker icon now works: appears after a selection, reads it aloud, stops on a second press, hides on outside mousedown, Esc, scroll and text/provider/voice changes, and yields to main playback.
 
-## 0.1.86 - 2026-11-09
+## 0.1.86-alpha - 2026-11-09
 - Selection speaker icon groundwork: selectionReadState module and tests; App state and handler.
 
 ## 0.1.85-alpha - 2026-11-09
