@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.24-beta - 2026-11-22
+- Settings drawer now spreads over the full height with more room between rows and a little more between sections
+
 ## 0.2.23-beta - 2026-11-22
 - Settings drawer: Save key / Clear key split the row 50/50, Save settings is centred in its footer, the voice field stays on screen for providers without a voice list so switching providers no longer jumps, Chunk size and Lookahead share one row, and number inputs lost their stepper arrows
 
