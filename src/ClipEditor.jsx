@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildPeaks, peaksForRange } from './waveformPeaks.js';
 import { createCuts, addMarker, moveMarker, undo, redo, segments, formatTime } from './clipCuts.js';
-import { realignNames } from './clipNames.js';
+import { realignNames, firstSentence } from './clipNames.js';
 import { defaultClipName } from './clipSlices.js';
 import { compensateKeyPress, snapToQuiet, SNAP_RADIUS_MS } from './clipSnap.js';
 import { createMarkerStore } from './clipMarkerStore.js';
@@ -540,7 +540,6 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
             <canvas ref={canvasRef} />
           </div>
           <div className="clip-times">
-            <span>{formatTime(current.start, rate)}</span>
             <div className="clip-tools">
               <button type="button" className="icon-btn" aria-label="Zoom out" title={isFullView(current, total) ? 'Already showing the whole audio' : 'Zoom out'} disabled={isFullView(current, total)} onClick={() => zoomBy(1 / 1.5)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/></svg></button>
               <button type="button" className="icon-btn" aria-label="Zoom in" title={current.span <= minSpan ? 'Zoomed in to the maximum (' + formatTime(minSpan, rate) + ' visible)' : 'Zoom in'} disabled={current.span <= minSpan} onClick={() => zoomBy(1.5)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5v14"/></svg></button>
@@ -571,22 +570,21 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
               ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
               {audio ? <span className="clip-visible">{clipSegments.length} clips</span> : null}
             </div>
-            <span>{formatTime(total - (current.start + current.span), rate)}</span>
           </div>
         </>
       )}
       <div className="clip-transport">
         <button
           type="button"
-          className="icon-btn"
+          className={'play-primary' + (playStatus === 'playing' ? ' play-active' : '')}
           aria-label={playStatus === 'playing' ? 'Pause' : 'Play'}
           title={!audio ? 'No audio loaded' : (playStatus === 'playing' ? 'Pause' : 'Play')}
           disabled={!audio}
           onClick={togglePlay}
         >
           {playStatus === 'playing'
-            ? <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5v14M15 5v14"/></svg>
-            : <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 5l11 7-11 7z"/></svg>}
+            ? <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+            : <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>}
         </button>
         <span className="clip-time">{formatTime(playPos, displayRate)} / {formatTime(total, displayRate)}</span>
       </div>
@@ -595,14 +593,16 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       <div className="clip-list">
         {audio && clipSegments.length > 0
           ? clipSegments.map((segment) => {
-              const isCurrent = playPos >= segment.start && playPos < segment.end;
               const isPlaying = playingClip === segment.index && playStatus === 'playing';
               const buttonLabel = (isPlaying ? 'Pause clip ' : 'Play clip ') + (segment.index + 1);
+              const chunk = audio ? audio.offsets.reduce((last, offset, i) => (offset <= segment.start ? i : last), -1) : -1;
+              const chunkId = chunk >= 0 ? audio.indexes[chunk] : -1;
+              const previewText = chunkId >= 0 && chunkTexts[chunkId] ? firstSentence(chunkTexts[chunkId]) : '';
               return (
-                <div className={'clip-row' + (isCurrent ? ' current' : '')} key={segment.index}>
+                <div className="clip-row" key={segment.index}>
                   <button
                     type="button"
-                    className="icon-btn"
+                    className={'icon-btn' + (isPlaying ? ' play-active' : '')}
                     aria-label={buttonLabel}
                     title={buttonLabel}
                     onClick={() => playClip(segment)}
@@ -614,7 +614,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
                   <input
                     maxLength={60}
                     aria-label="Clip name"
-                    placeholder={defaultClipName(segment.index)}
+                    placeholder={previewText || defaultClipName(segment.index)}
                     value={names[segment.index] || ''}
                     onChange={(event) => {
                       const next = [...namesRef.current];

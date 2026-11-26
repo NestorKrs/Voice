@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.51-beta - 2026-11-26
+- Clip editor list polish: highlight only the playing clip button, show the cut's first sentence as the name placeholder, space the rows, drop the timeline end numbers, pin chunk info to the bottom and style the transport play button like the playbar
+
 ## 0.2.50-beta - 2026-11-26
 - Clip editor clip list: per-clip play/pause buttons and editable names that stay with their clip when cuts change
 

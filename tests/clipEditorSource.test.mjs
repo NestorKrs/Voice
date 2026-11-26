@@ -32,12 +32,13 @@ test('the reader panel head owns the editor close button', () => {
   assert.ok(!source.includes('Close editor'));
 });
 
-test('zoom tools sit between elapsed and remaining time', () => {
+test('zoom tools sit in their own row above the transport', () => {
   const times = source.slice(source.indexOf('<div className="clip-times">'));
   assert.ok(times.includes('className="clip-tools"'));
-  assert.ok(times.includes('formatTime(current.start, rate)'));
-  assert.ok(times.includes('formatTime(total - (current.start + current.span), rate)'));
+  assert.ok(!times.includes('formatTime(current.start, rate)'));
+  assert.ok(!times.includes('formatTime(total - (current.start + current.span), rate)'));
   assert.ok(source.indexOf('className="clip-tools"') > source.indexOf('<div className="clip-times">'));
+  assert.ok(source.includes('formatTime(playPos, displayRate)'));
 });
 
 test('ClipEditor wires playback, Space and the playhead without storage', () => {
