@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.36-beta - 2026-11-26
+- Added src/clipPlayer.js: lazy AudioContext-backed mono buffer player with play, pause, seek, position and end callback
+
 ## 0.2.35-beta - 2026-11-26
 - Fixed the Edit clips tooltip and closed a stale clip editor when provider, voice, chunk size or text changes
 
