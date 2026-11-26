@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.34-beta - 2026-11-26
+- Wired the clip editor into the Reader panel: Edit clips button, scope picker, waveform view and desktop-only gating
+
+## 0.2.33-beta - 2026-11-26
+- Added src/clipEditorLoad.js: pure loader that joins cached chunk audio to mono and reports skipped chunks
+
 ## 0.2.32-beta - 2026-11-26
 - Added src/ClipEditor.jsx: read-only waveform view with chunk boundaries and scope picker
 

@@ -291,6 +291,7 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .clip-wave canvas { display: block; width: 100%; height: 100%; }
 .clip-times { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
 .clip-msg { color: var(--muted); font-size: 12px; padding: 12px; }
+.reader-panel.editor-open .chunk-list, .reader-panel.editor-open .reader-card { display: none; }
 
 /* Phone layout (<=768px): stack the panels, wrap the bars and enlarge tap targets. Desktop rules above are unchanged. */
 @media (max-width: 768px) {

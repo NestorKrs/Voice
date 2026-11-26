@@ -23,6 +23,9 @@ import { stripId3, wavHeader, wavParts, joinMode, sameAs } from './joinAudio.js'
 import { DEFAULT_ORDER, movePanel, stepPanel, loadOrder, saveOrder } from './panelLayout.js';
 import { DEFAULT_WIDTHS, clampWidths, usableWidth, resizeFromHandle, columnsTemplate, loadWidths, saveWidths } from './panelWidths.js';
 import { textFileRejection } from './fileTypes.js';
+import ClipEditor from './ClipEditor.jsx';
+import { loadEditorAudio } from './clipEditorLoad.js';
+import { toMono } from './waveformPeaks.js';
 
 const storage = typeof localStorage !== 'undefined' ? localStorage : null;
 const services = storage ? createServices({ storage }) : null;
@@ -314,6 +317,12 @@ export default function App() {
   const lastPlayheadRef = useRef(null);
   const mapRef = useRef(new Map());
   const timer = useRef(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorLoading, setEditorLoading] = useState(false);
+  const [editorError, setEditorError] = useState('');
+  const [editorAudio, setEditorAudio] = useState(null);
+  const [editorScope, setEditorScope] = useState('all');
+  const editorLoadId = useRef(0);
   const statusIsError = jobError !== '' || schedState.state === 'error' || Object.keys(chunkNotes).length > 0;
 
   const logEvent = (msg) => {
@@ -1285,6 +1294,48 @@ export default function App() {
       logEvent('Highlight map chunk ' + (index + 1) + ': estimated (' + reason + '), try ' + tries);
     }
   };
+
+  const closeClipEditor = () => {
+    editorLoadId.current += 1;
+    setEditorOpen(false);
+    setEditorAudio(null);
+    setEditorError('');
+    setEditorLoading(false);
+    logEvent('Clip editor closed');
+  };
+
+  const loadEditor = async (scope) => {
+    const id = ++editorLoadId.current;
+    setEditorLoading(true);
+    setEditorError('');
+    const indexes = scope === 'all' ? chunks.map((_, i) => i) : [Number(scope.slice(6))];
+    const getBytes = async (index) => {
+      const key = await services.makeKey({ text: chunks[index], voice: settings.voice, provider });
+      return services.cache.get(key);
+    };
+    try {
+      const r = await loadEditorAudio({ indexes, getBytes, decode: decodeChunk, toMonoFn: toMono });
+      if (id !== editorLoadId.current) return;
+      setEditorAudio(r.audio);
+      logEvent('Clip editor: ' + (r.audio ? r.audio.indexes.length : 0) + ' chunk(s) loaded, ' + r.skipped.length + ' without audio');
+    } catch (e) {
+      if (id !== editorLoadId.current) return;
+      setEditorAudio(null);
+      setEditorError(e.message);
+      logEvent('Clip editor failed: ' + e.message);
+    } finally {
+      if (id === editorLoadId.current) setEditorLoading(false);
+    }
+  };
+
+  const openClipEditor = () => {
+    if (playerEngineRef.current) try { playerEngineRef.current.pause(); } catch {}
+    setEditorScope('all');
+    setEditorOpen(true);
+    logEvent('Clip editor opened');
+    loadEditor('all');
+  };
+
   const panelClass = (id, extra) =>
     'panel ' + extra + (dragId === id ? ' dragging' : '') + (drop && drop.id === id ? ' drop-' + drop.side : '');
 
@@ -1305,6 +1356,7 @@ export default function App() {
   }
   const allChunksReady = notReadyChunks.length === 0;
   const notReadyTitle = 'Chunks ' + notReadyChunks.slice(0, 5).join(', ') + (notReadyChunks.length > 5 ? ' and ' + (notReadyChunks.length - 5) + ' more' : '') + ' are not ready yet.';
+  const scopeOptions = [{ value: 'all', label: 'Whole text (joined)' }, ...chunks.map((_, i) => ({ value: 'chunk-' + i, label: 'Chunk ' + (i + 1) }))];
   const canPause = jobLive && (schedState.state === 'generating' || schedState.state === 'idle');
   const canResume = ['paused', 'cancelled', 'waiting_reset', 'error'].includes(schedState.state);
   const canCancel = jobLive && ['generating', 'idle', 'paused'].includes(schedState.state);
@@ -1395,7 +1447,7 @@ export default function App() {
             <button className="icon-btn fullscreen-exit" title="Exit fullscreen (Ctrl+Shift+Space)" aria-label="Exit text fullscreen" onClick={(e) => { e.stopPropagation(); setTextFullscreen(false); }}><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/></svg></button>
           ) : null}
         </section>
-        <section className={panelClass('reader', 'reader-panel')} style={{ gridColumn: order.indexOf('reader') * 2 + 1, gridRow: 1 }} onDragOver={onPanelDragOver('reader')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('reader')}>
+        <section className={panelClass('reader', 'reader-panel') + (editorOpen ? ' editor-open' : '')} style={{ gridColumn: order.indexOf('reader') * 2 + 1, gridRow: 1 }} onDragOver={onPanelDragOver('reader')} onDragLeave={onPanelDragLeave} onDrop={onPanelDrop('reader')}>
           <div className="panel-head">
             <span className="grip" role="button" tabIndex={0} draggable="true" title="Drag to move this panel. Keyboard: Alt+Left or Alt+Right." aria-label="Move the Reader panel" onDragStart={onGripDragStart('reader')} onDragEnd={onGripDragEnd} onKeyDown={onGripKeyDown('reader')} />
             <span className="panel-title">Reader</span>
@@ -1435,6 +1487,7 @@ export default function App() {
               );
             })}
           </div>
+          {editorOpen ? (<ClipEditor audio={editorAudio} loading={editorLoading} error={editorError} scopeValue={editorScope} scopeOptions={scopeOptions} onScopeChange={(v) => { setEditorScope(v); loadEditor(v); }} onClose={closeClipEditor} />) : null}
           {(jobError || noteState) ? (
             <div className={'job-note' + (jobError || schedState.state === 'error' ? ' job-note-error' : '')}>
               {jobError ? <span>{jobError}</span> : <span>{schedState.state === 'cancelled' ? 'CANCELLED' : 'PAUSED (chunk #' + (schedState.chunks.findIndex((c) => c && c.status !== 'ready') + 1 || playerState.index + 1) + ')'}{schedState.state === 'waiting_reset' ? ' - ' + new Date(schedState.resetAt).toLocaleString() : ''}{schedState.state === 'error' && firstChunkError ? ' - ' + firstChunkError : ''}</span>}
@@ -1446,6 +1499,7 @@ export default function App() {
             <div className="reader-actions">
               <button onClick={handleDownloadZip} disabled={zipRunning || joinedRunning || readyCount === 0} title={zipRunning || joinedRunning ? 'A download is being prepared.' : readyCount === 0 ? 'No chunk has audio in the cache yet.' : 'Download the ready chunks as one ZIP.'}>All chunks</button>
               <button onClick={handleDownloadJoined} disabled={zipRunning || joinedRunning || !allChunksReady} title={zipRunning || joinedRunning ? 'A download is being prepared.' : allChunksReady ? 'Download the whole text as one joined audio file.' : notReadyTitle}>All joined</button>
+              <button onClick={openClipEditor} disabled={zipRunning || joinedRunning || !allChunksReady || window.matchMedia('(max-width: 768px)').matches} title={window.matchMedia('(max-width: 768px)').matches ? 'The clip editor works on desktop only (window wider than 768px).' : zipRunning || joinedRunning ? 'A download is being prepared.' : allChunksReady ? 'Download the whole text as one joined audio file.' : notReadyTitle}>Edit clips</button>
             </div>
           </div>
         </section>
