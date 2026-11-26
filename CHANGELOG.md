@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.32-beta - 2026-11-26
+- Added src/ClipEditor.jsx: read-only waveform view with chunk boundaries and scope picker
+
+## 0.2.31-beta - 2026-11-26
+- Added src/clipEditorAudio.js: pure mono chunk concatenation for a later clip editor
+
 ## 0.2.30-beta - 2026-11-26
 - Added src/waveformPeaks.js: pure waveform peak pyramid for a later clip editor
 
