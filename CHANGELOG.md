@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.54-beta - 2026-11-26
+- Clip editor: centre the zoom/blade/undo row, dim the helper text to teal, one more clip-list row, and the same × close button as Settings
+
 ## 0.2.53-beta - 2026-11-26
 - Clip editor: reader takes two thirds while editing, coral markers and faded hint row, blade tool, taller clip list, and play/timer on the zoom row
 

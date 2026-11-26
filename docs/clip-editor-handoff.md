@@ -1,7 +1,7 @@
 # Clip editor handoff
 
 Scope: ONLY the clip editor feature. The general project status stays in docs/handoff.md (stale at 0.2.19-beta; do not use it for this feature).
-Owner: @Eleven. Updated 2026-11-26. Version when written: 0.2.53-beta. Agents: Hermes (code), Claude (planning, task texts).
+Owner: @Eleven. Updated 2026-11-26. Version when written: 0.2.54-beta. Agents: Hermes (code), Claude (planning, task texts).
 
 ## Goal
 Cut one generated audio (one chunk, or the whole joined audio) into many clips by time, locally, with ZERO extra requests. The owner pastes unrelated sentences, generates once, then cuts them into separate files. Used mainly for voiceover for animation and video. Meant for all visitors of the site, desktop only in v1.
@@ -57,6 +57,7 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.36b list feedback: highlight only the row's play button, first-sentence placeholders, roomier rows, no timeline end numbers, chunk info pinned to the bottom, playbar-style transport button - DONE 0.2.51-beta
 2.36c footer layout: shortcut hint and restored-cut note in one row above the bottom separator, taller clip list, wider name inputs - DONE 0.2.52-beta
 2.36d editor opening takes two thirds of the width via CSS, coral markers and faded shortcut row, blade icon/text, taller list, play/timer on the zoom row - DONE 0.2.53-beta (App.jsx untouched)
+2.36e centre the zoom/blade/undo tools, remove the helper highlight and dim its text to teal, use the Settings × close button, list +1 row - DONE 0.2.54-beta (one App.jsx line changed)
 Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, chunk text under the playhead, bottom bar disabled reason; E4e cut lines, scissors tool and M key (uses src/clipCuts.js); E5 drag, nudge, delete, undo/redo, saved markers; E6 snap while a key is held; E7 per-clip play and names; E8 export (ZIP, per-clip download, fades toggle, cut list CSV).
 
 ## Known gaps
@@ -71,7 +72,7 @@ Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, ch
 - Marker saving and restore are untested live in Brave.
 - A name is dropped when its clip is deleted (no name history); undo cannot bring that name back.
 - Coral #ff6f6f replaces the marker orange inside the editor only; the app-wide --accent is still teal (#4fa9a2).
-- The two-thirds width override and the merged control row are untested live in Brave.
+- The two-thirds width override, the centred tool row and the Settings-style close button are untested live in Brave.
 - Per-clip play/pause, editable names, first-sentence placeholders and the playing-button highlight are untested live in Brave; so are the footer row, the taller list and the wider name field.
 - The bottom-bar lock, the transport, click-to-seek, Space, cut lines and the clip list are untested live in Brave.
 - The playhead may look early on a Bluetooth headset; the manual offset is tuned in a later task.
@@ -84,10 +85,9 @@ Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, ch
 Follow AGENTS.md and the voice skill. One task per message. Touch only named files. App.jsx is one big component: exact anchors and the duplicate check. New pure modules go in src/*.js with tests/*.test.mjs (node cannot import .jsx). Mock everything; no real audio or IndexedDB here, so the owner tests live. EVERY clip-editor task ends by updating this file in place (task log, known gaps, verified, version) and lists it in READY TO COMMIT with its own git add line.
 
 ## Verified
-- npm test: 410 pass, 0 fail (2026-11-26, 0.2.53-beta): one new App.css source test and the updated marker-colour and row tests, all earlier tests green.
+- npm test: 410 pass, 0 fail (2026-11-26, 0.2.54-beta): the updated close-button and App.css source tests, all earlier tests green.
 - node --check clean on tests/clipEditorSource.test.mjs; no other .js or .mjs file changed.
-- Two existing source assertions changed because the requested UI changed: '#f5a524' → '#ff6f6f' in 'ClipEditor imports cut and snap modules and exposes marker controls', and 'zoom tools sit in their own row above the transport' → 'zoom tools share the row with the transport play button'.
-- Source scan: clip-times contains clip-transport and clip-tools; clip-hints has margin-top:auto, the separator stays on clip-now, list max-height 380px, columns:has(.reader-panel.editor-open) present; App.jsx untouched.
-- App.jsx was not edited; its duplicate check shows only the two known false positives (chunks, commit).
+- Two existing source assertions changed because the requested UI changed: 'the reader panel head owns the editor close button' now checks the close-btn class, and 'App.css has the editor width override, centred tools and a dimmed teal hint row' replaced the coral-background version.
+- Source scan: .clip-times is a 1fr/auto/1fr grid with .clip-tools justify-self:center, the hint row has no highlight and its text is dim teal (var(--accent), opacity 0.75), .drawer .close-btn and .reader-close-editor share one rule; list max-height 430px (one more row); App.jsx changed only at the close button (line 1467), duplicate check shows just the two known false positives.
 - Live in Brave: only the read-only waveform and the Edit clips button have been seen; playback, cutting, markers and saving are untested.
-- Owner must test live: opening Edit clips makes the Reader panel two thirds wide and Text one third, and closing with X restores the previous widths; markers and the faded hint row use coral #ff6f6f; the blade icon and 'Blade' helper text are visible; the shortcut row sits directly above the separator with the chunk info; the list shows about two more rows; the main play button and timer sit on the zoom row.
+- Owner must test live: zoom/blade/undo/redo sit in the centre of the play row; the helper text is dim teal with no highlighted background; the clip list shows one more row; the editor close button is the same × as Settings in look and behaviour.

@@ -28,6 +28,7 @@ test('ClipEditor source wires zoom and scroll from clipView', () => {
 test('the reader panel head owns the editor close button', () => {
   assert.ok(appSource.includes('aria-label="Close editor"'));
   assert.ok(appSource.includes('title="Close editor"'));
+  assert.ok(appSource.includes('className="close-btn reader-close-editor"'));
   assert.ok(!/>Close editor<\/button>/.test(appSource));
   assert.ok(!source.includes('Close editor'));
 });
@@ -89,9 +90,11 @@ test('ClipEditor puts the shortcut hint and restore note in one footer row', () 
 
 const css = readFileSync(new URL('../src/App.css', import.meta.url), 'utf8');
 
-test('App.css has the editor width override and the coral footer section', () => {
+test('App.css has the editor width override, centred tools and a dimmed teal hint row', () => {
   assert.ok(css.includes('.columns:has(.reader-panel.editor-open)'));
-  assert.ok(css.includes('rgba(255, 111, 111, 0.10)'));
-  assert.ok(css.includes('.clip-hints { margin-top: auto;'));
-  assert.ok(css.includes('max-height: 380px'));
+  assert.ok(!css.includes('rgba(255, 111, 111, 0.10)'));
+  assert.ok(css.includes('.clip-hint { font-size: 11px; color: var(--accent); opacity: 0.75; }'));
+  assert.ok(css.includes('.clip-tools { display: flex; align-items: center; gap: 8px; justify-self: center; }'));
+  assert.ok(css.includes('.drawer .close-btn, .reader-close-editor'));
+  assert.ok(css.includes('max-height: 430px'));
 });
