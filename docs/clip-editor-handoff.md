@@ -1,7 +1,7 @@
 # Clip editor handoff
 
 Scope: ONLY the clip editor feature. The general project status stays in docs/handoff.md (stale at 0.2.19-beta; do not use it for this feature).
-Owner: @Eleven. Updated 2026-11-26. Version when written: 0.2.40-beta. Agents: Hermes (code), Claude (planning, task texts).
+Owner: @Eleven. Updated 2026-11-26. Version when written: 0.2.41-beta. Agents: Hermes (code), Claude (planning, task texts).
 
 ## Goal
 Cut one generated audio (one chunk, or the whole joined audio) into many clips by time, locally, with ZERO extra requests. The owner pastes unrelated sentences, generates once, then cuts them into separate files. Used mainly for voiceover for animation and video. Meant for all visitors of the site, desktop only in v1.
@@ -44,12 +44,14 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.31b src/clipPlayer.js Web Audio player (fake-context tests) - DONE 0.2.36-beta
 2.31c ClipEditor zoom, wheel, drag, X and plus/minus icons - DONE 0.2.38-beta (refined 0.2.39-beta)
 2.32g src/clipEditorLoad.js decoded length limit (MAX_EDIT_SECONDS 900) and tests - DONE 0.2.40-beta
+2.32b src/clipCsv.js cut-list CSV writer and tests - DONE 0.2.41-beta (not imported by the app yet)
 Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, chunk text under the playhead, bottom bar disabled reason; E4e cut lines, scissors tool and M key (uses src/clipCuts.js); E5 drag, nudge, delete, undo/redo, saved markers; E6 snap while a key is held; E7 per-clip play and names; E8 export (ZIP, per-clip download, fades toggle, cut list CSV).
 
 ## Known gaps
 - No markers, no playback and no export yet.
 - Nothing about zoom, scroll or playback has been tested live in Brave yet.
 - Whole joined audio is capped at 900 s (~15 min) decoded; longer text must be edited one chunk at a time.
+- src/clipCsv.js is pure and tested but not wired to any export button yet.
 
 ## Open decisions
 - Reaction-time compensation value and playhead offset (tuned live).
@@ -59,7 +61,7 @@ Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, ch
 Follow AGENTS.md and the voice skill. One task per message. Touch only named files. App.jsx is one big component: exact anchors and the duplicate check. New pure modules go in src/*.js with tests/*.test.mjs (node cannot import .jsx). Mock everything; no real audio or IndexedDB here, so the owner tests live. EVERY clip-editor task ends by updating this file in place (task log, known gaps, verified, version) and lists it in READY TO COMMIT with its own git add line.
 
 ## Verified
-- npm test: 347 pass, 0 fail (2026-11-26, 0.2.40-beta), including 4 new decoded-length-limit tests.
-- node --check clean on src/clipEditorLoad.js and tests/clipEditorLoad.test.mjs.
+- npm test: 357 pass, 0 fail (2026-11-26, 0.2.41-beta), including 10 new src/clipCsv.js tests.
+- node --check clean on src/clipCsv.js and tests/clipCsv.test.mjs; no app import (test import is the wiring proof).
 - Live in Brave: only the read-only waveform and the Edit clips button have been seen; zoom, scroll, playback and cutting are untested.
-- Owner must test live: open the editor on the whole joined audio of a text over ~15 min and confirm the exact "Too long to edit in one piece" reason appears instead of a crash or hang; open a single chunk and confirm it still loads and shows its waveform.
+- Owner must test live: nothing for this task until the CSV writer is wired to an export button; when it is, check that names beginning with = + - @ or a tab open as plain text in a spreadsheet and that commas, quotes and newlines stay in one cell.

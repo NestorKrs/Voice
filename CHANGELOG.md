@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.41-beta - 2026-11-26
+- Added src/clipCsv.js: pure cut-list CSV writer with spreadsheet-safe escaping, with tests
+
 ## 0.2.40-beta - 2026-11-26
 - Added a 15-minute decoded-audio length limit to the clip editor loader, with tests
 
