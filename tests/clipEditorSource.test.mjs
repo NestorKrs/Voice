@@ -32,12 +32,11 @@ test('the reader panel head owns the editor close button', () => {
   assert.ok(!source.includes('Close editor'));
 });
 
-test('zoom tools sit in their own row above the transport', () => {
+test('zoom tools share the row with the transport play button', () => {
   const times = source.slice(source.indexOf('<div className="clip-times">'));
   assert.ok(times.includes('className="clip-tools"'));
-  assert.ok(!times.includes('formatTime(current.start, rate)'));
-  assert.ok(!times.includes('formatTime(total - (current.start + current.span), rate)'));
-  assert.ok(source.indexOf('className="clip-tools"') > source.indexOf('<div className="clip-times">'));
+  assert.ok(times.includes('className="clip-transport"'));
+  assert.ok(source.indexOf('className="clip-transport"') > source.indexOf('<div className="clip-times">'));
   assert.ok(source.includes('formatTime(playPos, displayRate)'));
 });
 
@@ -56,7 +55,7 @@ test('ClipEditor imports cut and snap modules and exposes marker controls', () =
   assert.ok(source.includes('KeyM'));
   assert.ok(source.includes('aria-pressed'));
   assert.ok(source.includes('Nothing to undo'));
-  assert.ok(source.includes('#f5a524'));
+  assert.ok(source.includes('#ff6f6f'));
 });
 
 test('ClipEditor and App wire saved cut markers', () => {
@@ -86,4 +85,13 @@ test('ClipEditor puts the shortcut hint and restore note in one footer row', () 
   assert.ok(source.includes('className="clip-hint clip-restore"'));
   assert.ok(!source.includes('{restoreNote ? <div className="clip-hint">'));
   assert.ok(source.indexOf('className="clip-hints"') > source.indexOf('className="clip-list"'));
+});
+
+const css = readFileSync(new URL('../src/App.css', import.meta.url), 'utf8');
+
+test('App.css has the editor width override and the coral footer section', () => {
+  assert.ok(css.includes('.columns:has(.reader-panel.editor-open)'));
+  assert.ok(css.includes('rgba(255, 111, 111, 0.10)'));
+  assert.ok(css.includes('.clip-hints { margin-top: auto;'));
+  assert.ok(css.includes('max-height: 380px'));
 });

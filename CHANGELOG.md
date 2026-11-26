@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.53-beta - 2026-11-26
+- Clip editor: reader takes two thirds while editing, coral markers and faded hint row, blade tool, taller clip list, and play/timer on the zoom row
+
 ## 0.2.52-beta - 2026-11-26
 - Clip editor footer: shortcuts and restored-cut count share one row above the bottom separator, the list gets more height and the name field is much wider
 

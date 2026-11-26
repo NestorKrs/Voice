@@ -227,8 +227,8 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
 
     ctx.font = '11px monospace';
     if (cuts && cuts.total === total && cuts.markers.length > 0) {
-      ctx.fillStyle = '#f5a524';
-      ctx.strokeStyle = '#f5a524';
+      ctx.fillStyle = '#ff6f6f';
+      ctx.strokeStyle = '#ff6f6f';
       ctx.lineWidth = 2;
       cuts.markers.forEach((marker, i) => {
         if (dragPreview && i === dragPreview.index) return;
@@ -252,8 +252,8 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     if (dragPreview) {
       const x = xAtSample(v, dragPreview.sample, deviceWidth);
       if (x >= 0 && x <= deviceWidth) {
-        ctx.strokeStyle = '#f5a524';
-        ctx.fillStyle = '#f5a524';
+        ctx.strokeStyle = '#ff6f6f';
+        ctx.fillStyle = '#ff6f6f';
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
         ctx.moveTo(x, 0);
@@ -274,8 +274,8 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       const shown = snapIf(hoverSample, shiftDown);
       const x = xAtSample(v, shown, deviceWidth);
       if (x >= 0 && x <= deviceWidth) {
-        ctx.strokeStyle = '#f5a524';
-        ctx.fillStyle = '#f5a524';
+        ctx.strokeStyle = '#ff6f6f';
+        ctx.fillStyle = '#ff6f6f';
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
         ctx.moveTo(x, 0);
@@ -540,18 +540,33 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
             <canvas ref={canvasRef} />
           </div>
           <div className="clip-times">
+            <div className="clip-transport">
+              <button
+                type="button"
+                className={'play-primary' + (playStatus === 'playing' ? ' play-active' : '')}
+                aria-label={playStatus === 'playing' ? 'Pause' : 'Play'}
+                title={!audio ? 'No audio loaded' : (playStatus === 'playing' ? 'Pause' : 'Play')}
+                disabled={!audio}
+                onClick={togglePlay}
+              >
+                {playStatus === 'playing'
+                  ? <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+                  : <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>}
+              </button>
+              <span className="clip-time">{formatTime(playPos, displayRate)} / {formatTime(total, displayRate)}</span>
+            </div>
             <div className="clip-tools">
               <button type="button" className="icon-btn" aria-label="Zoom out" title={isFullView(current, total) ? 'Already showing the whole audio' : 'Zoom out'} disabled={isFullView(current, total)} onClick={() => zoomBy(1 / 1.5)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/></svg></button>
               <button type="button" className="icon-btn" aria-label="Zoom in" title={current.span <= minSpan ? 'Zoomed in to the maximum (' + formatTime(minSpan, rate) + ' visible)' : 'Zoom in'} disabled={current.span <= minSpan} onClick={() => zoomBy(1.5)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5v14"/></svg></button>
               <button
                 type="button"
                 className={'icon-btn' + (sliceMode ? ' active' : '')}
-                aria-label="Slice tool"
+                aria-label="Blade tool"
                 aria-pressed={sliceMode}
-                title={!audio ? 'No audio loaded' : (sliceMode ? 'Slice tool: click the waveform to cut there (on)' : 'Slice tool: click the waveform to cut there (off)')}
+                title={!audio ? 'No audio loaded' : (sliceMode ? 'Blade tool: click the waveform to cut there (on)' : 'Blade tool: click the waveform to cut there (off)')}
                 disabled={!audio}
                 onClick={() => { setSliceMode((on) => !on); setHoverSample(null); }}
-              ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"/></svg></button>
+              ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 6v12M16 6v12M3 12h18"/></svg></button>
               <button
                 type="button"
                 className="icon-btn"
@@ -573,21 +588,6 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
           </div>
         </>
       )}
-      <div className="clip-transport">
-        <button
-          type="button"
-          className={'play-primary' + (playStatus === 'playing' ? ' play-active' : '')}
-          aria-label={playStatus === 'playing' ? 'Pause' : 'Play'}
-          title={!audio ? 'No audio loaded' : (playStatus === 'playing' ? 'Pause' : 'Play')}
-          disabled={!audio}
-          onClick={togglePlay}
-        >
-          {playStatus === 'playing'
-            ? <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
-            : <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>}
-        </button>
-        <span className="clip-time">{formatTime(playPos, displayRate)} / {formatTime(total, displayRate)}</span>
-      </div>
       <div className="clip-list">
         {audio && clipSegments.length > 0
           ? clipSegments.map((segment) => {
@@ -626,10 +626,10 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
                 </div>
               );
             })
-          : audio ? <div>No cuts yet: use M or the scissors tool.</div> : null}
+          : audio ? <div>No cuts yet: use M or the blade tool.</div> : null}
       </div>
       <div className="clip-hints">
-        <div className="clip-hint">M: cut at the playhead. Scissors: cut where you click. Ctrl+Z: undo. Hold Shift while cutting to snap to the quietest spot within {SNAP_RADIUS_MS} ms.</div>
+        <div className="clip-hint">M: cut at the playhead. Blade: cut where you click. Ctrl+Z: undo. Hold Shift while cutting to snap to the quietest spot within {SNAP_RADIUS_MS} ms.</div>
         {restoreNote ? <div className="clip-hint clip-restore">{restoreNote}</div> : null}
       </div>
       <div className="clip-now">
