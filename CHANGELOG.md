@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.50-beta - 2026-11-26
+- Clip editor clip list: per-clip play/pause buttons and editable names that stay with their clip when cuts change
+
 ## 0.2.49-beta - 2026-11-26
 - Clip editor: hold Shift while cutting or dragging a cut to snap to the quietest spot within 80 ms, with a snapped hover preview and a marker drag preview
 

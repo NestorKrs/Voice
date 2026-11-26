@@ -71,3 +71,11 @@ test('ClipEditor snaps to quiet spots while Shift is held', () => {
   assert.ok(source.includes('snapToQuiet'));
   assert.ok(source.includes('shiftKey'));
 });
+
+test('ClipEditor wires clip names and per-clip play', () => {
+  assert.ok(source.includes("from './clipNames.js'"));
+  assert.ok(source.includes("from './clipSlices.js'"));
+  assert.ok(source.includes('aria-label="Clip name"'));
+  assert.ok(source.includes('applyCuts'));
+  assert.equal(/setCuts\((addMarker|moveMarker|deleteMarker|nudgeMarker|undo|redo)\(/.test(source), false);
+});

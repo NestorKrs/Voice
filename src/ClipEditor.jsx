@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildPeaks, peaksForRange } from './waveformPeaks.js';
 import { createCuts, addMarker, moveMarker, undo, redo, segments, formatTime } from './clipCuts.js';
+import { realignNames } from './clipNames.js';
+import { defaultClipName } from './clipSlices.js';
 import { compensateKeyPress, snapToQuiet, SNAP_RADIUS_MS } from './clipSnap.js';
 import { createMarkerStore } from './clipMarkerStore.js';
 import { createClipPlayer } from './clipPlayer.js';
@@ -14,6 +16,8 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const viewRef = useRef(null);
   const dragRef = useRef(null);
   const markerDragRef = useRef(null);
+  const namesRef = useRef([]);
+  const clipRangeRef = useRef(null);
   const playerRef = useRef(null);
   const cutsRef = useRef(null);
   const storeRef = useRef(null);
@@ -25,6 +29,8 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const [playStatus, setPlayStatus] = useState('idle');
   const [playbackError, setPlaybackError] = useState('');
   const [cuts, setCuts] = useState(null);
+  const [names, setNames] = useState([]);
+  const [playingClip, setPlayingClip] = useState(null);
   const [sliceMode, setSliceMode] = useState(false);
   const [hoverSample, setHoverSample] = useState(null);
   const [dragPreview, setDragPreview] = useState(null);
@@ -50,6 +56,15 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
 
   const snapIf = (sample, shiftHeld) => (shiftHeld ? snapToQuiet(audio.samples, rate, sample) : sample);
 
+  const applyCuts = (nextCuts) => {
+    const oldMarkers = cutsRef.current ? cutsRef.current.markers : [];
+    const newMarkers = nextCuts ? nextCuts.markers : [];
+    const nextNames = realignNames(namesRef.current, oldMarkers, newMarkers);
+    namesRef.current = nextNames;
+    setNames(nextNames);
+    setCuts(nextCuts);
+  };
+
   useEffect(() => {
     try {
       storeRef.current = createMarkerStore(window.localStorage);
@@ -66,6 +81,10 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     setHoverSample(null);
     setStoreMessage('');
     setRestoreNote('');
+    setNames([]);
+    namesRef.current = [];
+    setPlayingClip(null);
+    clipRangeRef.current = null;
     let fresh = audio ? createCuts(audio.samples.length, audio.sampleRate) : null;
     if (audio && audioKey && storeRef.current) {
       const stored = storeRef.current.load(audioKey, audio.samples.length);
@@ -116,6 +135,8 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
         });
       }
       playerRef.current.setOnEnd(() => {
+        clipRangeRef.current = null;
+        setPlayingClip(null);
         setPlayStatus('idle');
         setPlayPos(audio.samples.length);
       });
@@ -292,12 +313,29 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const togglePlay = () => {
     const player = playerRef.current;
     if (!player) return;
+    clipRangeRef.current = null;
+    setPlayingClip(null);
     if (playStatus === 'playing') {
       player.pause();
       setPlayStatus('paused');
     } else if (player.play()) {
       setPlayStatus('playing');
     }
+  };
+
+  const playClip = (segment) => {
+    const player = playerRef.current;
+    if (!player) return;
+    if (clipRangeRef.current && clipRangeRef.current.index === segment.index && playStatus === 'playing') {
+      player.pause();
+      setPlayStatus('paused');
+      return;
+    }
+    if (!player.play(segment.start, segment.end)) return;
+    clipRangeRef.current = { index: segment.index, start: segment.start, end: segment.end };
+    setPlayingClip(segment.index);
+    setPlayStatus('playing');
+    setPlayPos(segment.start);
   };
 
   useEffect(() => {
@@ -319,13 +357,13 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       if (event.code === 'KeyM') {
         event.preventDefault();
         const at = playStatus === 'playing' ? compensateKeyPress(playPos, rate) : playPos;
-        setCuts(addMarker(cutsRef.current, snapIf(at, event.shiftKey)));
+        applyCuts(addMarker(cutsRef.current, snapIf(at, event.shiftKey)));
       } else if (event.code === 'KeyZ' && event.ctrlKey) {
         event.preventDefault();
-        setCuts(event.shiftKey ? redo(cutsRef.current) : undo(cutsRef.current));
+        applyCuts(event.shiftKey ? redo(cutsRef.current) : undo(cutsRef.current));
       } else if (event.code === 'KeyY' && event.ctrlKey) {
         event.preventDefault();
-        setCuts(redo(cutsRef.current));
+        applyCuts(redo(cutsRef.current));
       }
     };
     const onBlur = () => setShiftDown(false);
@@ -433,7 +471,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       markerDragRef.current = null;
       setDragPreview(null);
       if (event.type === 'pointerup' && cutsRef.current) {
-        setCuts(moveMarker(cutsRef.current, markerDrag.index, snapIf(markerDrag.sample, event.shiftKey)));
+        applyCuts(moveMarker(cutsRef.current, markerDrag.index, snapIf(markerDrag.sample, event.shiftKey)));
       }
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
@@ -451,9 +489,11 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
         const base = viewRef.current || fullView(total);
         const sample = sampleAtX(base, event.clientX - box.left, box.width);
         if (sliceMode) {
-          if (cutsRef.current) setCuts(addMarker(cutsRef.current, snapIf(sample, event.shiftKey)));
+          if (cutsRef.current) applyCuts(addMarker(cutsRef.current, snapIf(sample, event.shiftKey)));
         } else if (playerRef.current) {
           playerRef.current.seek(sample);
+          clipRangeRef.current = null;
+          setPlayingClip(null);
           setPlayPos(sample);
         }
       }
@@ -519,7 +559,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
                 aria-label="Undo"
                 title={!audio ? 'No audio loaded' : (!cuts || cuts.past.length === 0 ? 'Nothing to undo' : 'Undo (Ctrl+Z)')}
                 disabled={!audio || !cuts || cuts.past.length === 0}
-                onClick={() => setCuts(undo(cutsRef.current))}
+                onClick={() => applyCuts(undo(cutsRef.current))}
               ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
               <button
                 type="button"
@@ -527,7 +567,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
                 aria-label="Redo"
                 title={!audio ? 'No audio loaded' : (!cuts || cuts.future.length === 0 ? 'Nothing to redo' : 'Redo (Ctrl+Shift+Z)')}
                 disabled={!audio || !cuts || cuts.future.length === 0}
-                onClick={() => setCuts(redo(cutsRef.current))}
+                onClick={() => applyCuts(redo(cutsRef.current))}
               ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
               {audio ? <span className="clip-visible">{clipSegments.length} clips</span> : null}
             </div>
@@ -554,9 +594,40 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       {restoreNote ? <div className="clip-hint">{restoreNote}</div> : null}
       <div className="clip-list">
         {audio && clipSegments.length > 0
-          ? clipSegments.map((segment) => (
-              <div key={segment.index}>{'clip-' + String(segment.index + 1).padStart(3, '0') + '  ' + formatTime(segment.start, rate) + ' - ' + formatTime(segment.end, rate) + '  (' + ((segment.end - segment.start) / rate).toFixed(3) + ' s)'}</div>
-            ))
+          ? clipSegments.map((segment) => {
+              const isCurrent = playPos >= segment.start && playPos < segment.end;
+              const isPlaying = playingClip === segment.index && playStatus === 'playing';
+              const buttonLabel = (isPlaying ? 'Pause clip ' : 'Play clip ') + (segment.index + 1);
+              return (
+                <div className={'clip-row' + (isCurrent ? ' current' : '')} key={segment.index}>
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    aria-label={buttonLabel}
+                    title={buttonLabel}
+                    onClick={() => playClip(segment)}
+                  >
+                    {isPlaying
+                      ? <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5v14M15 5v14"/></svg>
+                      : <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 5l11 7-11 7z"/></svg>}
+                  </button>
+                  <input
+                    maxLength={60}
+                    aria-label="Clip name"
+                    placeholder={defaultClipName(segment.index)}
+                    value={names[segment.index] || ''}
+                    onChange={(event) => {
+                      const next = [...namesRef.current];
+                      next[segment.index] = event.target.value;
+                      namesRef.current = next;
+                      setNames(next);
+                    }}
+                  />
+                  <span>{formatTime(segment.start, rate)} - {formatTime(segment.end, rate)}</span>
+                  <span>{((segment.end - segment.start) / rate).toFixed(3)} s</span>
+                </div>
+              );
+            })
           : audio ? <div>No cuts yet: use M or the scissors tool.</div> : null}
       </div>
       <div className="clip-now">
