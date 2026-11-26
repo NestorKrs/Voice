@@ -1,7 +1,7 @@
 # Clip editor handoff
 
 Scope: ONLY the clip editor feature. The general project status stays in docs/handoff.md (stale at 0.2.19-beta; do not use it for this feature).
-Owner: @Eleven. Updated 2026-11-26. Version when written: 0.2.46-beta. Agents: Hermes (code), Claude (planning, task texts).
+Owner: @Eleven. Updated 2026-11-26. Version when written: 0.2.47-beta. Agents: Hermes (code), Claude (planning, task texts).
 
 ## Goal
 Cut one generated audio (one chunk, or the whole joined audio) into many clips by time, locally, with ZERO extra requests. The owner pastes unrelated sentences, generates once, then cuts them into separate files. Used mainly for voiceover for animation and video. Meant for all visitors of the site, desktop only in v1.
@@ -50,17 +50,19 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.32e src/clipSnap.js quiet-spot snapping and key-press reaction compensation - DONE 0.2.44-beta (not imported by the app yet; test import is the wiring proof)
 2.33a bottom player bar locked while the editor is open with the exact tooltip, chunkTexts passed to ClipEditor - DONE 0.2.45-beta (prop passed but not consumed by ClipEditor yet)
 2.33b playback in ClipEditor (transport, playhead, click-to-seek, Space, chunk text strip) and transport CSS - DONE 0.2.46-beta
+2.34a markers in ClipEditor (slice tool, M key, undo/redo, cut lines, clip list) and CSS - DONE 0.2.47-beta
 Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, chunk text under the playhead, bottom bar disabled reason; E4e cut lines, scissors tool and M key (uses src/clipCuts.js); E5 drag, nudge, delete, undo/redo, saved markers; E6 snap while a key is held; E7 per-clip play and names; E8 export (ZIP, per-clip download, fades toggle, cut list CSV).
 
 ## Known gaps
-- No markers and no export yet.
+- No export yet.
 - Nothing about zoom, scroll or playback has been tested live in Brave yet.
 - Whole joined audio is capped at 900 s (~15 min) decoded; longer text must be edited one chunk at a time.
 - src/clipCsv.js is pure and tested but not wired to any export button yet.
 - src/clipSlices.js is pure and tested but not wired to any cut, name or export control yet.
 - src/clipMarkerStore.js is pure and tested but not wired to any marker UI yet.
-- src/clipSnap.js is pure and tested but not wired to key-press snapping yet.
-- The bottom-bar lock, the transport, click-to-seek, Space and the playhead are untested live in Brave.
+- src/clipSnap.js snapToQuiet is pure and tested but not wired to key-press snapping yet (compensateKeyPress is wired).
+- Marker drag, nudge, delete and browser-saved markers are not wired yet.
+- The bottom-bar lock, the transport, click-to-seek, Space, cut lines and the clip list are untested live in Brave.
 - The playhead may look early on a Bluetooth headset; the manual offset is tuned in a later task.
 
 ## Open decisions
@@ -71,10 +73,10 @@ Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, ch
 Follow AGENTS.md and the voice skill. One task per message. Touch only named files. App.jsx is one big component: exact anchors and the duplicate check. New pure modules go in src/*.js with tests/*.test.mjs (node cannot import .jsx). Mock everything; no real audio or IndexedDB here, so the owner tests live. EVERY clip-editor task ends by updating this file in place (task log, known gaps, verified, version) and lists it in READY TO COMMIT with its own git add line.
 
 ## Verified
-- npm test: 396 pass, 0 fail (2026-11-26, 0.2.46-beta), including the new source test for playback, Space and no storage.
+- npm test: 397 pass, 0 fail (2026-11-26, 0.2.47-beta), including the new source test for cut and snap modules and marker controls.
 - node --check clean on tests/clipEditorSource.test.mjs; no other .js or .mjs file changed.
 - Duplicate check on App.jsx: only the two known false positives (const chunks, const commit); App.jsx was not edited (1708 lines, chunkTexts prop still at 1495).
-- Wiring proof: createClipPlayer imported at ClipEditor.jsx:4 and used at 54; ensureVisible imported at 5 and used at 161; requestAnimationFrame at 153 and 167; Space at 187; togglePlay at 171 is called by both the button and the key handler; exact error string at 68; no localStorage in the source.
-- CSS: .clip-transport, .clip-time and .clip-now sit directly above the 768px media block in src/App.css.
+- Wiring proof: createCuts/addMarker/undo/redo/segments imported at ClipEditor.jsx:3, compensateKeyPress at 4 and used at 245, KeyM at 243, aria-pressed at 391, Nothing to undo at 400, cut colour #f5a524 at 160, clip list at 434; no localStorage in the source.
+- CSS: .clip-tools .icon-btn.active, .clip-wave.slice, .clip-list and .clip-hint sit directly above the 768px media block in src/App.css.
 - Live in Brave: only the read-only waveform and the Edit clips button have been seen; playback, cutting and the bottom-bar lock are untested.
-- Owner must test live: Play starts the editor audio and you hear it; the playhead line moves with the sound (slightly early on a Bluetooth headset is expected); pause freezes it; clicking the waveform moves the playhead; Space plays and pauses, not while the scope select has focus; the chunk number and text change as the playhead crosses chunk lines; the end returns status to idle; closing the editor stops the sound.
+- Owner must test live: the scissors button toggles and its tooltip changes; clicking the waveform in slice mode adds an orange cut line at that spot; M adds a cut at the playhead while playing (about 180 ms earlier than the keypress) and exactly at the playhead when paused; undo and redo buttons and Ctrl+Z / Ctrl+Shift+Z work; the clip list updates with durations; adding two cuts at the same sample does nothing; cuts reset when the scope or the audio changes.

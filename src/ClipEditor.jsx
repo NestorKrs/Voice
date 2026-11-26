@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildPeaks, peaksForRange } from './waveformPeaks.js';
-import { formatTime } from './clipCuts.js';
+import { createCuts, addMarker, undo, redo, segments, formatTime } from './clipCuts.js';
+import { compensateKeyPress } from './clipSnap.js';
 import { createClipPlayer } from './clipPlayer.js';
 import { fullView, zoomAt, wheelFactor, panByPixels, sampleAtX, xAtSample, ensureVisible, MIN_SPAN, isFullView } from './clipView.js';
 
@@ -12,12 +13,16 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const viewRef = useRef(null);
   const dragRef = useRef(null);
   const playerRef = useRef(null);
+  const cutsRef = useRef(null);
   const [width, setWidth] = useState(0);
   const [view, setView] = useState(null);
   const [dragging, setDragging] = useState(false);
   const [playPos, setPlayPos] = useState(0);
   const [playStatus, setPlayStatus] = useState('idle');
   const [playbackError, setPlaybackError] = useState('');
+  const [cuts, setCuts] = useState(null);
+  const [sliceMode, setSliceMode] = useState(false);
+  const [hoverSample, setHoverSample] = useState(null);
 
   const total = audio ? audio.samples.length : 0;
   const rate = audio ? audio.sampleRate : 0;
@@ -26,6 +31,9 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const message = loading ? 'Decoding audio...' : playbackError || error || (total === 0 ? 'No ready chunks to edit yet.' : '');
   const current = view || fullView(total);
   const minSpan = Math.min(total, Math.max(MIN_SPAN, Math.round(rate * 0.4)));
+  const cutsRefCurrent = cuts && cuts.total === total && cuts.rate === rate ? cuts : null;
+  cutsRef.current = cutsRefCurrent;
+  const clipSegments = cutsRefCurrent ? segments(cutsRefCurrent) : [];
   const nowIndex = audio ? audio.offsets.reduce((last, offset, i) => (offset <= playPos ? i : last), -1) : -1;
   const nowChunk = nowIndex >= 0 ? audio.indexes[nowIndex] : -1;
   const nowText = nowChunk >= 0 && chunkTexts[nowChunk]
@@ -36,6 +44,9 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     const next = audio ? fullView(audio.samples.length) : null;
     viewRef.current = next;
     setView(next);
+    setCuts(audio ? createCuts(audio.samples.length, audio.sampleRate) : null);
+    setSliceMode(false);
+    setHoverSample(null);
   }, [audio]);
 
   useEffect(() => {
@@ -143,7 +154,45 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
         ctx.lineWidth = 1;
       }
     }
-  }, [audio, peaks, total, width, message, view, playPos]);
+
+    ctx.font = '11px monospace';
+    if (cuts && cuts.total === total && cuts.markers.length > 0) {
+      ctx.fillStyle = '#f5a524';
+      ctx.strokeStyle = '#f5a524';
+      ctx.lineWidth = 2;
+      cuts.markers.forEach((marker, i) => {
+        const x = xAtSample(v, marker, deviceWidth);
+        if (x < 0 || x > deviceWidth) return;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, deviceHeight);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x - 5, 0);
+        ctx.lineTo(x + 5, 0);
+        ctx.lineTo(x, 8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillText(String(i + 1), x + 4, 20);
+      });
+      ctx.lineWidth = 1;
+    }
+
+    if (sliceMode && hoverSample !== null) {
+      const x = xAtSample(v, hoverSample, deviceWidth);
+      if (x >= 0 && x <= deviceWidth) {
+        ctx.strokeStyle = '#f5a524';
+        ctx.fillStyle = '#f5a524';
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, deviceHeight);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillText(formatTime(hoverSample, rate), x + 4, 34);
+      }
+    }
+  }, [audio, peaks, total, width, message, view, playPos, cuts, hoverSample, sliceMode]);
 
   useEffect(() => {
     if (playStatus !== 'playing') return undefined;
@@ -184,10 +233,24 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA' || target.isContentEditable
     );
     const onKey = (event) => {
-      if (event.code !== 'Space' || isTyping(event.target)) return;
-      event.preventDefault();
-      if (event.type !== 'keydown' || event.repeat) return;
-      togglePlay();
+      if (isTyping(event.target) || event.repeat) return;
+      if (event.code === 'Space') {
+        event.preventDefault();
+        if (event.type === 'keydown') togglePlay();
+        return;
+      }
+      if (event.type !== 'keydown' || !cutsRef.current) return;
+      if (event.code === 'KeyM') {
+        event.preventDefault();
+        const at = playStatus === 'playing' ? compensateKeyPress(playPos, rate) : playPos;
+        setCuts(addMarker(cutsRef.current, at));
+      } else if (event.code === 'KeyZ' && event.ctrlKey) {
+        event.preventDefault();
+        setCuts(event.shiftKey ? redo(cutsRef.current) : undo(cutsRef.current));
+      } else if (event.code === 'KeyY' && event.ctrlKey) {
+        event.preventDefault();
+        setCuts(redo(cutsRef.current));
+      }
     };
     document.addEventListener('keydown', onKey);
     document.addEventListener('keyup', onKey);
@@ -195,7 +258,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('keyup', onKey);
     };
-  }, [playStatus]);
+  }, [playStatus, playPos, rate]);
 
   const applySpan = (targetSpan, anchorSample) => {
     const base = viewRef.current || fullView(total);
@@ -234,6 +297,14 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   };
 
   const onPointerMove = (event) => {
+    if (sliceMode && audio) {
+      const wrap = wrapRef.current;
+      const box = wrap ? wrap.getBoundingClientRect() : null;
+      if (box && box.width > 0) {
+        const base = viewRef.current || fullView(total);
+        setHoverSample(sampleAtX(base, event.clientX - box.left, box.width));
+      }
+    }
     const drag = dragRef.current;
     if (!drag || drag.id !== event.pointerId) return;
     const dx = event.clientX - drag.x;
@@ -253,14 +324,18 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     if (!drag) return;
     dragRef.current = null;
     setDragging(false);
-    if (drag.moved < 4 && event.type === 'pointerup' && playerRef.current && audio) {
+    if (drag.moved < 4 && event.type === 'pointerup' && audio) {
       const wrap = wrapRef.current;
       const box = wrap ? wrap.getBoundingClientRect() : null;
       if (box && box.width > 0) {
         const base = viewRef.current || fullView(total);
         const sample = sampleAtX(base, event.clientX - box.left, box.width);
-        playerRef.current.seek(sample);
-        setPlayPos(sample);
+        if (sliceMode) {
+          if (cutsRef.current) setCuts(addMarker(cutsRef.current, sample));
+        } else if (playerRef.current) {
+          playerRef.current.seek(sample);
+          setPlayPos(sample);
+        }
       }
     }
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
@@ -292,13 +367,14 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       ) : (
         <>
           <div
-            className={`clip-wave${dragging ? ' dragging' : ''}`}
+            className={`clip-wave${dragging ? ' dragging' : ''}${sliceMode ? ' slice' : ''}`}
             ref={wrapRef}
             title="Wheel: zoom. Drag: scroll. Double-click: show all."
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={endDrag}
             onPointerCancel={endDrag}
+            onPointerLeave={() => setHoverSample(null)}
             onDoubleClick={showAll}
           >
             <canvas ref={canvasRef} />
@@ -308,7 +384,32 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
             <div className="clip-tools">
               <button type="button" className="icon-btn" aria-label="Zoom out" title={isFullView(current, total) ? 'Already showing the whole audio' : 'Zoom out'} disabled={isFullView(current, total)} onClick={() => zoomBy(1 / 1.5)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/></svg></button>
               <button type="button" className="icon-btn" aria-label="Zoom in" title={current.span <= minSpan ? 'Zoomed in to the maximum (' + formatTime(minSpan, rate) + ' visible)' : 'Zoom in'} disabled={current.span <= minSpan} onClick={() => zoomBy(1.5)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5v14"/></svg></button>
-              <span className="clip-visible">Visible {formatTime(current.span, rate)}</span>
+              <button
+                type="button"
+                className={'icon-btn' + (sliceMode ? ' active' : '')}
+                aria-label="Slice tool"
+                aria-pressed={sliceMode}
+                title={!audio ? 'No audio loaded' : (sliceMode ? 'Slice tool: click the waveform to cut there (on)' : 'Slice tool: click the waveform to cut there (off)')}
+                disabled={!audio}
+                onClick={() => { setSliceMode((on) => !on); setHoverSample(null); }}
+              ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"/></svg></button>
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label="Undo"
+                title={!audio ? 'No audio loaded' : (!cuts || cuts.past.length === 0 ? 'Nothing to undo' : 'Undo (Ctrl+Z)')}
+                disabled={!audio || !cuts || cuts.past.length === 0}
+                onClick={() => setCuts(undo(cutsRef.current))}
+              ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label="Redo"
+                title={!audio ? 'No audio loaded' : (!cuts || cuts.future.length === 0 ? 'Nothing to redo' : 'Redo (Ctrl+Shift+Z)')}
+                disabled={!audio || !cuts || cuts.future.length === 0}
+                onClick={() => setCuts(redo(cutsRef.current))}
+              ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
+              {audio ? <span className="clip-visible">{clipSegments.length} clips</span> : null}
             </div>
             <span>{formatTime(total - (current.start + current.span), rate)}</span>
           </div>
@@ -328,6 +429,14 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
             : <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 5l11 7-11 7z"/></svg>}
         </button>
         <span className="clip-time">{formatTime(playPos, displayRate)} / {formatTime(total, displayRate)}</span>
+      </div>
+      <div className="clip-hint">M: cut at the playhead. Scissors: cut where you click. Ctrl+Z: undo.</div>
+      <div className="clip-list">
+        {audio && clipSegments.length > 0
+          ? clipSegments.map((segment) => (
+              <div key={segment.index}>{'clip-' + String(segment.index + 1).padStart(3, '0') + '  ' + formatTime(segment.start, rate) + ' - ' + formatTime(segment.end, rate) + '  (' + ((segment.end - segment.start) / rate).toFixed(3) + ' s)'}</div>
+            ))
+          : audio ? <div>No cuts yet: use M or the scissors tool.</div> : null}
       </div>
       <div className="clip-now">
         {audio && nowIndex >= 0 ? (

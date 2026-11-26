@@ -46,3 +46,12 @@ test('ClipEditor wires playback, Space and the playhead without storage', () => 
   assert.ok(source.includes('Audio playback is not available: '));
   assert.ok(!source.includes('localStorage'));
 });
+
+test('ClipEditor imports cut and snap modules and exposes marker controls', () => {
+  assert.ok(source.includes("from './clipCuts.js'"));
+  assert.ok(source.includes("from './clipSnap.js'"));
+  assert.ok(source.includes('KeyM'));
+  assert.ok(source.includes('aria-pressed'));
+  assert.ok(source.includes('Nothing to undo'));
+  assert.ok(source.includes('#f5a524'));
+});

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.47-beta - 2026-11-26
+- Added clip editor markers: slice tool, M key, undo/redo, cut lines, clip list and CSS
+
 ## 0.2.46-beta - 2026-11-26
 - Added clip editor playback with playhead, click-to-seek, Space control, chunk text strip and transport CSS
 
