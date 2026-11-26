@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.42-beta - 2026-11-26
+- Added src/clipSlices.js: pure sample slicing, edge fades and safe clip names with tests
+
 ## 0.2.41-beta - 2026-11-26
 - Added src/clipCsv.js: pure cut-list CSV writer with spreadsheet-safe escaping, with tests
 
