@@ -65,3 +65,9 @@ test('ClipEditor and App wire saved cut markers', () => {
   assert.ok(appSource.includes('audioKeyFrom'));
   assert.ok(appSource.includes('audioKey={editorAudioKey}'));
 });
+
+test('ClipEditor snaps to quiet spots while Shift is held', () => {
+  assert.ok(source.includes("from './clipSnap.js'"));
+  assert.ok(source.includes('snapToQuiet'));
+  assert.ok(source.includes('shiftKey'));
+});

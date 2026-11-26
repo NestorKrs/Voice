@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildPeaks, peaksForRange } from './waveformPeaks.js';
-import { createCuts, addMarker, undo, redo, segments, formatTime } from './clipCuts.js';
-import { compensateKeyPress } from './clipSnap.js';
+import { createCuts, addMarker, moveMarker, undo, redo, segments, formatTime } from './clipCuts.js';
+import { compensateKeyPress, snapToQuiet, SNAP_RADIUS_MS } from './clipSnap.js';
 import { createMarkerStore } from './clipMarkerStore.js';
 import { createClipPlayer } from './clipPlayer.js';
 import { fullView, zoomAt, wheelFactor, panByPixels, sampleAtX, xAtSample, ensureVisible, MIN_SPAN, isFullView } from './clipView.js';
@@ -13,6 +13,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const observerRef = useRef(null);
   const viewRef = useRef(null);
   const dragRef = useRef(null);
+  const markerDragRef = useRef(null);
   const playerRef = useRef(null);
   const cutsRef = useRef(null);
   const storeRef = useRef(null);
@@ -26,6 +27,8 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const [cuts, setCuts] = useState(null);
   const [sliceMode, setSliceMode] = useState(false);
   const [hoverSample, setHoverSample] = useState(null);
+  const [dragPreview, setDragPreview] = useState(null);
+  const [shiftDown, setShiftDown] = useState(false);
   const [storeMessage, setStoreMessage] = useState('');
   const [restoreNote, setRestoreNote] = useState('');
 
@@ -44,6 +47,8 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const nowText = nowChunk >= 0 && chunkTexts[nowChunk]
     ? chunkTexts[nowChunk].slice(0, 200) + (chunkTexts[nowChunk].length > 200 ? '…' : '')
     : '';
+
+  const snapIf = (sample, shiftHeld) => (shiftHeld ? snapToQuiet(audio.samples, rate, sample) : sample);
 
   useEffect(() => {
     try {
@@ -205,6 +210,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       ctx.strokeStyle = '#f5a524';
       ctx.lineWidth = 2;
       cuts.markers.forEach((marker, i) => {
+        if (dragPreview && i === dragPreview.index) return;
         const x = xAtSample(v, marker, deviceWidth);
         if (x < 0 || x > deviceWidth) return;
         ctx.beginPath();
@@ -222,8 +228,8 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       ctx.lineWidth = 1;
     }
 
-    if (sliceMode && hoverSample !== null) {
-      const x = xAtSample(v, hoverSample, deviceWidth);
+    if (dragPreview) {
+      const x = xAtSample(v, dragPreview.sample, deviceWidth);
       if (x >= 0 && x <= deviceWidth) {
         ctx.strokeStyle = '#f5a524';
         ctx.fillStyle = '#f5a524';
@@ -233,10 +239,32 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
         ctx.lineTo(x, deviceHeight);
         ctx.stroke();
         ctx.setLineDash([]);
-        ctx.fillText(formatTime(hoverSample, rate), x + 4, 34);
+        ctx.beginPath();
+        ctx.moveTo(x - 5, 0);
+        ctx.lineTo(x + 5, 0);
+        ctx.lineTo(x, 8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillText(formatTime(dragPreview.sample, rate), x + 4, 34);
       }
     }
-  }, [audio, peaks, total, width, message, view, playPos, cuts, hoverSample, sliceMode]);
+
+    if (sliceMode && hoverSample !== null) {
+      const shown = snapIf(hoverSample, shiftDown);
+      const x = xAtSample(v, shown, deviceWidth);
+      if (x >= 0 && x <= deviceWidth) {
+        ctx.strokeStyle = '#f5a524';
+        ctx.fillStyle = '#f5a524';
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, deviceHeight);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillText(formatTime(shown, rate), x + 4, 34);
+      }
+    }
+  }, [audio, peaks, total, width, message, view, playPos, cuts, hoverSample, sliceMode, dragPreview, shiftDown]);
 
   useEffect(() => {
     if (playStatus !== 'playing') return undefined;
@@ -277,6 +305,10 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA' || target.isContentEditable
     );
     const onKey = (event) => {
+      if (event.key === 'Shift') {
+        setShiftDown(event.type === 'keydown');
+        return;
+      }
       if (isTyping(event.target) || event.repeat) return;
       if (event.code === 'Space') {
         event.preventDefault();
@@ -287,7 +319,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       if (event.code === 'KeyM') {
         event.preventDefault();
         const at = playStatus === 'playing' ? compensateKeyPress(playPos, rate) : playPos;
-        setCuts(addMarker(cutsRef.current, at));
+        setCuts(addMarker(cutsRef.current, snapIf(at, event.shiftKey)));
       } else if (event.code === 'KeyZ' && event.ctrlKey) {
         event.preventDefault();
         setCuts(event.shiftKey ? redo(cutsRef.current) : undo(cutsRef.current));
@@ -296,11 +328,14 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
         setCuts(redo(cutsRef.current));
       }
     };
+    const onBlur = () => setShiftDown(false);
     document.addEventListener('keydown', onKey);
     document.addEventListener('keyup', onKey);
+    window.addEventListener('blur', onBlur);
     return () => {
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('keyup', onKey);
+      window.removeEventListener('blur', onBlur);
     };
   }, [playStatus, playPos, rate]);
 
@@ -335,12 +370,41 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
 
   const onPointerDown = (event) => {
     if (event.button !== 0 || total === 0) return;
+    const wrap = wrapRef.current;
+    const box = wrap ? wrap.getBoundingClientRect() : null;
+    const base = viewRef.current || fullView(total);
+    if (box && box.width > 0 && cutsRef.current) {
+      const px = event.clientX - box.left;
+      const index = cutsRef.current.markers.findIndex((marker) => {
+        const x = xAtSample(base, marker, box.width);
+        return x >= 0 && x <= box.width && Math.abs(x - px) <= 8;
+      });
+      if (index !== -1) {
+        const sample = cutsRef.current.markers[index];
+        markerDragRef.current = { index, sample, id: event.pointerId };
+        setDragPreview({ index, sample });
+        setHoverSample(null);
+        event.currentTarget.setPointerCapture(event.pointerId);
+        return;
+      }
+    }
     dragRef.current = { x: event.clientX, startX: event.clientX, moved: 0, id: event.pointerId };
     setDragging(true);
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
   const onPointerMove = (event) => {
+    const markerDrag = markerDragRef.current;
+    if (markerDrag && markerDrag.id === event.pointerId) {
+      const wrap = wrapRef.current;
+      const box = wrap ? wrap.getBoundingClientRect() : null;
+      if (box && box.width > 0) {
+        const base = viewRef.current || fullView(total);
+        markerDrag.sample = sampleAtX(base, event.clientX - box.left, box.width);
+        setDragPreview({ index: markerDrag.index, sample: snapIf(markerDrag.sample, event.shiftKey) });
+      }
+      return;
+    }
     if (sliceMode && audio) {
       const wrap = wrapRef.current;
       const box = wrap ? wrap.getBoundingClientRect() : null;
@@ -364,6 +428,18 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   };
 
   const endDrag = (event) => {
+    const markerDrag = markerDragRef.current;
+    if (markerDrag && markerDrag.id === event.pointerId) {
+      markerDragRef.current = null;
+      setDragPreview(null);
+      if (event.type === 'pointerup' && cutsRef.current) {
+        setCuts(moveMarker(cutsRef.current, markerDrag.index, snapIf(markerDrag.sample, event.shiftKey)));
+      }
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      return;
+    }
     const drag = dragRef.current;
     if (!drag) return;
     dragRef.current = null;
@@ -375,7 +451,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
         const base = viewRef.current || fullView(total);
         const sample = sampleAtX(base, event.clientX - box.left, box.width);
         if (sliceMode) {
-          if (cutsRef.current) setCuts(addMarker(cutsRef.current, sample));
+          if (cutsRef.current) setCuts(addMarker(cutsRef.current, snapIf(sample, event.shiftKey)));
         } else if (playerRef.current) {
           playerRef.current.seek(sample);
           setPlayPos(sample);
@@ -411,7 +487,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       ) : (
         <>
           <div
-            className={`clip-wave${dragging ? ' dragging' : ''}${sliceMode ? ' slice' : ''}`}
+            className={`clip-wave${dragging ? ' dragging' : ''}${sliceMode ? ' slice' : ''}${dragPreview ? ' marker-drag' : ''}`}
             ref={wrapRef}
             title="Wheel: zoom. Drag: scroll. Double-click: show all."
             onPointerDown={onPointerDown}
@@ -474,7 +550,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
         </button>
         <span className="clip-time">{formatTime(playPos, displayRate)} / {formatTime(total, displayRate)}</span>
       </div>
-      <div className="clip-hint">M: cut at the playhead. Scissors: cut where you click. Ctrl+Z: undo.</div>
+      <div className="clip-hint">M: cut at the playhead. Scissors: cut where you click. Ctrl+Z: undo. Hold Shift while cutting to snap to the quietest spot within {SNAP_RADIUS_MS} ms.</div>
       {restoreNote ? <div className="clip-hint">{restoreNote}</div> : null}
       <div className="clip-list">
         {audio && clipSegments.length > 0

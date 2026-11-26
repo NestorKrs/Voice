@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.49-beta - 2026-11-26
+- Clip editor: hold Shift while cutting or dragging a cut to snap to the quietest spot within 80 ms, with a snapped hover preview and a marker drag preview
+
 ## 0.2.48-beta - 2026-11-26
 - Remember cut markers per audio in the clip editor, with restore, debounced saving and exact storage failure reasons
 
