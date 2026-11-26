@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.43-beta - 2026-11-26
+- Added src/clipMarkerStore.js: per-audio marker store with injected storage and tests
+
 ## 0.2.42-beta - 2026-11-26
 - Added src/clipSlices.js: pure sample slicing, edge fades and safe clip names with tests
 

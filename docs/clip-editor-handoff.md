@@ -1,7 +1,7 @@
 # Clip editor handoff
 
 Scope: ONLY the clip editor feature. The general project status stays in docs/handoff.md (stale at 0.2.19-beta; do not use it for this feature).
-Owner: @Eleven. Updated 2026-11-26. Version when written: 0.2.42-beta. Agents: Hermes (code), Claude (planning, task texts).
+Owner: @Eleven. Updated 2026-11-26. Version when written: 0.2.43-beta. Agents: Hermes (code), Claude (planning, task texts).
 
 ## Goal
 Cut one generated audio (one chunk, or the whole joined audio) into many clips by time, locally, with ZERO extra requests. The owner pastes unrelated sentences, generates once, then cuts them into separate files. Used mainly for voiceover for animation and video. Meant for all visitors of the site, desktop only in v1.
@@ -46,6 +46,7 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.32g src/clipEditorLoad.js decoded length limit (MAX_EDIT_SECONDS 900) and tests - DONE 0.2.40-beta
 2.32b src/clipCsv.js cut-list CSV writer and tests - DONE 0.2.41-beta (not imported by the app yet)
 2.32c src/clipSlices.js sample slicing, fades and safe clip names - DONE 0.2.42-beta (not imported by the app yet)
+2.32d src/clipMarkerStore.js per-audio marker store with injected storage - DONE 0.2.43-beta (not imported by the app yet; test import is the wiring proof)
 Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, chunk text under the playhead, bottom bar disabled reason; E4e cut lines, scissors tool and M key (uses src/clipCuts.js); E5 drag, nudge, delete, undo/redo, saved markers; E6 snap while a key is held; E7 per-clip play and names; E8 export (ZIP, per-clip download, fades toggle, cut list CSV).
 
 ## Known gaps
@@ -54,6 +55,7 @@ Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, ch
 - Whole joined audio is capped at 900 s (~15 min) decoded; longer text must be edited one chunk at a time.
 - src/clipCsv.js is pure and tested but not wired to any export button yet.
 - src/clipSlices.js is pure and tested but not wired to any cut, name or export control yet.
+- src/clipMarkerStore.js is pure and tested but not wired to any marker UI yet.
 
 ## Open decisions
 - Reaction-time compensation value and playhead offset (tuned live).
@@ -63,7 +65,7 @@ Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, ch
 Follow AGENTS.md and the voice skill. One task per message. Touch only named files. App.jsx is one big component: exact anchors and the duplicate check. New pure modules go in src/*.js with tests/*.test.mjs (node cannot import .jsx). Mock everything; no real audio or IndexedDB here, so the owner tests live. EVERY clip-editor task ends by updating this file in place (task log, known gaps, verified, version) and lists it in READY TO COMMIT with its own git add line.
 
 ## Verified
-- npm test: 372 pass, 0 fail (2026-11-26, 0.2.42-beta), including 15 new src/clipSlices.js tests.
-- node --check clean on src/clipSlices.js and tests/clipSlices.test.mjs; no imports in the module, no app import (test import is the wiring proof).
+- npm test: 384 pass, 0 fail (2026-11-26, 0.2.43-beta), including 12 new src/clipMarkerStore.js tests.
+- node --check clean on src/clipMarkerStore.js and tests/clipMarkerStore.test.mjs; no imports, no localStorage reference and no app import in the module (test import is the wiring proof; grep on src/App.jsx exits 1).
 - Live in Brave: only the read-only waveform and the Edit clips button have been seen; zoom, scroll, playback and cutting are untested.
-- Owner must test live: nothing for this task until slicing and naming are wired to the editor; then check that exported clips are silent at both ends when fades are on, are copies rather than views, and get unique names even when two clips differ only by case or an existing name looks like 'a-2'.
+- Owner must test live: nothing for this task until markers are wired to the editor; then check that markers survive a reload, that a changed total discards them, that the 51st saved audio drops the oldest, that names cut at 60 characters, and that a blocked or full localStorage does not break the editor.
