@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.38-beta - 2026-11-26
+- Added wheel zoom, drag scroll and zoom tools to the clip editor waveform with pure clipView maths
+
 ## 0.2.37-beta - 2026-11-26
 - Added src/clipView.js: pure zoom and scroll window maths for the clip editor
 

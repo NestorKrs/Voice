@@ -17,3 +17,10 @@ test('ClipEditor source uses no storage or network calls', () => {
   assert.ok(!source.includes('localStorage'));
   assert.ok(!source.includes('fetch('));
 });
+
+test('ClipEditor source wires zoom and scroll from clipView', () => {
+  assert.ok(source.includes("from './clipView.js'"));
+  assert.ok(source.includes('passive: false'));
+  assert.ok(source.includes('aria-label="Close editor"'));
+  assert.ok(!/>Close editor<\/button>/.test(source));
+});
