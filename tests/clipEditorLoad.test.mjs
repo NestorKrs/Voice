@@ -120,3 +120,71 @@ test('loadEditorAudio calls getBytes once per index, in order', async () => {
   });
   assert.deepEqual(calls, [3, 1, 2]);
 });
+
+test('loadEditorAudio joins chunks that stay under maxSeconds', async () => {
+  const result = await loadEditorAudio({
+    indexes: [0, 1],
+    maxSeconds: 1,
+    ...deps({
+      0: bytes(new Array(400).fill(1), 1000),
+      1: bytes(new Array(400).fill(1), 1000),
+    }),
+  });
+  assert.equal(result.audio.sampleRate, 1000);
+  assert.equal(result.audio.samples.length, 800);
+  assert.deepEqual(result.audio.indexes, [0, 1]);
+  assert.deepEqual(result.skipped, []);
+});
+
+test('loadEditorAudio stops after the chunk that exceeds maxSeconds', async () => {
+  const calls = [];
+  const store = {
+    0: bytes(new Array(600).fill(1), 1000),
+    1: bytes(new Array(600).fill(1), 1000),
+    2: bytes(new Array(600).fill(1), 1000),
+  };
+  await assert.rejects(
+    () => loadEditorAudio({
+      indexes: [0, 1, 2],
+      maxSeconds: 1,
+      ...deps(store, {
+        getBytes: async (index) => {
+          calls.push(index);
+          return store[index] ?? null;
+        },
+      }),
+    }),
+    /Too long to edit in one piece/,
+  );
+  assert.deepEqual(calls, [0, 1]);
+});
+
+test('loadEditorAudio reports the exact length-limit message', async () => {
+  await assert.rejects(
+    () => loadEditorAudio({
+      indexes: [0, 1],
+      maxSeconds: 1,
+      ...deps({
+        0: bytes(new Array(600).fill(1), 1000),
+        1: bytes(new Array(600).fill(1), 1000),
+      }),
+    }),
+    (err) => {
+      assert.equal(
+        err.message,
+        'Too long to edit in one piece: about 1 min decoded (limit 0 min). Choose a single chunk in the list above.',
+      );
+      return true;
+    },
+  );
+});
+
+test('loadEditorAudio does not throw when the length exactly equals maxSeconds', async () => {
+  const result = await loadEditorAudio({
+    indexes: [0],
+    maxSeconds: 1,
+    ...deps({ 0: bytes(new Array(1000).fill(1), 1000) }),
+  });
+  assert.equal(result.audio.samples.length, 1000);
+  assert.deepEqual(result.audio.indexes, [0]);
+});

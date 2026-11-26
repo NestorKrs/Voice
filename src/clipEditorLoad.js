@@ -2,10 +2,13 @@
 
 import { concatMono } from './clipEditorAudio.js';
 
-export async function loadEditorAudio({ indexes, getBytes, decode, toMonoFn }) {
+export const MAX_EDIT_SECONDS = 900;
+
+export async function loadEditorAudio({ indexes, getBytes, decode, toMonoFn, maxSeconds = MAX_EDIT_SECONDS }) {
   const parts = [];
   const included = [];
   const skipped = [];
+  let totalSamples = 0;
 
   for (const index of indexes) {
     const bytes = await getBytes(index);
@@ -21,7 +24,17 @@ export async function loadEditorAudio({ indexes, getBytes, decode, toMonoFn }) {
       throw new Error('Chunk ' + (index + 1) + ': ' + (e && e.message ? e.message : 'could not decode'));
     }
 
-    parts.push({ samples: toMonoFn(decoded.channels), sampleRate: decoded.sampleRate });
+    const mono = toMonoFn(decoded.channels);
+    totalSamples += mono.length;
+    const totalSeconds = totalSamples / decoded.sampleRate;
+    if (totalSeconds > maxSeconds) {
+      const minutes = Math.ceil(totalSeconds / 60);
+      const limitMinutes = Math.round(maxSeconds / 60);
+      throw new Error(
+        'Too long to edit in one piece: about ' + minutes + ' min decoded (limit ' + limitMinutes + ' min). Choose a single chunk in the list above.',
+      );
+    }
+    parts.push({ samples: mono, sampleRate: decoded.sampleRate });
     included.push(index);
   }
 

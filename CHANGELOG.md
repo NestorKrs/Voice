@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.40-beta - 2026-11-26
+- Added a 15-minute decoded-audio length limit to the clip editor loader, with tests
+
 ## 0.2.39-beta - 2026-11-26
 - Limited clip editor max zoom to about 0.4 s, moved the close button to the Reader head, and put zoom tools between elapsed and remaining time
 
