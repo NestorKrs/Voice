@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.35-beta - 2026-11-26
+- Fixed the Edit clips tooltip and closed a stale clip editor when provider, voice, chunk size or text changes
+
 ## 0.2.34-beta - 2026-11-26
 - Wired the clip editor into the Reader panel: Edit clips button, scope picker, waveform view and desktop-only gating
 

@@ -1304,6 +1304,10 @@ export default function App() {
     logEvent('Clip editor closed');
   };
 
+  useEffect(() => {
+    if (editorOpen) closeClipEditor();
+  }, [provider.id, settings.voice, settings.chunkSize, text]);
+
   const loadEditor = async (scope) => {
     const id = ++editorLoadId.current;
     setEditorLoading(true);
@@ -1499,7 +1503,7 @@ export default function App() {
             <div className="reader-actions">
               <button onClick={handleDownloadZip} disabled={zipRunning || joinedRunning || readyCount === 0} title={zipRunning || joinedRunning ? 'A download is being prepared.' : readyCount === 0 ? 'No chunk has audio in the cache yet.' : 'Download the ready chunks as one ZIP.'}>All chunks</button>
               <button onClick={handleDownloadJoined} disabled={zipRunning || joinedRunning || !allChunksReady} title={zipRunning || joinedRunning ? 'A download is being prepared.' : allChunksReady ? 'Download the whole text as one joined audio file.' : notReadyTitle}>All joined</button>
-              <button onClick={openClipEditor} disabled={zipRunning || joinedRunning || !allChunksReady || window.matchMedia('(max-width: 768px)').matches} title={window.matchMedia('(max-width: 768px)').matches ? 'The clip editor works on desktop only (window wider than 768px).' : zipRunning || joinedRunning ? 'A download is being prepared.' : allChunksReady ? 'Download the whole text as one joined audio file.' : notReadyTitle}>Edit clips</button>
+              <button onClick={openClipEditor} disabled={zipRunning || joinedRunning || !allChunksReady || window.matchMedia('(max-width: 768px)').matches} title={window.matchMedia('(max-width: 768px)').matches ? 'The clip editor works on desktop only (window wider than 768px).' : zipRunning || joinedRunning ? 'A download is being prepared.' : allChunksReady ? 'Open the clip editor to cut the audio into separate clips' : notReadyTitle}>Edit clips</button>
             </div>
           </div>
         </section>
