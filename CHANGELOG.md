@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.44-beta - 2026-11-26
+- Added src/clipSnap.js: quiet-spot snapping and key-press reaction compensation with tests
+
 ## 0.2.43-beta - 2026-11-26
 - Added src/clipMarkerStore.js: per-audio marker store with injected storage and tests
 
