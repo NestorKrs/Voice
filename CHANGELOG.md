@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.30-beta - 2026-11-26
+- Added src/waveformPeaks.js: pure waveform peak pyramid for a later clip editor
+
+## 0.2.29-beta - 2026-11-26
+- Added src/clipCuts.js: pure cut-marker state with undo/redo for a later clip editor
+
 ## 0.2.28-beta - 2026-11-22
 - Settings labels shortened: "Cache", "Clear", "Save" and "Clear"; removed the blue mobile tap-highlight
 
