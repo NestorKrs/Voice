@@ -1,7 +1,7 @@
 # Clip editor handoff
 
 Scope: ONLY the clip editor feature. The general project status stays in docs/handoff.md (stale at 0.2.19-beta; do not use it for this feature).
-Owner: @Eleven. Updated 2026-11-26. Version when written: 0.2.44-beta. Agents: Hermes (code), Claude (planning, task texts).
+Owner: @Eleven. Updated 2026-11-26. Version when written: 0.2.45-beta. Agents: Hermes (code), Claude (planning, task texts).
 
 ## Goal
 Cut one generated audio (one chunk, or the whole joined audio) into many clips by time, locally, with ZERO extra requests. The owner pastes unrelated sentences, generates once, then cuts them into separate files. Used mainly for voiceover for animation and video. Meant for all visitors of the site, desktop only in v1.
@@ -48,6 +48,7 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.32c src/clipSlices.js sample slicing, fades and safe clip names - DONE 0.2.42-beta (not imported by the app yet)
 2.32d src/clipMarkerStore.js per-audio marker store with injected storage - DONE 0.2.43-beta (not imported by the app yet; test import is the wiring proof)
 2.32e src/clipSnap.js quiet-spot snapping and key-press reaction compensation - DONE 0.2.44-beta (not imported by the app yet; test import is the wiring proof)
+2.33a bottom player bar locked while the editor is open with the exact tooltip, chunkTexts passed to ClipEditor - DONE 0.2.45-beta (prop passed but not consumed by ClipEditor yet)
 Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, chunk text under the playhead, bottom bar disabled reason; E4e cut lines, scissors tool and M key (uses src/clipCuts.js); E5 drag, nudge, delete, undo/redo, saved markers; E6 snap while a key is held; E7 per-clip play and names; E8 export (ZIP, per-clip download, fades toggle, cut list CSV).
 
 ## Known gaps
@@ -58,6 +59,8 @@ Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, ch
 - src/clipSlices.js is pure and tested but not wired to any cut, name or export control yet.
 - src/clipMarkerStore.js is pure and tested but not wired to any marker UI yet.
 - src/clipSnap.js is pure and tested but not wired to key-press snapping yet.
+- App.jsx passes chunkTexts to ClipEditor, but ClipEditor.jsx:6 does not declare or use that prop yet.
+- The bottom-bar lock and its tooltip are untested live; the play button under the waveform named by the tooltip is not built yet (E4d).
 
 ## Open decisions
 - Reaction-time compensation value and playhead offset (tuned live).
@@ -67,7 +70,10 @@ Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, ch
 Follow AGENTS.md and the voice skill. One task per message. Touch only named files. App.jsx is one big component: exact anchors and the duplicate check. New pure modules go in src/*.js with tests/*.test.mjs (node cannot import .jsx). Mock everything; no real audio or IndexedDB here, so the owner tests live. EVERY clip-editor task ends by updating this file in place (task log, known gaps, verified, version) and lists it in READY TO COMMIT with its own git add line.
 
 ## Verified
-- npm test: 395 pass, 0 fail (2026-11-26, 0.2.44-beta), including 11 new src/clipSnap.js tests.
-- node --check clean on src/clipSnap.js and tests/clipSnap.test.mjs; no imports, no silenceMap and no app import in the module (test import is the wiring proof; grep on src/App.jsx exits 1).
-- Live in Brave: only the read-only waveform and the Edit clips button have been seen; zoom, scroll, playback and cutting are untested.
-- Owner must test live: nothing for this task until snapping is wired to key-press markers; then check that holding the snap key lands on a quiet spot near the press, that a click inside a gap is skipped, that compensation matches headset delay, and that snapping near the first or last sample stays in range.
+- npm test: 395 pass, 0 fail (2026-11-26, 0.2.45-beta).
+- node --check: NOT RUN — no .js or .mjs file changed; App.jsx is .jsx and only the owner's vship build can check it here.
+- Duplicate check on App.jsx: only the two known false positives (const chunks, const commit).
+- Wiring proof: chunkTexts={chunks} at App.jsx:1495; grep -c "editorOpen ||" is 5 (previous, play branch, stop, next, seek); the pause branch has disabled={editorOpen} because it had no existing expression; handleDownloadChunk 965-1023 (59 lines) and handleDownloadJoined 1101-1215 (115 lines) are unchanged.
+- chunkTexts is passed to ClipEditor but ClipEditor.jsx:6 does not declare or use it (grep exits 1); the consumer comes with a later task.
+- Live in Brave: only the read-only waveform and the Edit clips button have been seen; zoom, scroll, playback, cutting and the new bottom-bar lock are untested.
+- Owner must test live: with the editor open, bottom-bar play, stop, previous, next and seek are disabled and show the exact tooltip; closing the editor re-enables them; speed and volume still work; the main player does not start by itself while paused.

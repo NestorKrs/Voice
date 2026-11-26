@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.45-beta - 2026-11-26
+- Locked the bottom player bar while the clip editor is open, with an exact tooltip, and passed chunk texts to the editor
+
 ## 0.2.44-beta - 2026-11-26
 - Added src/clipSnap.js: quiet-spot snapping and key-press reaction compensation with tests
 
