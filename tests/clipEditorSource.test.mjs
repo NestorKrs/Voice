@@ -80,3 +80,10 @@ test('ClipEditor wires clip names and per-clip play', () => {
   assert.ok(source.includes('applyCuts'));
   assert.equal(/setCuts\((addMarker|moveMarker|deleteMarker|nudgeMarker|undo|redo)\(/.test(source), false);
 });
+
+test('ClipEditor puts the shortcut hint and restore note in one footer row', () => {
+  assert.ok(source.includes('className="clip-hints"'));
+  assert.ok(source.includes('className="clip-hint clip-restore"'));
+  assert.ok(!source.includes('{restoreNote ? <div className="clip-hint">'));
+  assert.ok(source.indexOf('className="clip-hints"') > source.indexOf('className="clip-list"'));
+});

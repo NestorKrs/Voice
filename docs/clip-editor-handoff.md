@@ -1,7 +1,7 @@
 # Clip editor handoff
 
 Scope: ONLY the clip editor feature. The general project status stays in docs/handoff.md (stale at 0.2.19-beta; do not use it for this feature).
-Owner: @Eleven. Updated 2026-11-26. Version when written: 0.2.51-beta. Agents: Hermes (code), Claude (planning, task texts).
+Owner: @Eleven. Updated 2026-11-26. Version when written: 0.2.52-beta. Agents: Hermes (code), Claude (planning, task texts).
 
 ## Goal
 Cut one generated audio (one chunk, or the whole joined audio) into many clips by time, locally, with ZERO extra requests. The owner pastes unrelated sentences, generates once, then cuts them into separate files. Used mainly for voiceover for animation and video. Meant for all visitors of the site, desktop only in v1.
@@ -55,6 +55,7 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.35a hold Shift to snap slice click, M key, marker drag and hover line to the quietest spot within 80 ms; hint and CSS - DONE 0.2.49-beta (the dragMarker STOP anchor was stale; marker drag was added here)
 2.36a clip list with per-clip play/pause and editable names; src/clipNames.js alignment helper and CSS - DONE 0.2.50-beta (the clipNames.js STOP anchor was stale; the pure module was created here)
 2.36b list feedback: highlight only the row's play button, first-sentence placeholders, roomier rows, no timeline end numbers, chunk info pinned to the bottom, playbar-style transport button - DONE 0.2.51-beta
+2.36c footer layout: shortcut hint and restored-cut note in one row above the bottom separator, taller clip list, wider name inputs - DONE 0.2.52-beta
 Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, chunk text under the playhead, bottom bar disabled reason; E4e cut lines, scissors tool and M key (uses src/clipCuts.js); E5 drag, nudge, delete, undo/redo, saved markers; E6 snap while a key is held; E7 per-clip play and names; E8 export (ZIP, per-clip download, fades toggle, cut list CSV).
 
 ## Known gaps
@@ -68,7 +69,7 @@ Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, ch
 - Marker drag is wired (preview, commit, ew-resize cursor) but untested live; arrow-key nudge and delete are not wired yet.
 - Marker saving and restore are untested live in Brave.
 - A name is dropped when its clip is deleted (no name history); undo cannot bring that name back.
-- Per-clip play/pause, editable names, first-sentence placeholders and the playing-button highlight are untested live in Brave.
+- Per-clip play/pause, editable names, first-sentence placeholders and the playing-button highlight are untested live in Brave; so are the footer row, the taller list and the wider name field.
 - The bottom-bar lock, the transport, click-to-seek, Space, cut lines and the clip list are untested live in Brave.
 - The playhead may look early on a Bluetooth headset; the manual offset is tuned in a later task.
 
@@ -80,10 +81,9 @@ Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, ch
 Follow AGENTS.md and the voice skill. One task per message. Touch only named files. App.jsx is one big component: exact anchors and the duplicate check. New pure modules go in src/*.js with tests/*.test.mjs (node cannot import .jsx). Mock everything; no real audio or IndexedDB here, so the owner tests live. EVERY clip-editor task ends by updating this file in place (task log, known gaps, verified, version) and lists it in READY TO COMMIT with its own git add line.
 
 ## Verified
-- npm test: 408 pass, 0 fail (2026-11-26, 0.2.51-beta): eight pure clip-name tests (five alignment, three first-sentence) and the updated ClipEditor source test, all earlier tests green.
-- node --check clean on src/clipNames.js, tests/clipNames.test.mjs and tests/clipEditorSource.test.mjs.
-- The source test 'zoom tools sit in their own row above the transport' replaced the old 'zoom tools sit between elapsed and remaining time': it now asserts the two timeline numbers are absent and the transport time readout remains, because the owner asked to remove those numbers.
-- Source scan: .clip-row.current removed, row button uses play-active, transport button uses play-primary/play-active, firstSentence imported and used for placeholders; the owner's build is the real CSS/JSX check.
+- npm test: 409 pass, 0 fail (2026-11-26, 0.2.52-beta): one new footer source test, all earlier tests green.
+- node --check clean on tests/clipEditorSource.test.mjs; no other .js or .mjs file changed.
+- Source scan: clip-hints row sits after clip-list and before clip-now, restore note carries clip-restore, the old separate restore-note element is gone; .clip-list max-height 280px and .clip-row input max-width 760px. The owner's build is the real CSS check.
 - App.jsx was not edited; its duplicate check shows only the two known false positives (chunks, commit).
 - Live in Brave: only the read-only waveform and the Edit clips button have been seen; playback, cutting, markers and saving are untested.
-- Owner must test live: the playing row's button fills with accent and the row no longer indents; each row's placeholder shows the first sentence of its cut and falls back to clip-001 when the chunk has no text; rows have room and the end time is fully visible; only the transport button and its time show under the waveform; the chunk info sits at the bottom of the editor; the transport play button is the same rounded rectangle as the playbar one and highlights when playing.
+- Owner must test live: the M/scissors/Shift/Ctrl+Z hint and the 'Restored N cuts for this audio.' note share one row directly above the separator; the note sits at the right edge and disappears when there is no restore; the clip list reaches further down toward the bottom strip; name inputs are about two to three times wider with the timestamps still at the right end of each row.

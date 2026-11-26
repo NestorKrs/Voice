@@ -588,8 +588,6 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
         </button>
         <span className="clip-time">{formatTime(playPos, displayRate)} / {formatTime(total, displayRate)}</span>
       </div>
-      <div className="clip-hint">M: cut at the playhead. Scissors: cut where you click. Ctrl+Z: undo. Hold Shift while cutting to snap to the quietest spot within {SNAP_RADIUS_MS} ms.</div>
-      {restoreNote ? <div className="clip-hint">{restoreNote}</div> : null}
       <div className="clip-list">
         {audio && clipSegments.length > 0
           ? clipSegments.map((segment) => {
@@ -629,6 +627,10 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
               );
             })
           : audio ? <div>No cuts yet: use M or the scissors tool.</div> : null}
+      </div>
+      <div className="clip-hints">
+        <div className="clip-hint">M: cut at the playhead. Scissors: cut where you click. Ctrl+Z: undo. Hold Shift while cutting to snap to the quietest spot within {SNAP_RADIUS_MS} ms.</div>
+        {restoreNote ? <div className="clip-hint clip-restore">{restoreNote}</div> : null}
       </div>
       <div className="clip-now">
         {audio && nowIndex >= 0 ? (

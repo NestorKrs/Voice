@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.52-beta - 2026-11-26
+- Clip editor footer: shortcuts and restored-cut count share one row above the bottom separator, the list gets more height and the name field is much wider
+
 ## 0.2.51-beta - 2026-11-26
 - Clip editor list polish: highlight only the playing clip button, show the cut's first sentence as the name placeholder, space the rows, drop the timeline end numbers, pin chunk info to the bottom and style the transport play button like the playbar
 
