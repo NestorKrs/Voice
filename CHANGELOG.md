@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.37-beta - 2026-11-26
+- Added src/clipView.js: pure zoom and scroll window maths for the clip editor
+
 ## 0.2.36-beta - 2026-11-26
 - Added src/clipPlayer.js: lazy AudioContext-backed mono buffer player with play, pause, seek, position and end callback
 
