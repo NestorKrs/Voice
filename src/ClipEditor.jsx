@@ -1,31 +1,77 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildPeaks, peaksForRange } from './waveformPeaks.js';
 import { formatTime } from './clipCuts.js';
-import { fullView, zoomAt, wheelFactor, panByPixels, sampleAtX, xAtSample, MIN_SPAN, isFullView } from './clipView.js';
+import { createClipPlayer } from './clipPlayer.js';
+import { fullView, zoomAt, wheelFactor, panByPixels, sampleAtX, xAtSample, ensureVisible, MIN_SPAN, isFullView } from './clipView.js';
 
-export default function ClipEditor({ audio, loading, error, scopeValue, scopeOptions, onScopeChange }) {
+export default function ClipEditor({ audio, loading, error, scopeValue, scopeOptions, onScopeChange, chunkTexts = [] }) {
   const rootRef = useRef(null);
   const wrapRef = useRef(null);
   const canvasRef = useRef(null);
   const observerRef = useRef(null);
   const viewRef = useRef(null);
   const dragRef = useRef(null);
+  const playerRef = useRef(null);
   const [width, setWidth] = useState(0);
   const [view, setView] = useState(null);
   const [dragging, setDragging] = useState(false);
+  const [playPos, setPlayPos] = useState(0);
+  const [playStatus, setPlayStatus] = useState('idle');
+  const [playbackError, setPlaybackError] = useState('');
 
   const total = audio ? audio.samples.length : 0;
   const rate = audio ? audio.sampleRate : 0;
+  const displayRate = rate || 1;
   const peaks = useMemo(() => (audio ? buildPeaks(audio.samples) : null), [audio]);
-  const message = loading ? 'Decoding audio...' : error || (total === 0 ? 'No ready chunks to edit yet.' : '');
+  const message = loading ? 'Decoding audio...' : playbackError || error || (total === 0 ? 'No ready chunks to edit yet.' : '');
   const current = view || fullView(total);
   const minSpan = Math.min(total, Math.max(MIN_SPAN, Math.round(rate * 0.4)));
+  const nowIndex = audio ? audio.offsets.reduce((last, offset, i) => (offset <= playPos ? i : last), -1) : -1;
+  const nowChunk = nowIndex >= 0 ? audio.indexes[nowIndex] : -1;
+  const nowText = nowChunk >= 0 && chunkTexts[nowChunk]
+    ? chunkTexts[nowChunk].slice(0, 200) + (chunkTexts[nowChunk].length > 200 ? '…' : '')
+    : '';
 
   useEffect(() => {
     const next = audio ? fullView(audio.samples.length) : null;
     viewRef.current = next;
     setView(next);
   }, [audio]);
+
+  useEffect(() => {
+    setPlayPos(0);
+    setPlayStatus('idle');
+    setPlaybackError('');
+    if (!audio) {
+      if (playerRef.current) {
+        playerRef.current.close();
+        playerRef.current = null;
+      }
+      return;
+    }
+    try {
+      if (!playerRef.current) {
+        playerRef.current = createClipPlayer({
+          createContext: () => new (window.AudioContext || window.webkitAudioContext)(),
+        });
+      }
+      playerRef.current.setOnEnd(() => {
+        setPlayStatus('idle');
+        setPlayPos(audio.samples.length);
+      });
+      playerRef.current.load(audio.samples, audio.sampleRate);
+    } catch (e) {
+      if (playerRef.current) {
+        playerRef.current.close();
+        playerRef.current = null;
+      }
+      setPlaybackError('Audio playback is not available: ' + (e && e.message ? e.message : String(e)));
+    }
+  }, [audio]);
+
+  useEffect(() => () => {
+    if (playerRef.current) playerRef.current.close();
+  }, []);
 
   useEffect(() => {
     const wrap = wrapRef.current;
@@ -84,7 +130,72 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       ctx.lineTo(x + 0.5, deviceHeight);
     }
     ctx.stroke();
-  }, [audio, peaks, total, width, message, view]);
+
+    if (total > 0) {
+      const x = xAtSample(v, playPos, deviceWidth);
+      if (x >= 0 && x <= deviceWidth) {
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, deviceHeight);
+        ctx.stroke();
+        ctx.lineWidth = 1;
+      }
+    }
+  }, [audio, peaks, total, width, message, view, playPos]);
+
+  useEffect(() => {
+    if (playStatus !== 'playing') return undefined;
+    let raf = 0;
+    let last = 0;
+    const tick = (now) => {
+      raf = requestAnimationFrame(tick);
+      if (now - last < 50) return;
+      last = now;
+      const player = playerRef.current;
+      if (!player) return;
+      const position = player.getState().position;
+      setPlayPos((prev) => (prev === position ? prev : position));
+      const base = viewRef.current || fullView(total);
+      const next = ensureVisible(base, total, position);
+      if (next !== base) {
+        viewRef.current = next;
+        setView(next);
+      }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [playStatus, total]);
+
+  const togglePlay = () => {
+    const player = playerRef.current;
+    if (!player) return;
+    if (playStatus === 'playing') {
+      player.pause();
+      setPlayStatus('paused');
+    } else if (player.play()) {
+      setPlayStatus('playing');
+    }
+  };
+
+  useEffect(() => {
+    const isTyping = (target) => target && (
+      target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+    );
+    const onKey = (event) => {
+      if (event.code !== 'Space' || isTyping(event.target)) return;
+      event.preventDefault();
+      if (event.type !== 'keydown' || event.repeat) return;
+      togglePlay();
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('keyup', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keyup', onKey);
+    };
+  }, [playStatus]);
 
   const applySpan = (targetSpan, anchorSample) => {
     const base = viewRef.current || fullView(total);
@@ -117,7 +228,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
 
   const onPointerDown = (event) => {
     if (event.button !== 0 || total === 0) return;
-    dragRef.current = { x: event.clientX, id: event.pointerId };
+    dragRef.current = { x: event.clientX, startX: event.clientX, moved: 0, id: event.pointerId };
     setDragging(true);
     event.currentTarget.setPointerCapture(event.pointerId);
   };
@@ -126,6 +237,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     const drag = dragRef.current;
     if (!drag || drag.id !== event.pointerId) return;
     const dx = event.clientX - drag.x;
+    drag.moved += Math.abs(dx);
     drag.x = event.clientX;
     const wrap = wrapRef.current;
     const widthPx = wrap ? wrap.getBoundingClientRect().width : 0;
@@ -137,9 +249,20 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   };
 
   const endDrag = (event) => {
-    if (!dragRef.current) return;
+    const drag = dragRef.current;
+    if (!drag) return;
     dragRef.current = null;
     setDragging(false);
+    if (drag.moved < 4 && event.type === 'pointerup' && playerRef.current && audio) {
+      const wrap = wrapRef.current;
+      const box = wrap ? wrap.getBoundingClientRect() : null;
+      if (box && box.width > 0) {
+        const base = viewRef.current || fullView(total);
+        const sample = sampleAtX(base, event.clientX - box.left, box.width);
+        playerRef.current.seek(sample);
+        setPlayPos(sample);
+      }
+    }
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -191,6 +314,29 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
           </div>
         </>
       )}
+      <div className="clip-transport">
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label={playStatus === 'playing' ? 'Pause' : 'Play'}
+          title={!audio ? 'No audio loaded' : (playStatus === 'playing' ? 'Pause' : 'Play')}
+          disabled={!audio}
+          onClick={togglePlay}
+        >
+          {playStatus === 'playing'
+            ? <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5v14M15 5v14"/></svg>
+            : <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 5l11 7-11 7z"/></svg>}
+        </button>
+        <span className="clip-time">{formatTime(playPos, displayRate)} / {formatTime(total, displayRate)}</span>
+      </div>
+      <div className="clip-now">
+        {audio && nowIndex >= 0 ? (
+          <>
+            <div>{'Chunk ' + (audio.indexes[nowIndex] + 1) + ' of ' + audio.offsets.length}</div>
+            {nowText ? <div>{nowText}</div> : null}
+          </>
+        ) : null}
+      </div>
     </div>
   );
 }

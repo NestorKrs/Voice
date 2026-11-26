@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.46-beta - 2026-11-26
+- Added clip editor playback with playhead, click-to-seek, Space control, chunk text strip and transport CSS
+
 ## 0.2.45-beta - 2026-11-26
 - Locked the bottom player bar while the clip editor is open, with an exact tooltip, and passed chunk texts to the editor
 

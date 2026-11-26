@@ -38,3 +38,11 @@ test('zoom tools sit between elapsed and remaining time', () => {
   assert.ok(times.includes('formatTime(total - (current.start + current.span), rate)'));
   assert.ok(source.indexOf('className="clip-tools"') > source.indexOf('<div className="clip-times">'));
 });
+
+test('ClipEditor wires playback, Space and the playhead without storage', () => {
+  assert.ok(source.includes("from './clipPlayer.js'"));
+  assert.ok(source.includes('requestAnimationFrame'));
+  assert.ok(source.includes('Space'));
+  assert.ok(source.includes('Audio playback is not available: '));
+  assert.ok(!source.includes('localStorage'));
+});
