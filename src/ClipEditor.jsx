@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildPeaks, peaksForRange } from './waveformPeaks.js';
 import { createCuts, addMarker, undo, redo, segments, formatTime } from './clipCuts.js';
 import { compensateKeyPress } from './clipSnap.js';
+import { createMarkerStore } from './clipMarkerStore.js';
 import { createClipPlayer } from './clipPlayer.js';
 import { fullView, zoomAt, wheelFactor, panByPixels, sampleAtX, xAtSample, ensureVisible, MIN_SPAN, isFullView } from './clipView.js';
 
-export default function ClipEditor({ audio, loading, error, scopeValue, scopeOptions, onScopeChange, chunkTexts = [] }) {
+export default function ClipEditor({ audio, loading, error, scopeValue, scopeOptions, onScopeChange, chunkTexts = [], audioKey = null }) {
   const rootRef = useRef(null);
   const wrapRef = useRef(null);
   const canvasRef = useRef(null);
@@ -14,6 +15,8 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const dragRef = useRef(null);
   const playerRef = useRef(null);
   const cutsRef = useRef(null);
+  const storeRef = useRef(null);
+  const restoringRef = useRef(false);
   const [width, setWidth] = useState(0);
   const [view, setView] = useState(null);
   const [dragging, setDragging] = useState(false);
@@ -23,12 +26,14 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const [cuts, setCuts] = useState(null);
   const [sliceMode, setSliceMode] = useState(false);
   const [hoverSample, setHoverSample] = useState(null);
+  const [storeMessage, setStoreMessage] = useState('');
+  const [restoreNote, setRestoreNote] = useState('');
 
   const total = audio ? audio.samples.length : 0;
   const rate = audio ? audio.sampleRate : 0;
   const displayRate = rate || 1;
   const peaks = useMemo(() => (audio ? buildPeaks(audio.samples) : null), [audio]);
-  const message = loading ? 'Decoding audio...' : playbackError || error || (total === 0 ? 'No ready chunks to edit yet.' : '');
+  const message = loading ? 'Decoding audio...' : playbackError || storeMessage || error || (total === 0 ? 'No ready chunks to edit yet.' : '');
   const current = view || fullView(total);
   const minSpan = Math.min(total, Math.max(MIN_SPAN, Math.round(rate * 0.4)));
   const cutsRefCurrent = cuts && cuts.total === total && cuts.rate === rate ? cuts : null;
@@ -41,13 +46,52 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     : '';
 
   useEffect(() => {
+    try {
+      storeRef.current = createMarkerStore(window.localStorage);
+    } catch {
+      storeRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
     const next = audio ? fullView(audio.samples.length) : null;
     viewRef.current = next;
     setView(next);
-    setCuts(audio ? createCuts(audio.samples.length, audio.sampleRate) : null);
     setSliceMode(false);
     setHoverSample(null);
-  }, [audio]);
+    setStoreMessage('');
+    setRestoreNote('');
+    let fresh = audio ? createCuts(audio.samples.length, audio.sampleRate) : null;
+    if (audio && audioKey && storeRef.current) {
+      const stored = storeRef.current.load(audioKey, audio.samples.length);
+      if (stored && stored.markers.length > 0) {
+        restoringRef.current = true;
+        for (const marker of stored.markers) fresh = addMarker(fresh, marker);
+        setRestoreNote('Restored ' + stored.markers.length + ' cuts for this audio.');
+      }
+    }
+    if (fresh) setCuts({ ...fresh, past: [], future: [] });
+    else setCuts(null);
+  }, [audio, audioKey]);
+
+  useEffect(() => {
+    if (!cuts || !audioKey || !audio) return undefined;
+    if (restoringRef.current) {
+      restoringRef.current = false;
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      const store = storeRef.current;
+      if (!store) {
+        setStoreMessage('Cannot save cut markers: browser storage is not available.');
+        return;
+      }
+      const ok = store.save(audioKey, total, rate, cuts.markers, []);
+      if (ok) setStoreMessage('');
+      else setStoreMessage('Cannot save cut markers: browser storage is full or blocked.');
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [cuts, audioKey, audio]);
 
   useEffect(() => {
     setPlayPos(0);
@@ -431,6 +475,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
         <span className="clip-time">{formatTime(playPos, displayRate)} / {formatTime(total, displayRate)}</span>
       </div>
       <div className="clip-hint">M: cut at the playhead. Scissors: cut where you click. Ctrl+Z: undo.</div>
+      {restoreNote ? <div className="clip-hint">{restoreNote}</div> : null}
       <div className="clip-list">
         {audio && clipSegments.length > 0
           ? clipSegments.map((segment) => (

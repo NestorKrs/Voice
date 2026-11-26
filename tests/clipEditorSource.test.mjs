@@ -14,7 +14,8 @@ test('ClipEditor source has the required declaration, imports and visible string
 });
 
 test('ClipEditor source uses no storage or network calls', () => {
-  assert.ok(!source.includes('localStorage'));
+  assert.ok(!source.includes('getItem('));
+  assert.ok(!source.includes('setItem('));
   assert.ok(!source.includes('fetch('));
 });
 
@@ -44,7 +45,8 @@ test('ClipEditor wires playback, Space and the playhead without storage', () => 
   assert.ok(source.includes('requestAnimationFrame'));
   assert.ok(source.includes('Space'));
   assert.ok(source.includes('Audio playback is not available: '));
-  assert.ok(!source.includes('localStorage'));
+  assert.ok(!source.includes('getItem('));
+  assert.ok(!source.includes('setItem('));
 });
 
 test('ClipEditor imports cut and snap modules and exposes marker controls', () => {
@@ -54,4 +56,12 @@ test('ClipEditor imports cut and snap modules and exposes marker controls', () =
   assert.ok(source.includes('aria-pressed'));
   assert.ok(source.includes('Nothing to undo'));
   assert.ok(source.includes('#f5a524'));
+});
+
+test('ClipEditor and App wire saved cut markers', () => {
+  assert.ok(source.includes("from './clipMarkerStore.js'"));
+  assert.ok(source.includes('Cannot save cut markers: browser storage is not available.'));
+  assert.ok(source.includes('Cannot save cut markers: browser storage is full or blocked.'));
+  assert.ok(appSource.includes('audioKeyFrom'));
+  assert.ok(appSource.includes('audioKey={editorAudioKey}'));
 });

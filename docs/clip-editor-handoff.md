@@ -1,7 +1,7 @@
 # Clip editor handoff
 
 Scope: ONLY the clip editor feature. The general project status stays in docs/handoff.md (stale at 0.2.19-beta; do not use it for this feature).
-Owner: @Eleven. Updated 2026-11-26. Version when written: 0.2.47-beta. Agents: Hermes (code), Claude (planning, task texts).
+Owner: @Eleven. Updated 2026-11-26. Version when written: 0.2.48-beta. Agents: Hermes (code), Claude (planning, task texts).
 
 ## Goal
 Cut one generated audio (one chunk, or the whole joined audio) into many clips by time, locally, with ZERO extra requests. The owner pastes unrelated sentences, generates once, then cuts them into separate files. Used mainly for voiceover for animation and video. Meant for all visitors of the site, desktop only in v1.
@@ -51,6 +51,7 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.33a bottom player bar locked while the editor is open with the exact tooltip, chunkTexts passed to ClipEditor - DONE 0.2.45-beta (prop passed but not consumed by ClipEditor yet)
 2.33b playback in ClipEditor (transport, playhead, click-to-seek, Space, chunk text strip) and transport CSS - DONE 0.2.46-beta
 2.34a markers in ClipEditor (slice tool, M key, undo/redo, cut lines, clip list) and CSS - DONE 0.2.47-beta
+2.34c remember cut markers per audio (audio key, store restore, debounced save) - DONE 0.2.48-beta
 Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, chunk text under the playhead, bottom bar disabled reason; E4e cut lines, scissors tool and M key (uses src/clipCuts.js); E5 drag, nudge, delete, undo/redo, saved markers; E6 snap while a key is held; E7 per-clip play and names; E8 export (ZIP, per-clip download, fades toggle, cut list CSV).
 
 ## Known gaps
@@ -59,9 +60,10 @@ Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, ch
 - Whole joined audio is capped at 900 s (~15 min) decoded; longer text must be edited one chunk at a time.
 - src/clipCsv.js is pure and tested but not wired to any export button yet.
 - src/clipSlices.js is pure and tested but not wired to any cut, name or export control yet.
-- src/clipMarkerStore.js is pure and tested but not wired to any marker UI yet.
+- src/clipMarkerStore.js is wired to the editor for markers; names and clear are not wired yet.
 - src/clipSnap.js snapToQuiet is pure and tested but not wired to key-press snapping yet (compensateKeyPress is wired).
-- Marker drag, nudge, delete and browser-saved markers are not wired yet.
+- Marker drag, nudge and delete are not wired yet.
+- Marker saving and restore are untested live in Brave.
 - The bottom-bar lock, the transport, click-to-seek, Space, cut lines and the clip list are untested live in Brave.
 - The playhead may look early on a Bluetooth headset; the manual offset is tuned in a later task.
 
@@ -73,10 +75,10 @@ Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, ch
 Follow AGENTS.md and the voice skill. One task per message. Touch only named files. App.jsx is one big component: exact anchors and the duplicate check. New pure modules go in src/*.js with tests/*.test.mjs (node cannot import .jsx). Mock everything; no real audio or IndexedDB here, so the owner tests live. EVERY clip-editor task ends by updating this file in place (task log, known gaps, verified, version) and lists it in READY TO COMMIT with its own git add line.
 
 ## Verified
-- npm test: 397 pass, 0 fail (2026-11-26, 0.2.47-beta), including the new source test for cut and snap modules and marker controls.
+- npm test: 398 pass, 0 fail (2026-11-26, 0.2.48-beta), including the new source test for saved markers.
 - node --check clean on tests/clipEditorSource.test.mjs; no other .js or .mjs file changed.
-- Duplicate check on App.jsx: only the two known false positives (const chunks, const commit); App.jsx was not edited (1708 lines, chunkTexts prop still at 1495).
-- Wiring proof: createCuts/addMarker/undo/redo/segments imported at ClipEditor.jsx:3, compensateKeyPress at 4 and used at 245, KeyM at 243, aria-pressed at 391, Nothing to undo at 400, cut colour #f5a524 at 160, clip list at 434; no localStorage in the source.
-- CSS: .clip-tools .icon-btn.active, .clip-wave.slice, .clip-list and .clip-hint sit directly above the 768px media block in src/App.css.
-- Live in Brave: only the read-only waveform and the Edit clips button have been seen; playback, cutting and the bottom-bar lock are untested.
-- Owner must test live: the scissors button toggles and its tooltip changes; clicking the waveform in slice mode adds an orange cut line at that spot; M adds a cut at the playhead while playing (about 180 ms earlier than the keypress) and exactly at the playhead when paused; undo and redo buttons and Ctrl+Z / Ctrl+Shift+Z work; the clip list updates with durations; adding two cuts at the same sample does nothing; cuts reset when the scope or the audio changes.
+- Two existing source assertions changed only from forbidding any `localStorage` mention to forbidding direct `getItem(`/`setItem(` calls, because this task requires passing `window.localStorage` to the store: 'ClipEditor source uses no storage or network calls' and 'ClipEditor wires playback, Space and the playhead without storage'.
+- Duplicate check on App.jsx: only the two known false positives (const chunks, const commit); both download handlers unchanged (59 and 115 lines, positions 967-1025 and 1103-1217).
+- Wiring proof: App.jsx audioKeyFrom imported at 27, editorAudioKey state at 326, keysUsed at 1319/1323, key set at 1329 and passed at 1503; ClipEditor.jsx audioKey prop at 9, createMarkerStore at 5/50, store save at 89, restore note at 478; no direct storage API calls in the source.
+- Live in Brave: only the read-only waveform and the Edit clips button have been seen; playback, cutting, markers and saving are untested.
+- Owner must test live: add cuts, close the editor, reopen it with the same scope: the cuts come back and the line says 'Restored N cuts for this audio.'; undo does not remove restored cuts; a different scope (single chunk vs whole text) has its own cuts; changing the text or voice gives fresh cuts (a different audio key); the status of saving is invisible unless storage fails.

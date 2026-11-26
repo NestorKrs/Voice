@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.48-beta - 2026-11-26
+- Remember cut markers per audio in the clip editor, with restore, debounced saving and exact storage failure reasons
+
 ## 0.2.47-beta - 2026-11-26
 - Added clip editor markers: slice tool, M key, undo/redo, cut lines, clip list and CSS
 

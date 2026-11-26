@@ -24,6 +24,7 @@ import { DEFAULT_ORDER, movePanel, stepPanel, loadOrder, saveOrder } from './pan
 import { DEFAULT_WIDTHS, clampWidths, usableWidth, resizeFromHandle, columnsTemplate, loadWidths, saveWidths } from './panelWidths.js';
 import { textFileRejection } from './fileTypes.js';
 import ClipEditor from './ClipEditor.jsx';
+import { audioKeyFrom } from './clipMarkerStore.js';
 import { loadEditorAudio } from './clipEditorLoad.js';
 import { toMono } from './waveformPeaks.js';
 
@@ -322,6 +323,7 @@ export default function App() {
   const [editorError, setEditorError] = useState('');
   const [editorAudio, setEditorAudio] = useState(null);
   const [editorScope, setEditorScope] = useState('all');
+  const [editorAudioKey, setEditorAudioKey] = useState(null);
   const editorLoadId = useRef(0);
   const statusIsError = jobError !== '' || schedState.state === 'error' || Object.keys(chunkNotes).length > 0;
 
@@ -1301,6 +1303,7 @@ export default function App() {
     setEditorAudio(null);
     setEditorError('');
     setEditorLoading(false);
+    setEditorAudioKey(null);
     logEvent('Clip editor closed');
   };
 
@@ -1313,18 +1316,23 @@ export default function App() {
     setEditorLoading(true);
     setEditorError('');
     const indexes = scope === 'all' ? chunks.map((_, i) => i) : [Number(scope.slice(6))];
+    const keysUsed = [];
     const getBytes = async (index) => {
       const key = await services.makeKey({ text: chunks[index], voice: settings.voice, provider });
-      return services.cache.get(key);
+      const bytes = await services.cache.get(key);
+      if (bytes !== null) keysUsed.push(key);
+      return bytes;
     };
     try {
       const r = await loadEditorAudio({ indexes, getBytes, decode: decodeChunk, toMonoFn: toMono });
       if (id !== editorLoadId.current) return;
+      setEditorAudioKey(r.audio ? audioKeyFrom(keysUsed) : null);
       setEditorAudio(r.audio);
       logEvent('Clip editor: ' + (r.audio ? r.audio.indexes.length : 0) + ' chunk(s) loaded, ' + r.skipped.length + ' without audio');
     } catch (e) {
       if (id !== editorLoadId.current) return;
       setEditorAudio(null);
+      setEditorAudioKey(null);
       setEditorError(e.message);
       logEvent('Clip editor failed: ' + e.message);
     } finally {
@@ -1492,7 +1500,7 @@ export default function App() {
               );
             })}
           </div>
-          {editorOpen ? (<ClipEditor audio={editorAudio} loading={editorLoading} error={editorError} scopeValue={editorScope} scopeOptions={scopeOptions} onScopeChange={(v) => { setEditorScope(v); loadEditor(v); }} chunkTexts={chunks} />) : null}
+          {editorOpen ? (<ClipEditor audio={editorAudio} loading={editorLoading} error={editorError} scopeValue={editorScope} scopeOptions={scopeOptions} onScopeChange={(v) => { setEditorScope(v); loadEditor(v); }} chunkTexts={chunks} audioKey={editorAudioKey} />) : null}
           {(jobError || noteState) ? (
             <div className={'job-note' + (jobError || schedState.state === 'error' ? ' job-note-error' : '')}>
               {jobError ? <span>{jobError}</span> : <span>{schedState.state === 'cancelled' ? 'CANCELLED' : 'PAUSED (chunk #' + (schedState.chunks.findIndex((c) => c && c.status !== 'ready') + 1 || playerState.index + 1) + ')'}{schedState.state === 'waiting_reset' ? ' - ' + new Date(schedState.resetAt).toLocaleString() : ''}{schedState.state === 'error' && firstChunkError ? ' - ' + firstChunkError : ''}</span>}
