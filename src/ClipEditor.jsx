@@ -3,7 +3,7 @@ import { buildPeaks, peaksForRange } from './waveformPeaks.js';
 import { formatTime } from './clipCuts.js';
 import { fullView, zoomAt, wheelFactor, panByPixels, sampleAtX, xAtSample, MIN_SPAN, isFullView } from './clipView.js';
 
-export default function ClipEditor({ audio, loading, error, scopeValue, scopeOptions, onScopeChange, onClose }) {
+export default function ClipEditor({ audio, loading, error, scopeValue, scopeOptions, onScopeChange }) {
   const rootRef = useRef(null);
   const wrapRef = useRef(null);
   const canvasRef = useRef(null);
@@ -19,7 +19,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const peaks = useMemo(() => (audio ? buildPeaks(audio.samples) : null), [audio]);
   const message = loading ? 'Decoding audio...' : error || (total === 0 ? 'No ready chunks to edit yet.' : '');
   const current = view || fullView(total);
-  const minSpan = Math.min(MIN_SPAN, total);
+  const minSpan = Math.min(total, Math.max(MIN_SPAN, Math.round(rate * 0.4)));
 
   useEffect(() => {
     const next = audio ? fullView(audio.samples.length) : null;
@@ -86,6 +86,19 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     ctx.stroke();
   }, [audio, peaks, total, width, message, view]);
 
+  const applySpan = (targetSpan, anchorSample) => {
+    const base = viewRef.current || fullView(total);
+    const span = Math.min(total, Math.max(minSpan, Math.round(targetSpan)));
+    const next = zoomAt(base, total, base.span / span, anchorSample);
+    viewRef.current = next;
+    setView(next);
+  };
+
+  const zoomBy = (factor) => {
+    const base = viewRef.current || fullView(total);
+    applySpan(base.span / factor, base.start + base.span / 2);
+  };
+
   useEffect(() => {
     const wrap = wrapRef.current;
     if (!wrap || total === 0) return undefined;
@@ -96,20 +109,11 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       if (widthPx <= 0) return;
       const base = viewRef.current || fullView(total);
       const anchorSample = sampleAtX(base, event.clientX - box.left, widthPx);
-      const next = zoomAt(base, total, wheelFactor(event.deltaY), anchorSample);
-      viewRef.current = next;
-      setView(next);
+      applySpan(base.span / wheelFactor(event.deltaY), anchorSample);
     };
     wrap.addEventListener('wheel', onWheel, { passive: false });
     return () => wrap.removeEventListener('wheel', onWheel, { passive: false });
-  }, [total, message]);
-
-  const zoomBy = (factor) => {
-    const base = viewRef.current || fullView(total);
-    const next = zoomAt(base, total, factor, base.start + base.span / 2);
-    viewRef.current = next;
-    setView(next);
-  };
+  }, [total, rate, message]);
 
   const onPointerDown = (event) => {
     if (event.button !== 0 || total === 0) return;
@@ -156,7 +160,6 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
             <option key={option.value} value={option.value}>{option.label}</option>
           ))}
         </select>
-        <button type="button" className="icon-btn" aria-label="Close editor" title="Close editor" onClick={onClose}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </div>
       {total > 0 && (
         <span className="clip-info">Length {formatTime(total, rate)} - {rate} Hz - {audio.offsets.length} chunk(s)</span>
@@ -165,11 +168,6 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
         <div className="clip-msg">{message}</div>
       ) : (
         <>
-          <div className="clip-tools">
-            <button type="button" className="icon-btn" aria-label="Zoom out" title={isFullView(current, total) ? 'Already showing the whole audio' : 'Zoom out'} disabled={isFullView(current, total)} onClick={() => zoomBy(1 / 1.5)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/></svg></button>
-            <button type="button" className="icon-btn" aria-label="Zoom in" title={current.span <= minSpan ? 'Zoomed in to the maximum (' + MIN_SPAN + ' samples visible)' : 'Zoom in'} disabled={current.span <= minSpan} onClick={() => zoomBy(1.5)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5v14"/></svg></button>
-            <span className="clip-visible">Visible {formatTime(current.span, rate)}</span>
-          </div>
           <div
             className={`clip-wave${dragging ? ' dragging' : ''}`}
             ref={wrapRef}
@@ -184,7 +182,12 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
           </div>
           <div className="clip-times">
             <span>{formatTime(current.start, rate)}</span>
-            <span>{formatTime(current.start + current.span, rate)}</span>
+            <div className="clip-tools">
+              <button type="button" className="icon-btn" aria-label="Zoom out" title={isFullView(current, total) ? 'Already showing the whole audio' : 'Zoom out'} disabled={isFullView(current, total)} onClick={() => zoomBy(1 / 1.5)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/></svg></button>
+              <button type="button" className="icon-btn" aria-label="Zoom in" title={current.span <= minSpan ? 'Zoomed in to the maximum (' + formatTime(minSpan, rate) + ' visible)' : 'Zoom in'} disabled={current.span <= minSpan} onClick={() => zoomBy(1.5)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5v14"/></svg></button>
+              <span className="clip-visible">Visible {formatTime(current.span, rate)}</span>
+            </div>
+            <span>{formatTime(total - (current.start + current.span), rate)}</span>
           </div>
         </>
       )}

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.39-beta - 2026-11-26
+- Limited clip editor max zoom to about 0.4 s, moved the close button to the Reader head, and put zoom tools between elapsed and remaining time
+
 ## 0.2.38-beta - 2026-11-26
 - Added wheel zoom, drag scroll and zoom tools to the clip editor waveform with pure clipView maths
 

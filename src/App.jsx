@@ -1456,6 +1456,7 @@ export default function App() {
             <span className="grip" role="button" tabIndex={0} draggable="true" title="Drag to move this panel. Keyboard: Alt+Left or Alt+Right." aria-label="Move the Reader panel" onDragStart={onGripDragStart('reader')} onDragEnd={onGripDragEnd} onKeyDown={onGripKeyDown('reader')} />
             <span className="panel-title">Reader</span>
             <span className="now" style={{color:"var(--accent)"}}>{settings.voice || provider.label}</span>
+            {editorOpen ? (<button type="button" className="icon-btn reader-close-editor" aria-label="Close editor" title="Close editor" onClick={closeClipEditor}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>) : null}
           </div>
           <div className="chunk-list">
             {chunks.map((c, i) => {
@@ -1491,7 +1492,7 @@ export default function App() {
               );
             })}
           </div>
-          {editorOpen ? (<ClipEditor audio={editorAudio} loading={editorLoading} error={editorError} scopeValue={editorScope} scopeOptions={scopeOptions} onScopeChange={(v) => { setEditorScope(v); loadEditor(v); }} onClose={closeClipEditor} />) : null}
+          {editorOpen ? (<ClipEditor audio={editorAudio} loading={editorLoading} error={editorError} scopeValue={editorScope} scopeOptions={scopeOptions} onScopeChange={(v) => { setEditorScope(v); loadEditor(v); }} />) : null}
           {(jobError || noteState) ? (
             <div className={'job-note' + (jobError || schedState.state === 'error' ? ' job-note-error' : '')}>
               {jobError ? <span>{jobError}</span> : <span>{schedState.state === 'cancelled' ? 'CANCELLED' : 'PAUSED (chunk #' + (schedState.chunks.findIndex((c) => c && c.status !== 'ready') + 1 || playerState.index + 1) + ')'}{schedState.state === 'waiting_reset' ? ' - ' + new Date(schedState.resetAt).toLocaleString() : ''}{schedState.state === 'error' && firstChunkError ? ' - ' + firstChunkError : ''}</span>}
