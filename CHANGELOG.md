@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.55-beta - 2026-11-27
+- Added src/clipExport.js: sequential clip encoding with fades, unique file names, skipped empty clips, cut-list CSV bytes and ZIP entries, with 11 focused tests
+
 ## 0.2.54-beta - 2026-11-26
 - Clip editor: centre the zoom/blade/undo row, dim the helper text to teal, one more clip-list row, and the same × close button as Settings
 
