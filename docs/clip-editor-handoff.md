@@ -1,7 +1,7 @@
 # Clip editor handoff
 
 Scope: ONLY the clip editor feature. The general project status stays in docs/handoff.md (stale at 0.2.19-beta; do not use it for this feature).
-Owner: @Eleven. Updated 2026-11-27. Version when written: 0.2.61-beta. Agents: Hermes (code), Claude (planning, task texts).
+Owner: @Eleven. Updated 2026-11-27. Version when written: 0.2.62-beta. Agents: Hermes (code), Claude (planning, task texts).
 
 ## Goal
 Cut one generated audio (one chunk, or the whole joined audio) into many clips by time, locally, with ZERO extra requests. The owner pastes unrelated sentences, generates once, then cuts them into separate files. Used mainly for voiceover for animation and video. Meant for all visitors of the site, desktop only in v1.
@@ -32,8 +32,7 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 
 ## Task log (statuses from CHANGELOG.md)
 2.29a orient; 2.29b src/clipCuts.js pure cut state with undo/redo - DONE 0.2.29-beta; 2.29d src/waveformPeaks.js peak pyramid - DONE 0.2.30-beta (sent twice; the second run stopped with no change)
-2.30a src/clipEditorAudio.js concatMono; 2.30b src/ClipEditor.jsx read-only waveform view and CSS - DONE 0.2.31-beta/0.2.32-beta
-2.30c src/clipEditorLoad.js loader - DONE 0.2.33-beta
+2.30a src/clipEditorAudio.js concatMono; 2.30b src/ClipEditor.jsx read-only waveform view and CSS - DONE 0.2.31-beta/0.2.32-beta; 2.30c src/clipEditorLoad.js loader - DONE 0.2.33-beta
 2.30d wiring into App.jsx (Edit clips button, state, load handlers, Reader swap) - DONE 0.2.34-beta. Live test by the owner: looks right, cannot cut yet.
 2.30e tooltip fix and close-on-stale - STOPPED by Hermes (the reset effect is declared above closeClipEditor); replaced by 2.30f
 2.30f tooltip fix and close-on-stale (new effect below closeClipEditor) - DONE 0.2.35-beta
@@ -60,6 +59,7 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.40c fit the editor into the panel height (tools above waveform, transport below, only the list flexes and scrolls, chunk strip last) and per-clip row reordered to play, download, name, times, duration - DONE 0.2.59-beta (App.jsx untouched)
 2.40d draggable playhead (ruler strip scrub, playhead handle, grab the line in the waveform) and Go to start button + Home key in src/ClipEditor.jsx with CSS - DONE 0.2.60-beta (App.jsx untouched)
 2.40e Loop clips toggle in the transport row, per-clip loop play/pause/resume, looping row highlight and loop-follows-cuts in src/ClipEditor.jsx with CSS - DONE 0.2.61-beta (App.jsx untouched)
+2.40f Fade in / Fade out toggles, All/Selected scope picker and row selection (click, Ctrl+click, Shift+click) driving per-clip fades in src/ClipEditor.jsx with CSS - DONE 0.2.62-beta (App.jsx untouched)
 Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no bump); E4d 2.33a/2.33b 0.2.45-beta/0.2.46-beta; E4e 2.34a 0.2.47-beta; E5 2.34c 0.2.48-beta; E6 2.35a 0.2.49-beta; E7 2.36a-2.36c 0.2.50-beta/0.2.51-beta/0.2.52-beta; E8 2.37a/2.37b 0.2.55-beta/0.2.56-beta.
 
 ## Known gaps
@@ -80,7 +80,7 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 - The bottom-bar lock, the transport, click-to-seek, Space, cut lines and the clip list are untested live in Brave.
 - The new height fit (tools row above the waveform, transport below, only the list flexes and scrolls, chunk strip pinned last) and the reordered clip row (play, download, name, times, duration) are untested live in Brave.
 - The playhead may look early on a Bluetooth headset; the manual offset is tuned in a later task.
-- The new fadeIn/fadeOut/fadeClips arguments in clipSlices.js and clipExport.js are not used by the UI yet: ClipEditor still passes only legacy fadeMs, so separate-end and per-clip fades need a later wiring task and a live audio check.
+- Fade in / Fade out toggles, the All/Selected scope picker and row selection (click, Ctrl+click, Shift+click) are wired into the export calls but untested live in Brave; the single-clip download fades by the original clip index (restricted set [] or [0]).
 - Looping is wired to the editor (Loop clips toggle, per-clip loop play, looping row highlight, loop follows cuts) but untested live in Brave; resuming a paused non-loop clip and a paused loop after a cut change need a live check.
 - The ruler strip, playhead handle, grab-the-line scrub and Go to start (button and Home) are wired but untested live in Brave.
 
@@ -93,7 +93,7 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 Follow AGENTS.md and the voice skill. One task per message. Touch only named files. App.jsx is one big component: exact anchors and the duplicate check. New pure modules go in src/*.js with tests/*.test.mjs (node cannot import .jsx). Mock everything; no real audio or IndexedDB here, so the owner tests live. EVERY clip-editor task ends by updating this file in place (task log, known gaps, verified, version) and lists it in READY TO COMMIT with its own git add line.
 
 ## Verified
-- npm test: 455 pass, 0 fail (2026-11-27, 0.2.61-beta; full raw run pasted in the task report).
+- npm test: 456 pass, 0 fail (2026-11-27, 0.2.62-beta; full raw run pasted in the task report).
 - node --check clean on tests/clipEditorSource.test.mjs; .jsx and .css cannot be compiled here, so the owner's vship build is the real check.
-- Appended test asserts ClipEditor.jsx contains setLoop, "Loop clips", aria-pressed={loopOn}, { loop: loopOnRef.current } and looping; the earlier source-scan tests still pass.
-- Live in Brave (owner, 0.2.61-beta): with Loop off a clip plays once and stops at its end; with Loop on it repeats between its two cuts until paused; toggling Loop during playback switches at once; dragging or nudging a cut while a clip loops makes the loop follow the new range; deleting a cut that merges the looping clip stops it; the whole-audio Play never loops; the looping row is highlighted.
+- Appended test asserts ClipEditor.jsx contains Fade in, Fade out, aria-label="Apply fades to", Select clips in the list first, fadeClips, and no fadeOn or type="checkbox"; the earlier source-scan tests still pass.
+- Live in Brave (owner, 0.2.62-beta): the two toggles look like the Settings Spell check switch; clicking a row selects it, Ctrl+click adds, Shift+click selects a range; Selected clips is disabled with its reason until something is selected; Fade in only fades the start, Fade out only the end, scope Selected fades only the selected clips; adding a cut clears the selection and moving one keeps it; the single clip download follows the same rule.

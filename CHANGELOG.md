@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.62-beta - 2026-11-27
+- Clip editor: Fade in / Fade out toggles and an All clips / Selected clips scope picker in the export row; rows are selectable (click, Ctrl+click, Shift+click) and the selection drives per-clip fades
+
 ## 0.2.61-beta - 2026-11-27
 - Clip editor: a Loop clips toggle in the transport row; a clip's play button repeats between its two cuts while on, the looping row is highlighted, and cuts that change restart the loop on the new range
 

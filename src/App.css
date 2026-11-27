@@ -318,6 +318,23 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .clip-row input { min-width: 0; width: 100%; max-width: 760px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font: inherit; font-size: 12px; color: var(--text); }
 .clip-row > span { white-space: normal; overflow-wrap: anywhere; min-width: 0; font-variant-numeric: tabular-nums; }
 .clip-export { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.clip-fade { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.clip-fade-note { font-size: 11px; color: var(--muted); opacity: 0.8; }
+.clip-row.selected { box-shadow: inset 2px 0 0 var(--accent); background: var(--accent-fill); }
+.clip-fade .check-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); flex: none; }
+.clip-fade .switch { position: relative; display: inline-block; width: 40px; height: 22px; flex: none; margin: 0; }
+.clip-fade .switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.clip-fade .slider { position: absolute; inset: 0; background: var(--line); border-radius: 999px; transition: background var(--ease); }
+.clip-fade .slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: var(--accent); border-radius: 50%; transition: transform var(--ease); }
+.clip-fade .switch input:checked + .slider { background: var(--accent); }
+.clip-fade .switch input:checked + .slider::before { transform: translateX(18px); background: var(--bg); }
+.clip-fade .switch input:focus-visible + .slider { outline: 2px solid var(--accent); outline-offset: 2px; }
+.clip-fade .segmented-text-picker { display: flex; gap: 4px; }
+.clip-fade .segmented-text-button { flex: 1; min-width: 0; padding: 8px 4px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); color: var(--muted); font-size: 12px; font-weight: 500; cursor: pointer; transition: all var(--ease); white-space: nowrap; }
+.clip-fade .segmented-text-button:hover:not(:disabled) { background: var(--accent-fill); border-color: var(--accent); color: var(--accent); }
+.clip-fade .segmented-text-button.active { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.clip-fade .segmented-text-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.clip-fade .segmented-text-button:disabled { opacity: 0.5; cursor: not-allowed; }
 .clip-ruler { position: absolute; left: 0; right: 0; top: 0; height: 20px; z-index: 2; cursor: ew-resize; background: rgba(0, 0, 0, 0.35); }
 .clip-playhead-handle { position: absolute; top: 0; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 8px solid var(--accent); transform: translateX(-50%); pointer-events: none; }
 .clip-wave.near-playhead { cursor: ew-resize; }

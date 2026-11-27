@@ -22,6 +22,8 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const clipRangeRef = useRef(null);
   const playerRef = useRef(null);
   const loopOnRef = useRef(false);
+  const anchorRef = useRef(null);
+  const markerCountRef = useRef(0);
   const cutsRef = useRef(null);
   const storeRef = useRef(null);
   const restoringRef = useRef(false);
@@ -43,7 +45,10 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const [shiftDown, setShiftDown] = useState(false);
   const [storeMessage, setStoreMessage] = useState('');
   const [restoreNote, setRestoreNote] = useState('');
-  const [fadeOn, setFadeOn] = useState(false);
+  const [fadeIn, setFadeIn] = useState(false);
+  const [fadeOut, setFadeOut] = useState(false);
+  const [fadeScope, setFadeScope] = useState('all');
+  const [selectedClips, setSelectedClips] = useState([]);
   const [exportMsg, setExportMsg] = useState('');
 
   const total = audio ? audio.samples.length : 0;
@@ -96,6 +101,8 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     namesRef.current = [];
     setPlayingClip(null);
     clipRangeRef.current = null;
+    setSelectedClips([]);
+    anchorRef.current = null;
     let fresh = audio ? createCuts(audio.samples.length, audio.sampleRate) : null;
     if (audio && audioKey && storeRef.current) {
       const stored = storeRef.current.load(audioKey, audio.samples.length);
@@ -127,6 +134,18 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     }, 400);
     return () => clearTimeout(timer);
   }, [cuts, audioKey, audio]);
+
+  useEffect(() => {
+    const count = cuts && cuts.markers ? cuts.markers.length : 0;
+    if (count === markerCountRef.current) return;
+    markerCountRef.current = count;
+    setSelectedClips([]);
+    anchorRef.current = null;
+  }, [cuts]);
+
+  useEffect(() => {
+    if (fadeScope === 'selected' && selectedClips.length === 0) setFadeScope('all');
+  }, [selectedClips, fadeScope]);
 
   useEffect(() => {
     const player = playerRef.current;
@@ -375,6 +394,27 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     setPlayPos(segment.start);
   };
 
+  const onRowClick = (event, index) => {
+    if (event.target.closest('button, input')) return;
+    if (event.shiftKey && anchorRef.current !== null) {
+      const from = Math.min(anchorRef.current, index);
+      const to = Math.max(anchorRef.current, index);
+      const range = [];
+      for (let i = from; i <= to; i += 1) range.push(i);
+      setSelectedClips(range);
+      return;
+    }
+    if (event.ctrlKey || event.metaKey) {
+      setSelectedClips((prev) => (prev.includes(index)
+        ? prev.filter((i) => i !== index)
+        : [...prev, index].sort((a, b) => a - b)));
+      anchorRef.current = index;
+      return;
+    }
+    setSelectedClips([index]);
+    anchorRef.current = index;
+  };
+
   const goToStart = () => {
     if (!playerRef.current) return;
     playerRef.current.seek(0);
@@ -405,6 +445,10 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       if (event.code === 'Home') {
         event.preventDefault();
         if (event.type === 'keydown') goToStart();
+        return;
+      }
+      if (event.code === 'Escape') {
+        if (event.type === 'keydown') setSelectedClips([]);
         return;
       }
       if (event.type !== 'keydown' || !cutsRef.current) return;
@@ -662,7 +706,10 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     segments: cutsRef.current ? segments(cutsRef.current) : [],
     names: namesRef.current,
     format: clipExportDeps.format,
-    fadeMs: fadeOn ? FADE_MS : 0,
+    fadeIn,
+    fadeOut,
+    fadeMs: FADE_MS,
+    fadeClips: fadeScope === 'selected' ? selectedClips : null,
     encode: clipExportDeps.encode,
   });
 
@@ -675,8 +722,9 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     const all = exportArgs();
     const name = clipFileNames(namesRef.current, all.segments.length, clipExportDeps.format)[index];
     const mime = clipExportDeps.format === 'wav' ? 'audio/wav' : 'audio/mpeg';
+    const fadeClips = fadeScope === 'selected' ? (selectedClips.includes(index) ? [0] : []) : null;
     clipExportDeps.save(name, mime, async () => {
-      const { files } = await buildClipFiles({ ...all, segments: [all.segments[index]] });
+      const { files } = await buildClipFiles({ ...all, segments: [all.segments[index]], fadeClips });
       return files.length > 0 ? files[0].bytes : new Uint8Array(0);
     }).then(exportFailed);
   };
@@ -809,7 +857,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
               const chunkId = chunk >= 0 ? audio.indexes[chunk] : -1;
               const previewText = chunkId >= 0 && chunkTexts[chunkId] ? firstSentence(chunkTexts[chunkId]) : '';
               return (
-                <div className={'clip-row' + (isLooping ? ' looping' : '')} key={segment.index}>
+                <div className={'clip-row' + (isLooping ? ' looping' : '') + (selectedClips.includes(segment.index) ? ' selected' : '')} key={segment.index} onClick={(event) => onRowClick(event, segment.index)}>
                   <button
                     type="button"
                     className={'icon-btn' + (isPlaying ? ' play-active' : '')}
@@ -849,9 +897,27 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
           : audio ? <div>No cuts yet: use M or the blade tool.</div> : null}
       </div>
       <div className="clip-export">
-        <label>
-          <input type="checkbox" checked={fadeOn} disabled={Boolean(exportDisabledReason)} title={exportDisabledReason || 'Apply short fades at the clip edges'} onChange={(event) => setFadeOn(event.target.checked)} /> Fade edges ({FADE_MS} ms)
-        </label>
+        <div className="clip-fade">
+          <div className="check-row">
+            <label className="switch">
+              <input type={'checkbox'} checked={fadeIn} disabled={Boolean(exportDisabledReason)} title={exportDisabledReason || 'Fade in at the start of the clip (' + FADE_MS + ' ms)'} aria-label="Fade in" onChange={(event) => setFadeIn(event.target.checked)} />
+              <span className="slider" />
+            </label>
+            <span>Fade in</span>
+          </div>
+          <div className="check-row">
+            <label className="switch">
+              <input type={'checkbox'} checked={fadeOut} disabled={Boolean(exportDisabledReason)} title={exportDisabledReason || 'Fade out at the end of the clip (' + FADE_MS + ' ms)'} aria-label="Fade out" onChange={(event) => setFadeOut(event.target.checked)} />
+              <span className="slider" />
+            </label>
+            <span>Fade out</span>
+          </div>
+          <div className="segmented-text-picker" role="group" aria-label="Apply fades to">
+            <button type="button" className={'segmented-text-button' + (fadeScope === 'all' ? ' active' : '')} aria-pressed={fadeScope === 'all'} disabled={Boolean(exportDisabledReason)} title={exportDisabledReason || 'Fade all clips'} onClick={() => setFadeScope('all')}>All clips</button>
+            <button type="button" className={'segmented-text-button' + (fadeScope === 'selected' ? ' active' : '')} aria-pressed={fadeScope === 'selected'} disabled={Boolean(exportDisabledReason) || selectedClips.length === 0} title={exportDisabledReason || (selectedClips.length === 0 ? 'Select clips in the list first: click a row, Ctrl+click to add, Shift+click for a range' : 'Fade only the selected clips')} onClick={() => setFadeScope('selected')}>Selected clips</button>
+          </div>
+          {fadeScope === 'selected' && selectedClips.length === 0 ? <span className="clip-fade-note">No clips selected: no fades will be applied.</span> : null}
+        </div>
         <button type="button" disabled={Boolean(exportDisabledReason)} title={exportDisabledReason || 'Download all clips and the cut list as a ZIP'} onClick={exportZip}>Download all clips (ZIP)</button>
         <button type="button" disabled={Boolean(exportDisabledReason)} title={exportDisabledReason || 'Download the cut list as a CSV file'} onClick={exportCsv}>Download cut list (CSV)</button>
       </div>

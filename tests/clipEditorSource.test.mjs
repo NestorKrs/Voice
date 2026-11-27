@@ -153,3 +153,13 @@ test('ClipEditor wires the loop toggle and looping rows', () => {
   assert.ok(source.includes('{ loop: loopOnRef.current }'));
   assert.ok(source.includes('looping'));
 });
+
+test('ClipEditor wires the fade toggles, scope picker and clip selection', () => {
+  assert.ok(source.includes('Fade in'));
+  assert.ok(source.includes('Fade out'));
+  assert.ok(source.includes('aria-label="Apply fades to"'));
+  assert.ok(source.includes('Select clips in the list first'));
+  assert.ok(source.includes('fadeClips'));
+  assert.ok(!source.includes('fadeOn'));
+  assert.ok(!source.includes('type="checkbox"'));
+});
