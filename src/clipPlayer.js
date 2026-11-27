@@ -16,6 +16,9 @@ export function createClipPlayer({ createContext }) {
   let startSample = 0;
   let endSample = 0;
   let onEnd = null;
+  let rangeStart = null;
+  let rangeEnd = null;
+  let looping = false;
 
   function stopCurrent() {
     if (!currentSource) return;
@@ -25,29 +28,21 @@ export function createClipPlayer({ createContext }) {
     source.stop();
   }
 
-  function getPosition() {
-    if (status !== 'playing') return position;
-    const latency = Number.isFinite(ctx.outputLatency) && ctx.outputLatency >= 0
-      ? ctx.outputLatency
-      : 0;
-    const elapsed = Math.round((ctx.currentTime - startedAt - latency) * rate);
-    return Math.min(endSample, Math.max(startSample, startSample + elapsed));
-  }
-
-  function play(from, to) {
-    if (!buffer || total === 0) return false;
-    const at = getPosition();
-    const start = clampSample(from === undefined ? (at >= total ? 0 : at) : from, total);
-    const end = clampSample(to === undefined ? total : to, total);
-    if (end <= start) return false;
-
+  function begin(start, end, loop) {
     if (ctx.state === 'suspended') ctx.resume();
     stopCurrent();
 
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.connect(ctx.destination);
-    source.start(0, start / rate, (end - start) / rate);
+    source.loop = loop;
+    if (loop) {
+      source.loopStart = start / rate;
+      source.loopEnd = end / rate;
+      source.start(0, start / rate);
+    } else {
+      source.start(0, start / rate, (end - start) / rate);
+    }
     currentSource = source;
     startedAt = ctx.currentTime;
     startSample = start;
@@ -55,11 +50,54 @@ export function createClipPlayer({ createContext }) {
     status = 'playing';
     source.onended = () => {
       if (currentSource !== source) return;
+      if (looping) return;
       currentSource = null;
       status = 'idle';
       position = endSample;
+      rangeStart = null;
+      rangeEnd = null;
       if (typeof onEnd === 'function') onEnd();
     };
+  }
+
+  function getPosition() {
+    if (status !== 'playing') return position;
+    const latency = Number.isFinite(ctx.outputLatency) && ctx.outputLatency >= 0
+      ? ctx.outputLatency
+      : 0;
+    const e = Math.max(0, Math.round((ctx.currentTime - startedAt - latency) * rate));
+    if (looping) {
+      const offset = startSample - rangeStart;
+      return rangeStart + ((offset + e) % (rangeEnd - rangeStart));
+    }
+    return Math.min(endSample, Math.max(startSample, startSample + e));
+  }
+
+  function play(from, to, opts = {}) {
+    if (!buffer || total === 0) return false;
+    const at = getPosition();
+    const resumeLoop = from === undefined && to === undefined && status === 'paused' && looping && rangeStart !== null;
+    const start = clampSample(from === undefined ? (resumeLoop ? at : (at >= total ? 0 : at)) : from, total);
+    const end = clampSample(to === undefined ? (resumeLoop ? rangeEnd : total) : to, total);
+    if (end <= start) return false;
+
+    if (resumeLoop || (opts && opts.loop)) {
+      if (!resumeLoop) {
+        rangeStart = start;
+        rangeEnd = end;
+      }
+      looping = true;
+    } else {
+      looping = false;
+      if (from === undefined && to === undefined) {
+        rangeStart = null;
+        rangeEnd = null;
+      } else {
+        rangeStart = start;
+        rangeEnd = end;
+      }
+    }
+    begin(start, end, looping);
     return true;
   }
 
@@ -72,15 +110,44 @@ export function createClipPlayer({ createContext }) {
 
   function seek(sample) {
     const at = clampSample(sample, total);
+    const insideRange = looping && rangeStart !== null && at >= rangeStart && at < rangeEnd;
     if (status === 'playing') {
-      play(at, endSample);
+      if (insideRange) {
+        begin(at, rangeEnd, true);
+        return;
+      }
+      if (looping) {
+        looping = false;
+        rangeStart = null;
+        rangeEnd = null;
+        begin(at, total, false);
+        return;
+      }
+      if (endSample > at) begin(at, endSample, false);
       return;
+    }
+    if (!insideRange && looping) {
+      looping = false;
+      rangeStart = null;
+      rangeEnd = null;
     }
     position = at;
   }
 
+  function setLoop(on) {
+    if (rangeStart === null || rangeEnd === null) return;
+    const next = Boolean(on);
+    if (status !== 'playing') {
+      looping = next;
+      return;
+    }
+    const from = getPosition();
+    looping = next;
+    begin(from, rangeEnd, looping);
+  }
+
   function getState() {
-    return { status, position: getPosition(), total, rate };
+    return { status, position: getPosition(), total, rate, looping, rangeStart, rangeEnd };
   }
 
   function setOnEnd(fn) {
@@ -99,6 +166,9 @@ export function createClipPlayer({ createContext }) {
     startedAt = 0;
     startSample = 0;
     endSample = 0;
+    rangeStart = null;
+    rangeEnd = null;
+    looping = false;
   }
 
   function load(samples, sampleRate) {
@@ -113,7 +183,10 @@ export function createClipPlayer({ createContext }) {
     startedAt = 0;
     startSample = 0;
     endSample = 0;
+    rangeStart = null;
+    rangeEnd = null;
+    looping = false;
   }
 
-  return { load, play, pause, seek, getPosition, getState, setOnEnd, close };
+  return { load, play, pause, seek, getPosition, getState, setOnEnd, setLoop, close };
 }

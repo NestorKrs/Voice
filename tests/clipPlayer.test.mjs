@@ -90,7 +90,7 @@ test('load copies the same samples into channel 0 of one mono buffer', () => {
   assert.equal(buffer.copies.length, 1);
   assert.strictEqual(buffer.copies[0].array, samples);
   assert.equal(buffer.copies[0].channel, 0);
-  assert.deepEqual(player.getState(), { status: 'idle', position: 0, total: 500, rate: 8000 });
+  assert.deepEqual(player.getState(), { status: 'idle', position: 0, total: 500, rate: 8000, looping: false, rangeStart: null, rangeEnd: null });
 });
 
 test('play from zero starts with the whole buffer as its duration', () => {
@@ -196,7 +196,7 @@ test('natural end goes idle at the end sample and calls onEnd once', () => {
   const source = ctx.sources[0];
   ctx.currentTime = 0.2;
   source.onended();
-  assert.deepEqual(player.getState(), { status: 'idle', position: 400, total: 1000, rate: 1000 });
+  assert.deepEqual(player.getState(), { status: 'idle', position: 400, total: 1000, rate: 1000, looping: false, rangeStart: null, rangeEnd: null });
   assert.equal(ended, 1);
   assert.equal(source.stops, 0);
   source.onended();
@@ -268,7 +268,7 @@ test('load while playing stops the source and resets the position', () => {
   load(player, 2000);
   assert.equal(ctx.sources[0].stops, 1);
   assert.equal(ctx.sources[0].onended, null);
-  assert.deepEqual(player.getState(), { status: 'idle', position: 0, total: 2000, rate: 1000 });
+  assert.deepEqual(player.getState(), { status: 'idle', position: 0, total: 2000, rate: 1000, looping: false, rangeStart: null, rangeEnd: null });
 });
 
 test('getPosition stays inside the played range', () => {
@@ -290,5 +290,183 @@ test('close stops the source, closes the context and resets the state', () => {
   assert.equal(ctx.sources[0].stops, 1);
   assert.equal(ctx.sources[0].onended, null);
   assert.equal(ctx.closed, 1);
-  assert.deepEqual(player.getState(), { status: 'idle', position: 0, total: 0, rate: 0 });
+  assert.deepEqual(player.getState(), { status: 'idle', position: 0, total: 0, rate: 0, looping: false, rangeStart: null, rangeEnd: null });
+});
+
+function makeLoopContext() {
+  const ctx = makeContext();
+  const createBufferSource = ctx.createBufferSource.bind(ctx);
+  ctx.createBufferSource = () => {
+    const source = createBufferSource();
+    source.loop = false;
+    source.loopStart = 0;
+    source.loopEnd = 0;
+    return source;
+  };
+  return ctx;
+}
+
+function loopHarness() {
+  const ctx = makeLoopContext();
+  const player = createClipPlayer({ createContext() { return ctx; } });
+  return { ctx, player };
+}
+
+test('loop play sets loop points and starts with no duration argument', () => {
+  const { ctx, player } = loopHarness();
+  load(player, 5000, 1000);
+  assert.equal(player.play(1000, 3000, { loop: true }), true);
+  const source = ctx.sources[0];
+  assert.equal(source.loop, true);
+  assert.equal(source.loopStart, 1);
+  assert.equal(source.loopEnd, 3);
+  assert.deepEqual(source.starts[0], [0, 1]);
+});
+
+test('position wraps inside the loop range', () => {
+  const { ctx, player } = loopHarness();
+  load(player, 5000, 1000);
+  player.play(1000, 3000, { loop: true });
+  ctx.currentTime = 2.5;
+  assert.equal(player.getPosition(), 1500);
+  assert.equal(player.getState().position, 1500);
+  ctx.currentTime = 2.1;
+  assert.equal(player.getPosition(), 1100);
+});
+
+test('onended on a looping source does not end playback and a stale one is ignored', () => {
+  const { ctx, player } = loopHarness();
+  let ended = 0;
+  player.setOnEnd(() => { ended += 1; });
+  load(player, 5000);
+  player.play(1000, 3000, { loop: true });
+  ctx.currentTime = 0.5;
+  const stale = ctx.sources[0].onended;
+  stale();
+  assert.equal(player.getState().status, 'playing');
+  assert.equal(player.getPosition(), 1500);
+  assert.equal(ended, 0);
+  player.setLoop(false);
+  stale();
+  assert.equal(player.getState().status, 'playing');
+  assert.equal(ended, 0);
+});
+
+test('setLoop(false) while playing a loop restarts with loop off and the same range', () => {
+  const { ctx, player } = loopHarness();
+  load(player, 5000);
+  player.play(1000, 3000, { loop: true });
+  ctx.currentTime = 0.5;
+  player.setLoop(false);
+  const source = ctx.sources[1];
+  assert.equal(source.loop, false);
+  assert.deepEqual(source.starts[0], [0, 1.5, 1.5]);
+  assert.equal(player.getState().looping, false);
+  ctx.currentTime = 2;
+  assert.equal(player.getPosition(), 3000);
+  source.onended();
+  assert.equal(player.getState().status, 'idle');
+  assert.equal(player.getPosition(), 3000);
+});
+
+test('setLoop(true) while playing a plain range restarts it as a loop', () => {
+  const { ctx, player } = loopHarness();
+  load(player, 5000);
+  player.play(1000, 3000);
+  ctx.currentTime = 0.5;
+  player.setLoop(true);
+  const source = ctx.sources[1];
+  assert.equal(source.loop, true);
+  assert.equal(source.loopStart, 1.5);
+  assert.equal(source.loopEnd, 3);
+  assert.deepEqual(source.starts[0], [0, 1.5]);
+  assert.deepEqual(player.getState(), { status: 'playing', position: 1500, total: 5000, rate: 1000, looping: true, rangeStart: 1000, rangeEnd: 3000 });
+});
+
+test('pause freezes the loop position and play resumes the loop there', () => {
+  const { ctx, player } = loopHarness();
+  load(player, 5000);
+  player.play(1000, 3000, { loop: true });
+  ctx.currentTime = 0.5;
+  player.pause();
+  assert.equal(player.getState().status, 'paused');
+  assert.equal(player.getPosition(), 1500);
+  ctx.currentTime = 5;
+  assert.equal(player.getPosition(), 1500);
+  player.play();
+  const source = ctx.sources[1];
+  assert.equal(source.loop, true);
+  assert.equal(source.loopStart, 1.5);
+  assert.equal(source.loopEnd, 3);
+  assert.deepEqual(source.starts[0], [0, 1.5]);
+  assert.deepEqual(player.getState(), { status: 'playing', position: 1500, total: 5000, rate: 1000, looping: true, rangeStart: 1000, rangeEnd: 3000 });
+});
+
+test('seek inside the loop restarts there and seek outside cancels the loop', () => {
+  const { ctx, player } = loopHarness();
+  load(player, 5000);
+  player.play(1000, 3000, { loop: true });
+  player.seek(2500);
+  const inside = ctx.sources[1];
+  assert.equal(inside.loop, true);
+  assert.equal(inside.loopStart, 2.5);
+  assert.deepEqual(inside.starts[0], [0, 2.5]);
+  assert.equal(player.getState().looping, true);
+  assert.equal(player.getState().rangeStart, 1000);
+  player.seek(4000);
+  const outside = ctx.sources[2];
+  assert.equal(outside.loop, false);
+  assert.deepEqual(outside.starts[0], [0, 4, 1]);
+  assert.equal(player.getState().looping, false);
+  assert.equal(player.getState().rangeStart, null);
+  assert.equal(player.getState().rangeEnd, null);
+});
+
+test('seek while paused inside the loop only moves the position', () => {
+  const { ctx, player } = loopHarness();
+  load(player, 5000);
+  player.play(1000, 3000, { loop: true });
+  player.pause();
+  player.seek(2500);
+  assert.equal(ctx.sources.length, 1);
+  assert.equal(player.getState().status, 'paused');
+  assert.equal(player.getPosition(), 2500);
+  assert.equal(player.getState().looping, true);
+  player.play();
+  assert.equal(ctx.sources[1].loopStart, 2.5);
+});
+
+test('setLoop while paused stores the flag without creating a source', () => {
+  const { ctx, player } = loopHarness();
+  load(player, 5000);
+  player.play(1000, 3000);
+  player.pause();
+  player.setLoop(true);
+  assert.equal(ctx.sources.length, 1);
+  assert.equal(player.getState().looping, true);
+  assert.equal(player.getState().status, 'paused');
+  player.play();
+  assert.equal(ctx.sources[1].loop, true);
+});
+
+test('getState reports the loop range and load and close clear it', () => {
+  const { player } = loopHarness();
+  load(player, 5000);
+  assert.deepEqual(player.getState(), { status: 'idle', position: 0, total: 5000, rate: 1000, looping: false, rangeStart: null, rangeEnd: null });
+  player.play(1000, 3000, { loop: true });
+  assert.deepEqual(player.getState(), { status: 'playing', position: 1000, total: 5000, rate: 1000, looping: true, rangeStart: 1000, rangeEnd: 3000 });
+  load(player, 2000);
+  assert.deepEqual(player.getState(), { status: 'idle', position: 0, total: 2000, rate: 1000, looping: false, rangeStart: null, rangeEnd: null });
+  player.play(500, 1500, { loop: true });
+  player.close();
+  assert.deepEqual(player.getState(), { status: 'idle', position: 0, total: 0, rate: 0, looping: false, rangeStart: null, rangeEnd: null });
+});
+
+test('a plain range play keeps the legacy duration with no loop', () => {
+  const { ctx, player } = loopHarness();
+  load(player, 5000);
+  player.play(1000, 3000);
+  assert.equal(ctx.sources[0].loop, false);
+  assert.deepEqual(ctx.sources[0].starts[0], [0, 1, 2]);
+  assert.deepEqual(player.getState(), { status: 'playing', position: 1000, total: 5000, rate: 1000, looping: false, rangeStart: 1000, rangeEnd: 3000 });
 });

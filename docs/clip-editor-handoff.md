@@ -1,7 +1,7 @@
 # Clip editor handoff
 
 Scope: ONLY the clip editor feature. The general project status stays in docs/handoff.md (stale at 0.2.19-beta; do not use it for this feature).
-Owner: @Eleven. Updated 2026-11-26. Version when written: 0.2.57-beta. Agents: Hermes (code), Claude (planning, task texts).
+Owner: @Eleven. Updated 2026-11-26. Version when written: 0.2.58-beta. Agents: Hermes (code), Claude (planning, task texts).
 
 ## Goal
 Cut one generated audio (one chunk, or the whole joined audio) into many clips by time, locally, with ZERO extra requests. The owner pastes unrelated sentences, generates once, then cuts them into separate files. Used mainly for voiceover for animation and video. Meant for all visitors of the site, desktop only in v1.
@@ -61,6 +61,7 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.37a src/clipExport.js pure clip export (clipFileNames, buildClipFiles, buildCutListFile, buildZipEntries) and tests - DONE 0.2.55-beta (not imported by the app yet; test import is the wiring proof; App.jsx untouched)
 2.37b export from the editor: saveClipFile + clipExportDeps in App.jsx, ZIP/CSV/per-clip buttons, fade toggle and CSS - DONE 0.2.56-beta (wired; App.jsx handlers untouched)
 2.40a separate fade-in/fade-out and per-clip fades in clipSlices.js and clipExport.js - DONE 0.2.57-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
+2.40b looping in src/clipPlayer.js (play opts.loop, setLoop, wrapped position, loop-aware seek, getState range) with appended tests - DONE 0.2.58-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
 Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no bump); E4d 2.33a/2.33b 0.2.45-beta/0.2.46-beta; E4e 2.34a 0.2.47-beta; E5 2.34c 0.2.48-beta; E6 2.35a 0.2.49-beta; E7 2.36a-2.36c 0.2.50-beta/0.2.51-beta/0.2.52-beta; E8 2.37a/2.37b 0.2.55-beta/0.2.56-beta.
 
 ## Known gaps
@@ -81,6 +82,7 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 - The bottom-bar lock, the transport, click-to-seek, Space, cut lines and the clip list are untested live in Brave.
 - The playhead may look early on a Bluetooth headset; the manual offset is tuned in a later task.
 - The new fadeIn/fadeOut/fadeClips arguments in clipSlices.js and clipExport.js are not used by the UI yet: ClipEditor still passes only legacy fadeMs, so separate-end and per-clip fades need a later wiring task and a live audio check.
+- Looping in src/clipPlayer.js has no editor UI control yet; play(opts.loop), setLoop and loop-aware seek need a live audio check once wired.
 
 ## Open decisions
 - Reaction-time compensation value and playhead offset (tuned live).
@@ -91,9 +93,8 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 Follow AGENTS.md and the voice skill. One task per message. Touch only named files. App.jsx is one big component: exact anchors and the duplicate check. New pure modules go in src/*.js with tests/*.test.mjs (node cannot import .jsx). Mock everything; no real audio or IndexedDB here, so the owner tests live. EVERY clip-editor task ends by updating this file in place (task log, known gaps, verified, version) and lists it in READY TO COMMIT with its own git add line.
 
 ## Verified
-- npm test: 440 pass, 0 fail (2026-11-27, 0.2.57-beta; full raw run pasted in the task report).
-- node --check clean on src/clipSlices.js, src/clipExport.js and both appended test files; .jsx and .css cannot be compiled here.
-- New tests cover start-only, end-only and independent object fades, half-length caps, the unchanged number form, missing/invalid fades, object and per-clip function fades, fadeIn/fadeOut/fadeClips (including [] and null), legacy fadeMs-only parity and no input mutation.
-- Wiring proof: tests/clipSlices.test.mjs imports ../src/clipSlices.js:10 and tests/clipExport.test.mjs imports ../src/clipExport.js:8; grep -rn on src/App.jsx exits 1 for both module paths, so the app does not import them.
-- Legacy parity is proved by the existing fadeMs tests plus "buildClipFiles legacy fadeMs alone still fades both ends of every clip"; the editor's fade toggle still passes fadeMs only.
-- Live in Brave: nothing to test yet for the new arguments until they are wired; after wiring, check fade-in only, fade-out only and a per-clip selection in exported audio, with the toggle off for parity.
+- npm test: 451 pass, 0 fail (2026-11-27, 0.2.58-beta; full raw run pasted in the task report).
+- node --check clean on src/clipPlayer.js and tests/clipPlayer.test.mjs; .jsx and .css cannot be compiled here.
+- Appended tests cover loop config with no duration, wrapped position, onended ignored while looping, setLoop both directions, pause/resume inside the loop, seek inside/outside and getState fields; the four old deepEqual literals gained only the new default fields.
+- Wiring proof: tests/clipPlayer.test.mjs imports ../src/clipPlayer.js:3; grep -rn on src/App.jsx exits 1 for clipPlayer.js, so the app does not import it.
+- Live in Brave: nothing to test until looping is wired; after wiring, check a loop over one clip, loop off mid-play finishing at the range end, and seek inside/outside the loop.

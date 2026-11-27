@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.58-beta - 2026-11-27
+- Added range looping to src/clipPlayer.js (play opts.loop, setLoop, wrapped position, loop-aware seek and getState), with appended tests and no UI change
+
 ## 0.2.57-beta - 2026-11-27
 - Separate fade-in/fade-out and per-clip fade selection in clipSlices.js and clipExport.js, with tests (no UI change)
 
