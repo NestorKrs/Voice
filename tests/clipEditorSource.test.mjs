@@ -98,3 +98,20 @@ test('App.css has the editor width override, centred tools and a dimmed teal hin
   assert.ok(css.includes('.drawer .close-btn, .reader-close-editor'));
   assert.ok(css.includes('max-height: 430px'));
 });
+
+test('ClipEditor wires the clip export controls', () => {
+  assert.ok(source.includes("from './clipExport.js'"));
+  assert.ok(source.includes('Download all clips (ZIP)'));
+  assert.ok(source.includes('Download cut list (CSV)'));
+  assert.ok(source.includes('Add at least one cut first'));
+  assert.ok(source.includes('Export is not available'));
+});
+
+test('export click handlers call save before any await', () => {
+  for (const name of ['downloadClip', 'exportZip', 'exportCsv']) {
+    const start = source.indexOf('const ' + name + ' =');
+    const save = source.indexOf('clipExportDeps.save(', start);
+    assert.ok(save > start, name + ' calls save');
+    assert.ok(!source.slice(start, save).includes('await'), name + ' has no await before save');
+  }
+});

@@ -1,7 +1,7 @@
 # Clip editor handoff
 
 Scope: ONLY the clip editor feature. The general project status stays in docs/handoff.md (stale at 0.2.19-beta; do not use it for this feature).
-Owner: @Eleven. Updated 2026-11-26. Version when written: 0.2.55-beta. Agents: Hermes (code), Claude (planning, task texts).
+Owner: @Eleven. Updated 2026-11-26. Version when written: 0.2.56-beta. Agents: Hermes (code), Claude (planning, task texts).
 
 ## Goal
 Cut one generated audio (one chunk, or the whole joined audio) into many clips by time, locally, with ZERO extra requests. The owner pastes unrelated sentences, generates once, then cuts them into separate files. Used mainly for voiceover for animation and video. Meant for all visitors of the site, desktop only in v1.
@@ -59,20 +59,22 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.36d editor opening takes two thirds of the width via CSS, coral markers and faded shortcut row, blade icon/text, taller list, play/timer on the zoom row - DONE 0.2.53-beta (App.jsx untouched)
 2.36e centre the zoom/blade/undo tools, remove the helper highlight and dim its text to teal, use the Settings × close button, list +1 row - DONE 0.2.54-beta (one App.jsx line changed)
 2.37a src/clipExport.js pure clip export (clipFileNames, buildClipFiles, buildCutListFile, buildZipEntries) and tests - DONE 0.2.55-beta (not imported by the app yet; test import is the wiring proof; App.jsx untouched)
+2.37b export from the editor: saveClipFile + clipExportDeps in App.jsx, ZIP/CSV/per-clip buttons, fade toggle and CSS - DONE 0.2.56-beta (wired; App.jsx handlers untouched)
 Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, chunk text under the playhead, bottom bar disabled reason; E4e cut lines, scissors tool and M key (uses src/clipCuts.js); E5 drag, nudge, delete, undo/redo, saved markers; E6 snap while a key is held; E7 per-clip play and names; E8 export (ZIP, per-clip download, fades toggle, cut list CSV).
 
 ## Known gaps
-- No export UI yet: src/clipExport.js builds clip bytes, cut list and ZIP entries but is not wired to any button.
+- Export is wired to the editor but not tested live in Brave yet.
 - Nothing about zoom, scroll or playback has been tested live in Brave yet.
 - Whole joined audio is capped at 900 s (~15 min) decoded; longer text must be edited one chunk at a time.
-- src/clipCsv.js and src/clipSlices.js are now used by src/clipExport.js, which is not wired to any export button yet.
-- The real encoders and the save dialog are not wired to src/clipExport.js; tests inject a fake encode.
+- src/clipCsv.js and src/clipSlices.js are used by src/clipExport.js, now imported by ClipEditor.jsx.
+- The real encoders (encodeWav/encodeMp3 via clipExportDeps.encode) and the save dialog (saveClipFile) are wired; output is untested live.
 - src/clipMarkerStore.js is wired to the editor for markers; names are not saved or restored, and clear is not wired yet.
 - src/clipSnap.js snapToQuiet is wired to Shift snapping for slice click, M, marker drag and the hover line; untested live.
 - Marker drag is wired (preview, commit, ew-resize cursor) but untested live; arrow-key nudge and delete are not wired yet.
 - Marker saving and restore are untested live in Brave.
 - A name is dropped when its clip is deleted (no name history); undo cannot bring that name back.
 - Zero-length segments are skipped in audio files but still listed in cut-list.csv (buildCutListFile takes no skip input).
+- A skipped-clip note or export failure in exportMsg hides the editor body: the existing message gate shows the message instead of the controls.
 - Coral #ff6f6f replaces the marker orange inside the editor only; the app-wide --accent is still teal (#4fa9a2).
 - The two-thirds width override, the centred tool row and the Settings-style close button are untested live in Brave.
 - Per-clip play/pause, editable names, first-sentence placeholders and the playing-button highlight are untested live in Brave; so are the footer row, the taller list and the wider name field.
@@ -87,9 +89,9 @@ Next: orient 2.32a; E4d transport under the waveform, moving playhead, Space, ch
 Follow AGENTS.md and the voice skill. One task per message. Touch only named files. App.jsx is one big component: exact anchors and the duplicate check. New pure modules go in src/*.js with tests/*.test.mjs (node cannot import .jsx). Mock everything; no real audio or IndexedDB here, so the owner tests live. EVERY clip-editor task ends by updating this file in place (task log, known gaps, verified, version) and lists it in READY TO COMMIT with its own git add line.
 
 ## Verified
-- npm test: 421 pass, 0 fail (2026-11-27, 0.2.55-beta): 11 new clipExport tests plus all earlier tests green.
-- node --check clean on src/clipExport.js and tests/clipExport.test.mjs.
-- Wiring proof: clipFileNames (:11), buildClipFiles (:15), buildCutListFile (:39) and buildZipEntries (:52) are defined in src/clipExport.js and imported by tests/clipExport.test.mjs:3-8; grep -rn clipExport src/App.jsx exits 1 (not wired to the app yet).
-- Focused run: 11 tests, 11 pass, 0 fail; fakes cover sequential encode order, fades, skipped clips, the "Clip 2: boom" error, CSV names and no input mutation.
-- Live in Brave: nothing new to test for this task — the module is not imported by the app; the owner's vship build and lint are the real compile check.
-- Owner must test live when export is wired: each clip downloads with its own name and format, empty clips are skipped and reported, cut-list.csv names match the files, the ZIP has clips then the CSV, and fades are off unless set.
+- npm test: 423 pass, 0 fail (2026-11-27, 0.2.56-beta): two new source-scan tests plus all earlier tests green.
+- node --check clean on tests/clipEditorSource.test.mjs; .jsx and .css cannot be compiled here, so the owner's vship build and lint are the real check.
+- Duplicate check: only the two known pre-existing false positives (const chunks, const commit).
+- Handler proof: handleDownloadChunk 967-1025 (59), handleDownloadZip 1027-1101 (75), handleDownloadJoined 1103-1217 (115) before and after — unchanged.
+- Wiring proof: saveClipFile defined App.jsx:1351 and used at :1407; clipExportDeps defined :1400 and passed at :1562; ClipEditor imports clipExport.js:6 and uses FADE_MS, buildZipEntries, buildClipFiles, buildCutListFile and clipFileNames at :515-555 and :676-690; source-scan tests assert the strings and save-before-await.
+- Live in Brave: none of the export controls has been seen or exercised; owner must test in the order in the task report (3 clips, ZIP, CSV, single clip, fades, cancel, duplicate names, length).

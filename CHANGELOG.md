@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.56-beta - 2026-11-27
+- Clip editor export: ZIP, single-clip and cut-list CSV download buttons with picker-first saving, injected encoders and an opt-in fade toggle
+
 ## 0.2.55-beta - 2026-11-27
 - Added src/clipExport.js: sequential clip encoding with fades, unique file names, skipped empty clips, cut-list CSV bytes and ZIP entries, with 11 focused tests
 

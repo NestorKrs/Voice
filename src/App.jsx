@@ -16,8 +16,8 @@ import { newlyReady, readyFlags, playheadToSend } from './followPlayback.js';
 import { RATES, activeRowIndex } from './playerCore.js';
 import { allProviders, loadCustomProviders, getProvider, providerLabel } from './providers.js';
 import { PCM_DEFAULT_RATE, PCM_DEFAULT_CHANNELS, audioMime } from './audioFormat.js';
-import { chunkFileName, audioKind, convertChunk } from './chunkDownload.js';
-import { createMp3Encoder, encodeMp3, pcmToInt16Channels } from './mp3Encoder.js';
+import { chunkFileName, audioKind, convertChunk, encodeWav } from './chunkDownload.js';
+import { createMp3Encoder, encodeMp3, pcmToInt16Channels, floatToInt16 } from './mp3Encoder.js';
 import { createZip, zipChunks } from './zipStore.js';
 import { stripId3, wavHeader, wavParts, joinMode, sameAs } from './joinAudio.js';
 import { DEFAULT_ORDER, movePanel, stepPanel, loadOrder, saveOrder } from './panelLayout.js';
@@ -1348,6 +1348,65 @@ export default function App() {
     loadEditor('all');
   };
 
+  const saveClipFile = async (suggestedName, mime, makeBytes) => {
+    let handle = null;
+    if (typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function') {
+      const ext = suggestedName.slice(suggestedName.lastIndexOf('.') + 1);
+      const description = mime === 'application/zip' ? 'ZIP archive'
+        : mime === 'text/csv' ? 'CSV file' : ext.toUpperCase() + ' audio';
+      try {
+        handle = await window.showSaveFilePicker({
+          suggestedName,
+          types: [{ description, accept: { [mime]: ['.' + ext] } }],
+        });
+      } catch (e) {
+        if (e && e.name === 'AbortError') {
+          logEvent('Clip export cancelled');
+          return false;
+        }
+        const msg = e && e.message ? e.message : 'could not open the save dialog';
+        logEvent(msg);
+        setNotice(msg);
+        return false;
+      }
+    }
+    try {
+      const bytes = await makeBytes();
+      if (handle) {
+        const writable = await handle.createWritable();
+        await writable.write(bytes);
+        await writable.close();
+      } else {
+        logEvent('Save dialog not available here; used the browser download instead');
+        const blob = new Blob([bytes], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = suggestedName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      return true;
+    } catch (e) {
+      const msg = e && e.message ? e.message : 'error';
+      logEvent(msg);
+      setNotice(msg);
+      return false;
+    }
+  };
+
+  const clipExportDeps = {
+    format: settings.downloadFormat === 'wav' ? 'wav' : 'mp3',
+    encode: async (mono, rate, format) => {
+      if (format === 'wav') return encodeWav([mono], rate);
+      return encodeMp3([floatToInt16(mono)], rate, 128, () => import('@breezystack/lamejs'));
+    },
+    zip: createZip,
+    save: saveClipFile,
+  };
+
   const panelClass = (id, extra) =>
     'panel ' + extra + (dragId === id ? ' dragging' : '') + (drop && drop.id === id ? ' drop-' + drop.side : '');
 
@@ -1500,7 +1559,7 @@ export default function App() {
               );
             })}
           </div>
-          {editorOpen ? (<ClipEditor audio={editorAudio} loading={editorLoading} error={editorError} scopeValue={editorScope} scopeOptions={scopeOptions} onScopeChange={(v) => { setEditorScope(v); loadEditor(v); }} chunkTexts={chunks} audioKey={editorAudioKey} />) : null}
+          {editorOpen ? (<ClipEditor audio={editorAudio} loading={editorLoading} error={editorError} scopeValue={editorScope} scopeOptions={scopeOptions} onScopeChange={(v) => { setEditorScope(v); loadEditor(v); }} chunkTexts={chunks} audioKey={editorAudioKey} clipExportDeps={clipExportDeps} />) : null}
           {(jobError || noteState) ? (
             <div className={'job-note' + (jobError || schedState.state === 'error' ? ' job-note-error' : '')}>
               {jobError ? <span>{jobError}</span> : <span>{schedState.state === 'cancelled' ? 'CANCELLED' : 'PAUSED (chunk #' + (schedState.chunks.findIndex((c) => c && c.status !== 'ready') + 1 || playerState.index + 1) + ')'}{schedState.state === 'waiting_reset' ? ' - ' + new Date(schedState.resetAt).toLocaleString() : ''}{schedState.state === 'error' && firstChunkError ? ' - ' + firstChunkError : ''}</span>}

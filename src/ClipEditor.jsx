@@ -3,12 +3,13 @@ import { buildPeaks, peaksForRange } from './waveformPeaks.js';
 import { createCuts, addMarker, moveMarker, undo, redo, segments, formatTime } from './clipCuts.js';
 import { realignNames, firstSentence } from './clipNames.js';
 import { defaultClipName } from './clipSlices.js';
-import { compensateKeyPress, snapToQuiet, SNAP_RADIUS_MS } from './clipSnap.js';
+import { buildClipFiles, buildZipEntries, buildCutListFile, clipFileNames } from './clipExport.js';
+import { compensateKeyPress, snapToQuiet, SNAP_RADIUS_MS, FADE_MS } from './clipSnap.js';
 import { createMarkerStore } from './clipMarkerStore.js';
 import { createClipPlayer } from './clipPlayer.js';
 import { fullView, zoomAt, wheelFactor, panByPixels, sampleAtX, xAtSample, ensureVisible, MIN_SPAN, isFullView } from './clipView.js';
 
-export default function ClipEditor({ audio, loading, error, scopeValue, scopeOptions, onScopeChange, chunkTexts = [], audioKey = null }) {
+export default function ClipEditor({ audio, loading, error, scopeValue, scopeOptions, onScopeChange, chunkTexts = [], audioKey = null, clipExportDeps }) {
   const rootRef = useRef(null);
   const wrapRef = useRef(null);
   const canvasRef = useRef(null);
@@ -37,12 +38,14 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const [shiftDown, setShiftDown] = useState(false);
   const [storeMessage, setStoreMessage] = useState('');
   const [restoreNote, setRestoreNote] = useState('');
+  const [fadeOn, setFadeOn] = useState(false);
+  const [exportMsg, setExportMsg] = useState('');
 
   const total = audio ? audio.samples.length : 0;
   const rate = audio ? audio.sampleRate : 0;
   const displayRate = rate || 1;
   const peaks = useMemo(() => (audio ? buildPeaks(audio.samples) : null), [audio]);
-  const message = loading ? 'Decoding audio...' : playbackError || storeMessage || error || (total === 0 ? 'No ready chunks to edit yet.' : '');
+  const message = loading ? 'Decoding audio...' : playbackError || storeMessage || exportMsg || error || (total === 0 ? 'No ready chunks to edit yet.' : '');
   const current = view || fullView(total);
   const minSpan = Math.min(total, Math.max(MIN_SPAN, Math.round(rate * 0.4)));
   const cutsRefCurrent = cuts && cuts.total === total && cuts.rate === rate ? cuts : null;
@@ -509,6 +512,49 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     setView(next);
   };
 
+  const exportDisabledReason = !audio ? 'No audio loaded'
+    : (!cuts ? 'Add at least one cut first' : (!clipExportDeps ? 'Export is not available' : ''));
+
+  const exportArgs = () => ({
+    samples: audio.samples,
+    rate: audio.sampleRate,
+    segments: cutsRef.current ? segments(cutsRef.current) : [],
+    names: namesRef.current,
+    format: clipExportDeps.format,
+    fadeMs: fadeOn ? FADE_MS : 0,
+    encode: clipExportDeps.encode,
+  });
+
+  const exportFailed = (ok) => {
+    if (ok === false) setExportMsg('Clip export failed. See the notice and status bar for the reason.');
+  };
+
+  const downloadClip = (index) => {
+    setExportMsg('');
+    const all = exportArgs();
+    const name = clipFileNames(namesRef.current, all.segments.length, clipExportDeps.format)[index];
+    const mime = clipExportDeps.format === 'wav' ? 'audio/wav' : 'audio/mpeg';
+    clipExportDeps.save(name, mime, async () => {
+      const { files } = await buildClipFiles({ ...all, segments: [all.segments[index]] });
+      return files.length > 0 ? files[0].bytes : new Uint8Array(0);
+    }).then(exportFailed);
+  };
+
+  const exportZip = () => {
+    setExportMsg('');
+    clipExportDeps.save('voice-clips.zip', 'application/zip', async () => {
+      const { entries, skipped } = await buildZipEntries(exportArgs());
+      if (skipped.length) setExportMsg('Skipped empty clips: ' + skipped.join(', '));
+      return clipExportDeps.zip(entries);
+    }).then(exportFailed);
+  };
+
+  const exportCsv = () => {
+    setExportMsg('');
+    clipExportDeps.save('cut-list.csv', 'text/csv', async () => buildCutListFile(exportArgs()).bytes)
+      .then(exportFailed);
+  };
+
   return (
     <div className="clip-editor" ref={rootRef}>
       <div className="clip-editor-head">
@@ -623,10 +669,25 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
                   />
                   <span>{formatTime(segment.start, rate)} - {formatTime(segment.end, rate)}</span>
                   <span>{((segment.end - segment.start) / rate).toFixed(3)} s</span>
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    aria-label={'Download clip ' + (segment.index + 1)}
+                    title={exportDisabledReason || 'Download clip ' + (segment.index + 1)}
+                    disabled={Boolean(exportDisabledReason)}
+                    onClick={(e) => { e.stopPropagation(); downloadClip(segment.index); }}
+                  ><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 7v8M8.5 11.5L12 15l3.5-3.5" /></svg></button>
                 </div>
               );
             })
           : audio ? <div>No cuts yet: use M or the blade tool.</div> : null}
+      </div>
+      <div className="clip-export">
+        <label>
+          <input type="checkbox" checked={fadeOn} disabled={Boolean(exportDisabledReason)} title={exportDisabledReason || 'Apply short fades at the clip edges'} onChange={(event) => setFadeOn(event.target.checked)} /> Fade edges ({FADE_MS} ms)
+        </label>
+        <button type="button" disabled={Boolean(exportDisabledReason)} title={exportDisabledReason || 'Download all clips and the cut list as a ZIP'} onClick={exportZip}>Download all clips (ZIP)</button>
+        <button type="button" disabled={Boolean(exportDisabledReason)} title={exportDisabledReason || 'Download the cut list as a CSV file'} onClick={exportCsv}>Download cut list (CSV)</button>
       </div>
       <div className="clip-hints">
         <div className="clip-hint">M: cut at the playhead. Blade: cut where you click. Ctrl+Z: undo. Hold Shift while cutting to snap to the quietest spot within {SNAP_RADIUS_MS} ms.</div>
