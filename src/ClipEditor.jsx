@@ -572,6 +572,36 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
         <div className="clip-msg">{message}</div>
       ) : (
         <>
+          <div className="clip-tools">
+            <button type="button" className="icon-btn" aria-label="Zoom out" title={isFullView(current, total) ? 'Already showing the whole audio' : 'Zoom out'} disabled={isFullView(current, total)} onClick={() => zoomBy(1 / 1.5)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/></svg></button>
+            <button type="button" className="icon-btn" aria-label="Zoom in" title={current.span <= minSpan ? 'Zoomed in to the maximum (' + formatTime(minSpan, rate) + ' visible)' : 'Zoom in'} disabled={current.span <= minSpan} onClick={() => zoomBy(1.5)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5v14"/></svg></button>
+            <button
+              type="button"
+              className={'icon-btn' + (sliceMode ? ' active' : '')}
+              aria-label="Blade tool"
+              aria-pressed={sliceMode}
+              title={!audio ? 'No audio loaded' : (sliceMode ? 'Blade tool: click the waveform to cut there (on)' : 'Blade tool: click the waveform to cut there (off)')}
+              disabled={!audio}
+              onClick={() => { setSliceMode((on) => !on); setHoverSample(null); }}
+            ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 6v12M16 6v12M3 12h18"/></svg></button>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Undo"
+              title={!audio ? 'No audio loaded' : (!cuts || cuts.past.length === 0 ? 'Nothing to undo' : 'Undo (Ctrl+Z)')}
+              disabled={!audio || !cuts || cuts.past.length === 0}
+              onClick={() => applyCuts(undo(cutsRef.current))}
+            ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Redo"
+              title={!audio ? 'No audio loaded' : (!cuts || cuts.future.length === 0 ? 'Nothing to redo' : 'Redo (Ctrl+Shift+Z)')}
+              disabled={!audio || !cuts || cuts.future.length === 0}
+              onClick={() => applyCuts(redo(cutsRef.current))}
+            ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
+            {audio ? <span className="clip-visible">{clipSegments.length} clips</span> : null}
+          </div>
           <div
             className={`clip-wave${dragging ? ' dragging' : ''}${sliceMode ? ' slice' : ''}${dragPreview ? ' marker-drag' : ''}`}
             ref={wrapRef}
@@ -585,52 +615,20 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
           >
             <canvas ref={canvasRef} />
           </div>
-          <div className="clip-times">
-            <div className="clip-transport">
-              <button
-                type="button"
-                className={'play-primary' + (playStatus === 'playing' ? ' play-active' : '')}
-                aria-label={playStatus === 'playing' ? 'Pause' : 'Play'}
-                title={!audio ? 'No audio loaded' : (playStatus === 'playing' ? 'Pause' : 'Play')}
-                disabled={!audio}
-                onClick={togglePlay}
-              >
-                {playStatus === 'playing'
-                  ? <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
-                  : <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>}
-              </button>
-              <span className="clip-time">{formatTime(playPos, displayRate)} / {formatTime(total, displayRate)}</span>
-            </div>
-            <div className="clip-tools">
-              <button type="button" className="icon-btn" aria-label="Zoom out" title={isFullView(current, total) ? 'Already showing the whole audio' : 'Zoom out'} disabled={isFullView(current, total)} onClick={() => zoomBy(1 / 1.5)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/></svg></button>
-              <button type="button" className="icon-btn" aria-label="Zoom in" title={current.span <= minSpan ? 'Zoomed in to the maximum (' + formatTime(minSpan, rate) + ' visible)' : 'Zoom in'} disabled={current.span <= minSpan} onClick={() => zoomBy(1.5)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5v14"/></svg></button>
-              <button
-                type="button"
-                className={'icon-btn' + (sliceMode ? ' active' : '')}
-                aria-label="Blade tool"
-                aria-pressed={sliceMode}
-                title={!audio ? 'No audio loaded' : (sliceMode ? 'Blade tool: click the waveform to cut there (on)' : 'Blade tool: click the waveform to cut there (off)')}
-                disabled={!audio}
-                onClick={() => { setSliceMode((on) => !on); setHoverSample(null); }}
-              ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 6v12M16 6v12M3 12h18"/></svg></button>
-              <button
-                type="button"
-                className="icon-btn"
-                aria-label="Undo"
-                title={!audio ? 'No audio loaded' : (!cuts || cuts.past.length === 0 ? 'Nothing to undo' : 'Undo (Ctrl+Z)')}
-                disabled={!audio || !cuts || cuts.past.length === 0}
-                onClick={() => applyCuts(undo(cutsRef.current))}
-              ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
-              <button
-                type="button"
-                className="icon-btn"
-                aria-label="Redo"
-                title={!audio ? 'No audio loaded' : (!cuts || cuts.future.length === 0 ? 'Nothing to redo' : 'Redo (Ctrl+Shift+Z)')}
-                disabled={!audio || !cuts || cuts.future.length === 0}
-                onClick={() => applyCuts(redo(cutsRef.current))}
-              ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
-              {audio ? <span className="clip-visible">{clipSegments.length} clips</span> : null}
-            </div>
+          <div className="clip-transport">
+            <button
+              type="button"
+              className={'play-primary' + (playStatus === 'playing' ? ' play-active' : '')}
+              aria-label={playStatus === 'playing' ? 'Pause' : 'Play'}
+              title={!audio ? 'No audio loaded' : (playStatus === 'playing' ? 'Pause' : 'Play')}
+              disabled={!audio}
+              onClick={togglePlay}
+            >
+              {playStatus === 'playing'
+                ? <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+                : <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>}
+            </button>
+            <span className="clip-time">{formatTime(playPos, displayRate)} / {formatTime(total, displayRate)}</span>
           </div>
         </>
       )}
@@ -655,6 +653,14 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
                       ? <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5v14M15 5v14"/></svg>
                       : <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 5l11 7-11 7z"/></svg>}
                   </button>
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    aria-label={'Download clip ' + (segment.index + 1)}
+                    title={exportDisabledReason || 'Download clip ' + (segment.index + 1)}
+                    disabled={Boolean(exportDisabledReason)}
+                    onClick={(e) => { e.stopPropagation(); downloadClip(segment.index); }}
+                  ><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 7v8M8.5 11.5L12 15l3.5-3.5" /></svg></button>
                   <input
                     maxLength={60}
                     aria-label="Clip name"
@@ -669,14 +675,6 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
                   />
                   <span>{formatTime(segment.start, rate)} - {formatTime(segment.end, rate)}</span>
                   <span>{((segment.end - segment.start) / rate).toFixed(3)} s</span>
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    aria-label={'Download clip ' + (segment.index + 1)}
-                    title={exportDisabledReason || 'Download clip ' + (segment.index + 1)}
-                    disabled={Boolean(exportDisabledReason)}
-                    onClick={(e) => { e.stopPropagation(); downloadClip(segment.index); }}
-                  ><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 7v8M8.5 11.5L12 15l3.5-3.5" /></svg></button>
                 </div>
               );
             })

@@ -33,11 +33,13 @@ test('the reader panel head owns the editor close button', () => {
   assert.ok(!source.includes('Close editor'));
 });
 
-test('zoom tools share the row with the transport play button', () => {
-  const times = source.slice(source.indexOf('<div className="clip-times">'));
-  assert.ok(times.includes('className="clip-tools"'));
-  assert.ok(times.includes('className="clip-transport"'));
-  assert.ok(source.indexOf('className="clip-transport"') > source.indexOf('<div className="clip-times">'));
+test('zoom tools sit above the waveform and the transport play button below it', () => {
+  const tools = source.indexOf('className="clip-tools"');
+  const wave = source.indexOf('className={`clip-wave');
+  const transport = source.indexOf('className="clip-transport"');
+  assert.ok(tools > -1 && wave > -1 && transport > -1);
+  assert.ok(tools < wave, 'tools row is above the waveform');
+  assert.ok(wave < transport, 'transport row is below the waveform');
   assert.ok(source.includes('formatTime(playPos, displayRate)'));
 });
 
@@ -96,7 +98,8 @@ test('App.css has the editor width override, centred tools and a dimmed teal hin
   assert.ok(css.includes('.clip-hint { font-size: 11px; color: var(--accent); opacity: 0.75; }'));
   assert.ok(css.includes('.clip-tools { display: flex; align-items: center; gap: 8px; justify-self: center; }'));
   assert.ok(css.includes('.drawer .close-btn, .reader-close-editor'));
-  assert.ok(css.includes('max-height: 430px'));
+  assert.ok(css.includes('.clip-list { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; min-height: 72px; overflow-y: auto;'));
+  assert.ok(!css.includes('max-height: 430px'));
 });
 
 test('ClipEditor wires the clip export controls', () => {
@@ -114,4 +117,23 @@ test('export click handlers call save before any await', () => {
     assert.ok(save > start, name + ' calls save');
     assert.ok(!source.slice(start, save).includes('await'), name + ' has no await before save');
   }
+});
+
+test('editor body order is tools, waveform, transport, list, export, hint, now', () => {
+  const list = source.indexOf('className="clip-list"');
+  const exp = source.indexOf('className="clip-export"');
+  const hint = source.indexOf('className="clip-hints"');
+  const now = source.indexOf('className="clip-now"');
+  assert.ok(list > -1 && exp > -1 && hint > -1 && now > -1);
+  assert.ok(list < exp, 'clip-list is before clip-export');
+  assert.ok(exp < hint, 'clip-export is before clip-hint');
+  assert.ok(hint < now, 'clip-hint is before clip-now');
+});
+
+test('clip-now is the last clip-* className in the file', () => {
+  const matches = [...source.matchAll(/className="clip-/g)];
+  assert.ok(matches.length > 0);
+  const last = matches[matches.length - 1];
+  const tail = source.slice(last.index);
+  assert.ok(tail.startsWith('className="clip-now"'), 'the last clip-* className is clip-now');
 });

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.59-beta - 2026-11-27
+- Clip editor fits the panel height: tools row above the waveform, transport below, only the clip list flexes and scrolls, the chunk text strip stays last and fully visible; per-clip row reordered to play, download, name, times, duration
+
 ## 0.2.58-beta - 2026-11-27
 - Added range looping to src/clipPlayer.js (play opts.loop, setLoop, wrapped position, loop-aware seek and getState), with appended tests and no UI change
 
