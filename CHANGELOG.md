@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.68-beta - 2026-11-28
+- Clip editor: Start Reading is disabled while the editor is open, clip rows can be reordered by grip drag (visual only), the Text panel highlights the playing clip's text, and sentence highlights keep rounded corners across line breaks
+
+## 0.2.67-beta - 2026-11-28
+- Clip editor: new pure src/clipTime.js parses typed cut times (seconds, m:ss, h:mm:ss, comma decimals) to an exact sample with reason strings, with tests; not imported by the app yet
+
 ## 0.2.66-beta - 2026-11-27
 - Clip editor: file names now come from the clip text in src/ClipEditor.jsx (ZIP, CSV, single download and the row download title), with the single clip aligned to its own segment; App.jsx untouched
 

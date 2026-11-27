@@ -1,7 +1,7 @@
 # Clip editor handoff
 
 Scope: ONLY the clip editor feature. The general project status stays in docs/handoff.md (stale at 0.2.19-beta; do not use it for this feature).
-Owner: @Eleven. Updated 2026-11-27. Version when written: 0.2.66-beta. Agents: Hermes (code), Claude (planning, task texts).
+Owner: @Eleven. Updated 2026-11-27. Version when written: 0.2.68-beta. Agents: Hermes (code), Claude (planning, task texts).
 
 ## Goal
 Cut one generated audio (one chunk, or the whole joined audio) into many clips by time, locally, with ZERO extra requests. The owner pastes unrelated sentences, generates once, then cuts them into separate files. Used mainly for voiceover for animation and video. Meant for all visitors of the site, desktop only in v1.
@@ -39,10 +39,8 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.32g src/clipEditorLoad.js decoded length limit (MAX_EDIT_SECONDS 900) and tests - DONE 0.2.40-beta
 2.32b src/clipCsv.js cut-list CSV writer and tests - DONE 0.2.41-beta (not imported by the app yet); 2.32c src/clipSlices.js sample slicing, fades and safe clip names - DONE 0.2.42-beta (not imported by the app yet)
 2.32d src/clipMarkerStore.js per-audio marker store with injected storage - DONE 0.2.43-beta (not imported by the app yet; test import is the wiring proof); 2.32e src/clipSnap.js quiet-spot snapping and key-press reaction compensation - DONE 0.2.44-beta (not imported by the app yet; test import is the wiring proof)
-2.33a bottom player bar locked while the editor is open with the exact tooltip, chunkTexts passed to ClipEditor - DONE 0.2.45-beta (prop passed but not consumed by ClipEditor yet)
-2.33b playback in ClipEditor (transport, playhead, click-to-seek, Space, chunk text strip) and transport CSS - DONE 0.2.46-beta
-2.34a markers in ClipEditor (slice tool, M key, undo/redo, cut lines, clip list) and CSS - DONE 0.2.47-beta
-2.34c remember cut markers per audio (audio key, store restore, debounced save) - DONE 0.2.48-beta
+2.33a bottom player bar locked while the editor is open with the exact tooltip, chunkTexts passed to ClipEditor - DONE 0.2.45-beta (prop passed but not consumed by ClipEditor yet); 2.33b playback in ClipEditor (transport, playhead, click-to-seek, Space, chunk text strip) and transport CSS - DONE 0.2.46-beta
+2.34a markers in ClipEditor (slice tool, M key, undo/redo, cut lines, clip list) and CSS - DONE 0.2.47-beta; 2.34c remember cut markers per audio (audio key, store restore, debounced save) - DONE 0.2.48-beta
 2.35a hold Shift to snap slice click, M key, marker drag and hover line to the quietest spot within 80 ms; hint and CSS - DONE 0.2.49-beta (the dragMarker STOP anchor was stale; marker drag was added here)
 2.36a clip list with per-clip play/pause and editable names; src/clipNames.js alignment helper and CSS - DONE 0.2.50-beta (the clipNames.js STOP anchor was stale; the pure module was created here)
 2.36b list feedback (row play highlight, first-sentence placeholders, roomier rows, no end numbers, chunk info pinned, playbar-style transport) and 2.36c footer layout (hint and restore note in one row, taller list, wider name inputs) - DONE 0.2.51-beta/0.2.52-beta
@@ -54,10 +52,10 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.40c fit the editor into the panel height (tools above waveform, transport below, only the list flexes and scrolls, chunk strip last) and per-clip row reordered to play, download, name, times, duration - DONE 0.2.59-beta (App.jsx untouched)
 2.40d draggable playhead (ruler strip scrub, playhead handle, grab the line in the waveform) and Go to start button + Home key in src/ClipEditor.jsx with CSS - DONE 0.2.60-beta (App.jsx untouched); 2.40e Loop clips toggle in the transport row, per-clip loop play/pause/resume, looping row highlight and loop-follows-cuts in src/ClipEditor.jsx with CSS - DONE 0.2.61-beta (App.jsx untouched)
 2.40f Fade in / Fade out toggles, All/Selected scope picker and row selection (click, Ctrl+click, Shift+click) driving per-clip fades in src/ClipEditor.jsx with CSS - DONE 0.2.62-beta (App.jsx untouched)
-2.41a src/clipText.js pure sample-range to text mapper (SNAP_CHARS, MAX_TEXT_CHARS, createClipTextMapper) and tests - DONE 0.2.63-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
-2.41b clip row and strip show each clip's own text (name placeholder, hover title, "Clip N of M - chunk K") in src/ClipEditor.jsx and src/App.css - DONE 0.2.64-beta (App.jsx untouched)
-2.42a nameFromText in src/clipSlices.js and an optional texts argument in src/clipExport.js so unnamed clips are named from their text (audio names and CSV match), with appended tests - DONE 0.2.65-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
-2.42b file names from the clip text in src/ClipEditor.jsx (clipTextList, texts in exportArgs, aligned single download, row download title) - DONE 0.2.66-beta (App.jsx untouched)
+2.41a src/clipText.js pure sample-range to text mapper (SNAP_CHARS, MAX_TEXT_CHARS, createClipTextMapper) and tests - DONE 0.2.63-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof); 2.41b clip row and strip show each clip's own text (name placeholder, hover title, "Clip N of M - chunk K") in src/ClipEditor.jsx and src/App.css - DONE 0.2.64-beta (App.jsx untouched)
+2.42a nameFromText in src/clipSlices.js and an optional texts argument in src/clipExport.js so unnamed clips are named from their text (audio names and CSV match), with appended tests - DONE 0.2.65-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof); 2.42b file names from the clip text in src/ClipEditor.jsx (clipTextList, texts in exportArgs, aligned single download, row download title) - DONE 0.2.66-beta (App.jsx untouched)
+2.43a src/clipTime.js pure typed-time parser (parseTime) and tests - DONE 0.2.67-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
+2.43b Start Reading disabled while the editor is open, visual clip-row reorder by grip drag (src/clipOrder.js with tests), Text panel shows the playing clip's text as one highlight block, and rounded sentence highlight across line breaks - DONE 0.2.68-beta (App.jsx, ClipEditor.jsx, App.css and source tests changed; all wired)
 Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no bump); E4d 2.33a/2.33b 0.2.45-beta/0.2.46-beta; E4e 2.34a 0.2.47-beta; E5 2.34c 0.2.48-beta; E6 2.35a 0.2.49-beta; E7 2.36a-2.36c 0.2.50-beta/0.2.51-beta/0.2.52-beta; E8 2.37a/2.37b 0.2.55-beta/0.2.56-beta.
 
 ## Known gaps
@@ -84,6 +82,8 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 - Clip text is approximate unless the cut lands on a pause: src/clipText.js falls back to a linear position estimate and marks that part estimated.
 - Clip text placeholders, the hover title and the clip strip ("Clip N of M - chunk K") are wired but untested live in Brave.
 - nameFromText and the texts argument are wired into the export path (ZIP, CSV, single download, row download title) but untested live in Brave.
+- src/clipTime.js parses typed cut times but is not wired into the editor; there is no UI for typing a time yet (typed cut times stay parked).
+- Clip-row drag order is display-only (not saved, not used by playback or export); the Text panel highlight falls back to the whole chunk when the clip text cannot be found in it.
 
 ## Open decisions
 - Reaction-time compensation value and playhead offset (tuned live).
@@ -94,6 +94,6 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 Follow AGENTS.md and the voice skill. One task per message. Touch only named files. App.jsx is one big component: exact anchors and the duplicate check. New pure modules go in src/*.js with tests/*.test.mjs (node cannot import .jsx). Mock everything; no real audio or IndexedDB here, so the owner tests live. EVERY clip-editor task ends by updating this file in place (task log, known gaps, verified, version) and lists it in READY TO COMMIT with its own git add line.
 
 ## Verified
-- npm test: 486 pass, 0 fail (2026-11-27, 0.2.66-beta; full raw run pasted in the task report).
-- node --check clean on tests/clipEditorSource.test.mjs; .jsx and .css cannot be compiled here, so the owner's vship build is the real check.
-- Owner must test live in Brave: cut three sentences and download the ZIP without typing names (files named from the first words, e.g. One-two-three-four-five-six.wav, and cut-list.csv carries the same names); a typed name overrides it in the ZIP, the single download and the CSV; two clips starting with the same words become -2; a clip with no mapped text is named clip-001 style; hovering a row's download button shows the file name it will save.
+- npm test: 507 pass, 0 fail (2026-11-28, 0.2.68-beta; full raw run pasted in the task report).
+- node --check clean on src/clipOrder.js, tests/clipOrder.test.mjs and tests/clipEditorSource.test.mjs; the App.jsx duplicate check shows only the two known false positives (const chunks, const commit). .jsx and .css cannot be compiled here, so the owner's vship build is the real check.
+- Owner must test live in Brave: open the editor and confirm Start Reading is greyed out with the reason below the button; drag a clip row by its grip and confirm only the list order changes (cuts, playback, names and exports keep their original order); play clips in the editor and check the Text panel highlights that clip's text; check a sentence highlight crossing a line break has rounded ends on both fragments.

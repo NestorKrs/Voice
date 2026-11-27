@@ -183,3 +183,31 @@ test('ClipEditor names exported files from the clip text', () => {
   assert.ok(source.includes('texts: clipTextList'));
   assert.ok(source.includes('Download clip'));
 });
+
+test('Start Reading is disabled while the clip editor is open', () => {
+  assert.ok(appSource.includes('const canStart = !editorOpen &&'));
+  assert.ok(appSource.includes('Close the clip editor before starting to read.'));
+  assert.ok(appSource.includes('disabled={!canStart}'));
+});
+
+test('clip rows reorder visually by grip drag without changing cuts or exports', () => {
+  assert.ok(source.includes("from './clipOrder.js'"));
+  assert.ok(source.includes('reorderIds('));
+  assert.ok(source.includes('className="clip-grip"'));
+  assert.ok(source.includes('data-index={segment.index}'));
+  assert.ok(source.includes('? shownSegments.map((segment) =>'));
+  assert.ok(source.includes('segments: cutsRef.current ? segments(cutsRef.current) : []'));
+});
+
+test('the editor reports the playing clip text range to the Text panel', () => {
+  assert.ok(source.includes('onClipView = null'));
+  assert.ok(source.includes('onClipView(viewChunkText'));
+  assert.ok(appSource.includes('onClipView={setClipView}'));
+  assert.ok(appSource.includes('staticRange={editorOpen && clipView'));
+  assert.ok(appSource.includes('setClipView(null)'));
+});
+
+test('the highlight is rounded across line breaks and the grip is styled', () => {
+  assert.ok(css.includes('-webkit-box-decoration-break: clone; box-decoration-break: clone;'));
+  assert.ok(css.includes('.clip-grip { cursor: grab; touch-action: none;'));
+});

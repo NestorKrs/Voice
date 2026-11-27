@@ -149,12 +149,16 @@ function mixToMono(channels) {
 // Read-only view of the chunk being read. It polls the player engine with
 // requestAnimationFrame because the engine emits position updates only about
 // 4 times a second, which made the word highlight lag the voice.
-function TextReadView({ chunk, mode, engineRef, chunkIndex, mapRef, textZoom, onZoom, onSelectText, onSelectIcon }) {
+function TextReadView({ chunk, mode, engineRef, chunkIndex, mapRef, textZoom, onZoom, onSelectText, onSelectIcon, staticRange = null }) {
   const [hlRange, setHlRange] = useState(null);
   const hlRef = useRef(null);
   const selectingRef = useRef(false);
   const weights = useMemo(() => charWeights(chunk || ''), [chunk]);
   useEffect(() => {
+    if (staticRange) {
+      setHlRange((prev) => (prev && prev.start === staticRange.start && prev.end === staticRange.end ? prev : staticRange));
+      return undefined;
+    }
     setHlRange(null);
     if (!chunk || mode === 'none') return undefined;
     let raf;
@@ -184,7 +188,7 @@ function TextReadView({ chunk, mode, engineRef, chunkIndex, mapRef, textZoom, on
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [chunk, mode, engineRef, chunkIndex, mapRef]);
+  }, [chunk, mode, engineRef, chunkIndex, mapRef, staticRange]);
   useEffect(() => {
     if (hlRef.current) hlRef.current.scrollIntoView({ block: 'nearest' });
   }, [hlRange]);
@@ -221,7 +225,7 @@ function TextReadView({ chunk, mode, engineRef, chunkIndex, mapRef, textZoom, on
       onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); onZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }}
       onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); onZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); onZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); onZoom(100); } }}
     >
-      {mode === 'none' ? chunk : (
+      {mode === 'none' && !staticRange ? chunk : (
         <>
           {chunk.slice(0, r.start)}
           {hlRange ? <span ref={hlRef} className="text-hl">{chunk.slice(r.start, r.end)}</span> : null}
@@ -319,6 +323,7 @@ export default function App() {
   const mapRef = useRef(new Map());
   const timer = useRef(null);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [clipView, setClipView] = useState(null);
   const [editorLoading, setEditorLoading] = useState(false);
   const [editorError, setEditorError] = useState('');
   const [editorAudio, setEditorAudio] = useState(null);
@@ -380,8 +385,10 @@ export default function App() {
   const provider = getProvider(providers, settings.provider);
   const switchLocked = schedState.state === 'generating';
 
-  const canStart = text.trim() !== '' && keySet && usedToday < settings.dailyLimit;
-  const startReason = !text.trim()
+  const canStart = !editorOpen && text.trim() !== '' && keySet && usedToday < settings.dailyLimit;
+  const startReason = editorOpen
+    ? 'Close the clip editor before starting to read.'
+    : !text.trim()
     ? 'Paste some text first.'
     : !keySet
     ? 'Set an API key in Settings.'
@@ -1300,6 +1307,7 @@ export default function App() {
   const closeClipEditor = () => {
     editorLoadId.current += 1;
     setEditorOpen(false);
+    setClipView(null);
     setEditorAudio(null);
     setEditorError('');
     setEditorLoading(false);
@@ -1343,6 +1351,7 @@ export default function App() {
   const openClipEditor = () => {
     if (playerEngineRef.current) try { playerEngineRef.current.pause(); } catch {}
     setEditorScope('all');
+    setClipView(null);
     setEditorOpen(true);
     logEvent('Clip editor opened');
     loadEditor('all');
@@ -1491,9 +1500,9 @@ export default function App() {
             {findQuery ? <button type="button" className="find-clear" onClick={handleFindClear} disabled={reading} title="Clear find query" aria-label="Clear find query">×</button> : null}
             {reading ? <span className="find-reason">Find works when reading is stopped</span> : null}
           </div>
-          <textarea ref={textRef} value={text} spellCheck={settings.spellCheck} onChange={(e) => { setText(e.target.value); setSelectedChars(0); }} onSelect={(e) => { const s = e.target.selectionStart; const t = e.target.selectionEnd; setSelectedChars(t > s ? t - s : 0); }} onMouseUp={(e) => { const ex = e.clientX; const ey = e.clientY; setTimeout(() => { const ta = e.target; const s = ta.selectionStart; const t = ta.selectionEnd; const sel = t > s ? ta.value.slice(s, t) : ''; if (!sel) { setSelIcon(null); return; } const p = selectionTopRight(ta) || { x: ex, y: ey }; setSelIcon({ x: p.x, y: p.y, text: sel }); }, 0); }} style={{ fontSize: `${textZoom}%`, display: reading ? 'none' : undefined }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} className={textDropActive ? 'drop-active' : ''} />
-          {reading ? (
-            <TextReadView chunk={readChunk} mode={settings.highlightMode} engineRef={playerEngineRef} chunkIndex={reading ? playerState.index : 0} mapRef={mapRef} textZoom={textZoom} onZoom={setTextZoom} onSelectText={setSelectedChars} onSelectIcon={setSelIcon} />
+          <textarea ref={textRef} value={text} spellCheck={settings.spellCheck} onChange={(e) => { setText(e.target.value); setSelectedChars(0); }} onSelect={(e) => { const s = e.target.selectionStart; const t = e.target.selectionEnd; setSelectedChars(t > s ? t - s : 0); }} onMouseUp={(e) => { const ex = e.clientX; const ey = e.clientY; setTimeout(() => { const ta = e.target; const s = ta.selectionStart; const t = ta.selectionEnd; const sel = t > s ? ta.value.slice(s, t) : ''; if (!sel) { setSelIcon(null); return; } const p = selectionTopRight(ta) || { x: ex, y: ey }; setSelIcon({ x: p.x, y: p.y, text: sel }); }, 0); }} style={{ fontSize: `${textZoom}%`, display: reading || (editorOpen && clipView) ? 'none' : undefined }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} className={textDropActive ? 'drop-active' : ''} />
+          {reading || (editorOpen && clipView) ? (
+            <TextReadView chunk={editorOpen && clipView ? clipView.text : readChunk} mode={settings.highlightMode} engineRef={playerEngineRef} chunkIndex={reading ? playerState.index : 0} mapRef={mapRef} textZoom={textZoom} onZoom={setTextZoom} onSelectText={setSelectedChars} onSelectIcon={setSelIcon} staticRange={editorOpen && clipView ? { start: clipView.start, end: clipView.end } : null} />
           ) : null}
           <div className="stats" style={{ justifyContent: 'flex-end' }}>
             <span>{plural(stats.characters, 'character')}</span>
@@ -1559,7 +1568,7 @@ export default function App() {
               );
             })}
           </div>
-          {editorOpen ? (<ClipEditor audio={editorAudio} loading={editorLoading} error={editorError} scopeValue={editorScope} scopeOptions={scopeOptions} onScopeChange={(v) => { setEditorScope(v); loadEditor(v); }} chunkTexts={chunks} audioKey={editorAudioKey} clipExportDeps={clipExportDeps} />) : null}
+          {editorOpen ? (<ClipEditor audio={editorAudio} loading={editorLoading} error={editorError} scopeValue={editorScope} scopeOptions={scopeOptions} onScopeChange={(v) => { setEditorScope(v); loadEditor(v); }} chunkTexts={chunks} audioKey={editorAudioKey} clipExportDeps={clipExportDeps} onClipView={setClipView} />) : null}
           {(jobError || noteState) ? (
             <div className={'job-note' + (jobError || schedState.state === 'error' ? ' job-note-error' : '')}>
               {jobError ? <span>{jobError}</span> : <span>{schedState.state === 'cancelled' ? 'CANCELLED' : 'PAUSED (chunk #' + (schedState.chunks.findIndex((c) => c && c.status !== 'ready') + 1 || playerState.index + 1) + ')'}{schedState.state === 'waiting_reset' ? ' - ' + new Date(schedState.resetAt).toLocaleString() : ''}{schedState.state === 'error' && firstChunkError ? ' - ' + firstChunkError : ''}</span>}

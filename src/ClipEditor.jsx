@@ -8,13 +8,16 @@ import { compensateKeyPress, snapToQuiet, SNAP_RADIUS_MS, FADE_MS } from './clip
 import { createMarkerStore } from './clipMarkerStore.js';
 import { createClipPlayer } from './clipPlayer.js';
 import { fullView, zoomAt, wheelFactor, panByPixels, sampleAtX, xAtSample, ensureVisible, MIN_SPAN, isFullView } from './clipView.js';
+import { reorderIds } from './clipOrder.js';
 import { createClipTextMapper } from './clipText.js';
 import { findSilences } from './silenceMap.js';
 import { alignTimeMap } from './alignMap.js';
 import { sentenceRanges, charWeights } from './highlight.js';
 
-export default function ClipEditor({ audio, loading, error, scopeValue, scopeOptions, onScopeChange, chunkTexts = [], audioKey = null, clipExportDeps }) {
+export default function ClipEditor({ audio, loading, error, scopeValue, scopeOptions, onScopeChange, chunkTexts = [], audioKey = null, clipExportDeps, onClipView = null }) {
   const rootRef = useRef(null);
+  const listRef = useRef(null);
+  const reorderRef = useRef(null);
   const wrapRef = useRef(null);
   const canvasRef = useRef(null);
   const observerRef = useRef(null);
@@ -53,6 +56,9 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const [fadeOut, setFadeOut] = useState(false);
   const [fadeScope, setFadeScope] = useState('all');
   const [selectedClips, setSelectedClips] = useState([]);
+  const [rowOrder, setRowOrder] = useState([]);
+  const [dragIndex, setDragIndex] = useState(null);
+  const [dropIndex, setDropIndex] = useState(null);
   const [exportMsg, setExportMsg] = useState('');
 
   const total = audio ? audio.samples.length : 0;
@@ -67,6 +73,12 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const cutsRefCurrent = cuts && cuts.total === total && cuts.rate === rate ? cuts : null;
   cutsRef.current = cutsRefCurrent;
   const clipSegments = cutsRefCurrent ? segments(cutsRefCurrent) : [];
+  const orderedSegments = rowOrder.length === clipSegments.length
+    ? rowOrder.map((index) => clipSegments.find((s) => s.index === index))
+    : null;
+  const shownSegments = orderedSegments && orderedSegments.every(Boolean) && new Set(orderedSegments.map((s) => s.index)).size === clipSegments.length
+    ? orderedSegments
+    : clipSegments;
   const loopState = playerRef.current ? playerRef.current.getState() : null;
   const nowIndex = audio ? audio.offsets.reduce((last, offset, i) => (offset <= playPos ? i : last), -1) : -1;
   const nowChunk = nowIndex >= 0 ? audio.indexes[nowIndex] : -1;
@@ -104,6 +116,21 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     : -1;
   const nowClipChunkNo = nowClipChunkPos >= 0 && audio ? audio.indexes[nowClipChunkPos] + 1 : 0;
   const nowClipText = nowClip && clipTexts ? clipTexts[nowClipIndex] : null;
+  const viewChunkId = nowClip
+    ? (nowClipChunkPos >= 0 && audio ? audio.indexes[nowClipChunkPos] : -1)
+    : nowChunk;
+  const viewChunkText = viewChunkId >= 0 && chunkTexts[viewChunkId] ? chunkTexts[viewChunkId] : '';
+  const viewClipText = nowClipText && nowClipText.text
+    ? nowClipText.text.replace(/^~\s*/, '').replace(/…$/, '')
+    : '';
+  const viewAt = viewClipText && viewChunkText ? viewChunkText.indexOf(viewClipText) : -1;
+  const viewStart = viewAt >= 0 ? viewAt : 0;
+  const viewEnd = viewAt >= 0 ? viewAt + viewClipText.length : viewChunkText.length;
+
+  useEffect(() => {
+    if (!onClipView) return;
+    onClipView(viewChunkText ? { text: viewChunkText, start: viewStart, end: viewEnd } : null);
+  }, [onClipView, audio, viewChunkText, viewStart, viewEnd]);
 
   const snapIf = (sample, shiftHeld) => (shiftHeld ? snapToQuiet(audio.samples, rate, sample) : sample);
 
@@ -176,6 +203,13 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     markerCountRef.current = count;
     setSelectedClips([]);
     anchorRef.current = null;
+  }, [cuts]);
+
+  useEffect(() => {
+    reorderRef.current = null;
+    setRowOrder([]);
+    setDragIndex(null);
+    setDropIndex(null);
   }, [cuts]);
 
   useEffect(() => {
@@ -448,6 +482,48 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     }
     setSelectedClips([index]);
     anchorRef.current = index;
+  };
+
+  const beginReorder = (event, index) => {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    if (event.currentTarget.setPointerCapture) event.currentTarget.setPointerCapture(event.pointerId);
+    reorderRef.current = { index, id: event.pointerId, target: index };
+    setDragIndex(index);
+    setDropIndex(index);
+  };
+
+  const moveReorder = (event) => {
+    const drag = reorderRef.current;
+    if (!drag || drag.id !== event.pointerId || !listRef.current) return;
+    let closest = null;
+    let best = Infinity;
+    for (const row of listRef.current.querySelectorAll('.clip-row')) {
+      const box = row.getBoundingClientRect();
+      const distance = Math.abs(event.clientY - (box.top + box.height / 2));
+      if (distance < best) {
+        best = distance;
+        closest = Number(row.dataset.index);
+      }
+    }
+    if (closest !== null && closest !== drag.target) {
+      drag.target = closest;
+      setDropIndex(closest);
+    }
+  };
+
+  const endReorder = (event) => {
+    const drag = reorderRef.current;
+    if (!drag || drag.id !== event.pointerId) return;
+    reorderRef.current = null;
+    if (event.currentTarget.hasPointerCapture && event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    if (drag.target !== drag.index) {
+      setRowOrder(reorderIds(shownSegments.map((s) => s.index), drag.index, drag.target));
+    }
+    setDragIndex(null);
+    setDropIndex(null);
   };
 
   const goToStart = () => {
@@ -889,9 +965,9 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
           </div>
         </>
       )}
-      <div className="clip-list">
+      <div className="clip-list" ref={listRef}>
         {audio && clipSegments.length > 0
-          ? clipSegments.map((segment) => {
+          ? shownSegments.map((segment) => {
               const isPlaying = playingClip === segment.index && playStatus === 'playing';
               const isLooping = Boolean(loopState && loopState.looping && loopState.rangeStart === segment.start && loopState.rangeEnd === segment.end);
               const buttonLabel = (isPlaying ? 'Pause clip ' : 'Play clip ') + (segment.index + 1);
@@ -904,10 +980,36 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
                 ? clipText.text + (clipText.estimated ? ' (estimated: no clear pause found at the cut)' : '')
                 : '';
               return (
-                <div className={'clip-row' + (isLooping ? ' looping' : '') + (selectedClips.includes(segment.index) ? ' selected' : '')} key={segment.index} onClick={(event) => onRowClick(event, segment.index)}>
+                <div
+                  className={'clip-row' + (isLooping ? ' looping' : '') + (selectedClips.includes(segment.index) ? ' selected' : '') + (dragIndex === segment.index ? ' reordering' : '') + (dropIndex === segment.index && dragIndex !== segment.index ? ' drop-target' : '')}
+                  key={segment.index}
+                  data-index={segment.index}
+                  onClick={(event) => onRowClick(event, segment.index)}
+                >
+                  <span
+                    className="clip-grip"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={'Drag to reorder clip ' + (segment.index + 1)}
+                    title="Drag to change the list order only (cuts, playback and exports keep their order)"
+                    onPointerDown={(event) => beginReorder(event, segment.index)}
+                    onPointerMove={moveReorder}
+                    onPointerUp={endReorder}
+                    onPointerCancel={endReorder}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+                      event.preventDefault();
+                      event.stopPropagation();
+                      const ids = shownSegments.map((s) => s.index);
+                      const pos = ids.indexOf(segment.index);
+                      const to = ids[pos + (event.key === 'ArrowUp' ? -1 : 1)];
+                      if (to !== undefined) setRowOrder(reorderIds(ids, segment.index, to));
+                    }}
+                    onClick={(event) => event.stopPropagation()}
+                  >⋮⋮</span>
                   <button
                     type="button"
-                    className={'icon-btn' + (isPlaying ? ' play-active' : '')}
+                    className={'icon-btn clip-play-btn' + (isPlaying ? ' play-active' : '')}
                     aria-label={buttonLabel}
                     title={buttonLabel}
                     onClick={() => playClip(segment)}
