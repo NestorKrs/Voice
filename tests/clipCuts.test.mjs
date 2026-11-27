@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createCuts, msToSamples, samplesToMs, formatTime,
-  addMarker, moveMarker, nudgeMarker, deleteMarker,
+  addMarker, moveMarker, nudgeMarker, deleteMarker, nearestMarkerIndex,
   undo, redo, segments,
 } from '../src/clipCuts.js';
 
@@ -64,6 +64,17 @@ test('delete then undo restores the markers', () => {
   assert.deepEqual(undo(deleted).markers, [200, 500, 800]);
   const empty = createCuts(1000, RATE);
   assert.strictEqual(undo(empty), empty);
+});
+
+test('nearestMarkerIndex picks the closest marker inside the tolerance', () => {
+  assert.equal(nearestMarkerIndex([100, 400, 900], 430, 50), 1);
+  assert.equal(nearestMarkerIndex([100, 400, 900], 120, 50), 0);
+  assert.equal(nearestMarkerIndex([100, 400, 900], 120, 10), -1);
+  assert.equal(nearestMarkerIndex([], 100, 50), -1);
+});
+
+test('nearestMarkerIndex takes the later marker on an exact tie', () => {
+  assert.equal(nearestMarkerIndex([100, 300], 200, 100), 1);
 });
 
 test('redo after undo', () => {

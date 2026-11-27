@@ -70,6 +70,21 @@ export function deleteMarker(state, index) {
   return withHistory(state, state.markers.filter((_, i) => i !== index));
 }
 
+// Index of the nearest marker within tolerance samples, or -1. Ties go to the
+// later marker so Delete always removes the one on the right of an exact tie.
+export function nearestMarkerIndex(markers, sample, tolerance) {
+  let best = -1;
+  let distance = tolerance;
+  for (let i = 0; i < markers.length; i += 1) {
+    const delta = Math.abs(markers[i] - sample);
+    if (delta <= distance) {
+      distance = delta;
+      best = i;
+    }
+  }
+  return best;
+}
+
 export function undo(state) {
   if (state.past.length === 0) return state;
   return {

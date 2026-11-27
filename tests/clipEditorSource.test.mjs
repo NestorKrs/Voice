@@ -211,3 +211,21 @@ test('the highlight is rounded across line breaks and the grip is styled', () =>
   assert.ok(css.includes('-webkit-box-decoration-break: clone; box-decoration-break: clone;'));
   assert.ok(css.includes('.clip-grip { cursor: grab; touch-action: none;'));
 });
+
+test('marker delete and refresh are wired', () => {
+  assert.ok(source.includes('nearestMarkerIndex'));
+  assert.ok(source.includes('deleteMarker(state, index)'));
+  assert.ok(source.includes('aria-label="Delete cut"'));
+  assert.ok(source.includes("event.code === 'Delete'"));
+  assert.ok(source.includes('aria-label="Refresh cuts"'));
+  assert.ok(source.includes('const refreshCuts ='));
+  assert.ok(source.includes('store.load(audioKey, total)'));
+});
+
+test('the clip list follows the cut preview during a marker drag', () => {
+  assert.ok(source.includes('const [previewCuts, setPreviewCuts]'));
+  assert.ok(source.includes('const displayCuts = previewCuts'));
+  assert.ok(source.includes('setPreviewCuts(moveMarker(cutsRef.current, markerDrag.index, at))'));
+  assert.ok(source.includes('segments(displayCuts)'));
+  assert.ok(source.includes('setPreviewCuts(null)'));
+});

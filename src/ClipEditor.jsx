@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildPeaks, peaksForRange } from './waveformPeaks.js';
-import { createCuts, addMarker, moveMarker, undo, redo, segments, formatTime } from './clipCuts.js';
+import { createCuts, addMarker, moveMarker, deleteMarker, undo, redo, segments, formatTime, nearestMarkerIndex } from './clipCuts.js';
 import { realignNames, firstSentence } from './clipNames.js';
 import { defaultClipName } from './clipSlices.js';
 import { buildClipFiles, buildZipEntries, buildCutListFile, clipFileNames } from './clipExport.js';
@@ -44,6 +44,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const [loopOn, setLoopOn] = useState(false);
   loopOnRef.current = loopOn;
   const [cuts, setCuts] = useState(null);
+  const [previewCuts, setPreviewCuts] = useState(null);
   const [names, setNames] = useState([]);
   const [playingClip, setPlayingClip] = useState(null);
   const [sliceMode, setSliceMode] = useState(false);
@@ -72,7 +73,10 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const minSpan = Math.min(total, Math.max(MIN_SPAN, Math.round(rate * 0.4)));
   const cutsRefCurrent = cuts && cuts.total === total && cuts.rate === rate ? cuts : null;
   cutsRef.current = cutsRefCurrent;
-  const clipSegments = cutsRefCurrent ? segments(cutsRefCurrent) : [];
+  const displayCuts = previewCuts && previewCuts.total === total && previewCuts.rate === rate ? previewCuts : cutsRefCurrent;
+  const clipSegments = displayCuts ? segments(displayCuts) : [];
+  const deleteTolerance = Math.max(1, Math.round(rate * 0.25));
+  const deleteIndex = cutsRefCurrent ? nearestMarkerIndex(cutsRefCurrent.markers, playPos, deleteTolerance) : -1;
   const orderedSegments = rowOrder.length === clipSegments.length
     ? rowOrder.map((index) => clipSegments.find((s) => s.index === index))
     : null;
@@ -96,9 +100,9 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     }
   }, [audio, chunkTexts]);
   const clipTexts = useMemo(() => {
-    if (!textMapper || !cuts || cuts.markers.length === 0) return null;
-    return segments(cuts).map((s) => textMapper.textForRange(s.start, s.end));
-  }, [textMapper, cuts]);
+    if (!textMapper || !displayCuts || displayCuts.markers.length === 0) return null;
+    return segments(displayCuts).map((s) => textMapper.textForRange(s.start, s.end));
+  }, [textMapper, displayCuts]);
   const clipTextList = useMemo(
     () => (clipTexts ? clipTexts.map((c) => c.text) : []),
     [clipTexts],
@@ -106,7 +110,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const rowFileNames = clipExportDeps
     ? clipFileNames(namesRef.current, clipSegments.length, clipExportDeps.format, clipTextList)
     : [];
-  const clipList = clipTexts ? segments(cuts) : null;
+  const clipList = clipTexts ? segments(displayCuts) : null;
   const nowClipIndex = clipList
     ? clipList.reduce((last, segment, i) => (segment.start <= playPos ? i : last), clipList.length - 1)
     : -1;
@@ -143,6 +147,52 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     setCuts(nextCuts);
   };
 
+  const deleteNearestMarker = () => {
+    const state = cutsRef.current;
+    if (!state) return;
+    const index = nearestMarkerIndex(state.markers, playPos, Math.max(1, Math.round(rate * 0.25)));
+    if (index < 0) {
+      setRestoreNote('No cut within 0.25 s of the playhead.');
+      return;
+    }
+    applyCuts(deleteMarker(state, index));
+  };
+
+  const refreshCuts = () => {
+    if (!audio || !audioKey) {
+      setRestoreNote('Refresh needs loaded audio with a cache identity.');
+      return;
+    }
+    const store = storeRef.current;
+    if (!store) {
+      setRestoreNote('Cannot refresh cuts: browser storage is not available.');
+      return;
+    }
+    const stored = store.load(audioKey, total);
+    let fresh = createCuts(total, rate);
+    if (stored && stored.markers.length > 0) {
+      for (const marker of stored.markers) fresh = addMarker(fresh, marker);
+      setRestoreNote('Refreshed ' + stored.markers.length + ' cuts for this audio.');
+    } else {
+      setRestoreNote('No saved cuts found for this audio.');
+    }
+    restoringRef.current = true;
+    setCuts({ ...fresh, past: [], future: [] });
+    setNames([]);
+    namesRef.current = [];
+    setSelectedClips([]);
+    anchorRef.current = null;
+    setRowOrder([]);
+    setDragIndex(null);
+    setDropIndex(null);
+    setPreviewCuts(null);
+    setDragPreview(null);
+    markerDragRef.current = null;
+    setPlayingClip(null);
+    clipRangeRef.current = null;
+    setStoreMessage('');
+  };
+
   useEffect(() => {
     try {
       storeRef.current = createMarkerStore(window.localStorage);
@@ -163,6 +213,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     namesRef.current = [];
     setPlayingClip(null);
     clipRangeRef.current = null;
+    setPreviewCuts(null);
     setSelectedClips([]);
     anchorRef.current = null;
     let fresh = audio ? createCuts(audio.samples.length, audio.sampleRate) : null;
@@ -562,6 +613,11 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
         if (event.type === 'keydown') setSelectedClips([]);
         return;
       }
+      if ((event.code === 'Delete' || event.code === 'Backspace') && event.type === 'keydown') {
+        event.preventDefault();
+        deleteNearestMarker();
+        return;
+      }
       if (event.type !== 'keydown' || !cutsRef.current) return;
       if (event.code === 'KeyM') {
         event.preventDefault();
@@ -718,7 +774,9 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       if (box && box.width > 0) {
         const base = viewRef.current || fullView(total);
         markerDrag.sample = sampleAtX(base, event.clientX - box.left, box.width);
-        setDragPreview({ index: markerDrag.index, sample: snapIf(markerDrag.sample, event.shiftKey) });
+        const at = snapIf(markerDrag.sample, event.shiftKey);
+        setDragPreview({ index: markerDrag.index, sample: at });
+        if (cutsRef.current) setPreviewCuts(moveMarker(cutsRef.current, markerDrag.index, at));
       }
       return;
     }
@@ -769,6 +827,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     if (markerDrag && markerDrag.id === event.pointerId) {
       markerDragRef.current = null;
       setDragPreview(null);
+      setPreviewCuts(null);
       if (event.type === 'pointerup' && cutsRef.current) {
         applyCuts(moveMarker(cutsRef.current, markerDrag.index, snapIf(markerDrag.sample, event.shiftKey)));
       }
@@ -907,6 +966,22 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
               disabled={!audio || !cuts || cuts.future.length === 0}
               onClick={() => applyCuts(redo(cutsRef.current))}
             ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Delete cut"
+              title={!audio ? 'No audio loaded' : (deleteIndex < 0 ? 'Move the playhead within 0.25 s of a cut first' : 'Delete the cut nearest the playhead (Delete or Backspace)')}
+              disabled={!audio || deleteIndex < 0}
+              onClick={deleteNearestMarker}
+            ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/></svg></button>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Refresh cuts"
+              title={!audio ? 'No audio loaded' : (!audioKey ? 'No audio identity for this audio yet' : 'Reload saved cuts, clips and the list from this browser')}
+              disabled={!audio || !audioKey}
+              onClick={refreshCuts}
+            ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 11a8 8 0 10-2.3 5.7"/><path d="M20 5v6h-6"/></svg></button>
             {audio ? <span className="clip-visible">{clipSegments.length} clips</span> : null}
           </div>
           <div
@@ -1072,7 +1147,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
         <button type="button" disabled={Boolean(exportDisabledReason)} title={exportDisabledReason || 'Download the cut list as a CSV file'} onClick={exportCsv}>Download cut list (CSV)</button>
       </div>
       <div className="clip-hints">
-        <div className="clip-hint">M: cut at the playhead. Blade: cut where you click. Ctrl+Z: undo. Hold Shift while cutting to snap to the quietest spot within {SNAP_RADIUS_MS} ms. Loop: play a clip's button with the loop toggle on to repeat it between its two cuts.</div>
+        <div className="clip-hint">M: cut at the playhead. Blade: cut where you click. Delete: remove the cut nearest the playhead. Refresh: reload saved cuts. Ctrl+Z: undo. Hold Shift while cutting to snap to the quietest spot within {SNAP_RADIUS_MS} ms. Loop: play a clip's button with the loop toggle on to repeat it between its two cuts.</div>
         {restoreNote ? <div className="clip-hint clip-restore">{restoreNote}</div> : null}
       </div>
       <div className="clip-now">

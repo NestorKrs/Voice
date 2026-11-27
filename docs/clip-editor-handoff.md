@@ -1,7 +1,7 @@
 # Clip editor handoff
 
 Scope: ONLY the clip editor feature. The general project status stays in docs/handoff.md (stale at 0.2.19-beta; do not use it for this feature).
-Owner: @Eleven. Updated 2026-11-27. Version when written: 0.2.68-beta. Agents: Hermes (code), Claude (planning, task texts).
+Owner: @Eleven. Updated 2026-11-27. Version when written: 0.2.69-beta. Agents: Hermes (code), Claude (planning, task texts).
 
 ## Goal
 Cut one generated audio (one chunk, or the whole joined audio) into many clips by time, locally, with ZERO extra requests. The owner pastes unrelated sentences, generates once, then cuts them into separate files. Used mainly for voiceover for animation and video. Meant for all visitors of the site, desktop only in v1.
@@ -46,8 +46,7 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.36b list feedback (row play highlight, first-sentence placeholders, roomier rows, no end numbers, chunk info pinned, playbar-style transport) and 2.36c footer layout (hint and restore note in one row, taller list, wider name inputs) - DONE 0.2.51-beta/0.2.52-beta
 2.36d editor opening takes two thirds of the width via CSS, coral markers and faded shortcut row, blade icon/text, taller list, play/timer on the zoom row - DONE 0.2.53-beta (App.jsx untouched)
 2.36e centre the zoom/blade/undo tools, remove the helper highlight and dim its text to teal, use the Settings × close button, list +1 row - DONE 0.2.54-beta (one App.jsx line changed)
-2.37a src/clipExport.js pure clip export (clipFileNames, buildClipFiles, buildCutListFile, buildZipEntries) and tests - DONE 0.2.55-beta (not imported by the app yet; test import is the wiring proof; App.jsx untouched)
-2.37b export from the editor: saveClipFile + clipExportDeps in App.jsx, ZIP/CSV/per-clip buttons, fade toggle and CSS - DONE 0.2.56-beta (wired; App.jsx handlers untouched)
+2.37a src/clipExport.js pure clip export (clipFileNames, buildClipFiles, buildCutListFile, buildZipEntries) and tests - DONE 0.2.55-beta (not imported by the app yet; test import is the wiring proof; App.jsx untouched); 2.37b export from the editor: saveClipFile + clipExportDeps in App.jsx, ZIP/CSV/per-clip buttons, fade toggle and CSS - DONE 0.2.56-beta (wired; App.jsx handlers untouched)
 2.40a separate fade-in/fade-out and per-clip fades in clipSlices.js and clipExport.js - DONE 0.2.57-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof); 2.40b looping in src/clipPlayer.js (play opts.loop, setLoop, wrapped position, loop-aware seek, getState range) with appended tests - DONE 0.2.58-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
 2.40c fit the editor into the panel height (tools above waveform, transport below, only the list flexes and scrolls, chunk strip last) and per-clip row reordered to play, download, name, times, duration - DONE 0.2.59-beta (App.jsx untouched)
 2.40d draggable playhead (ruler strip scrub, playhead handle, grab the line in the waveform) and Go to start button + Home key in src/ClipEditor.jsx with CSS - DONE 0.2.60-beta (App.jsx untouched); 2.40e Loop clips toggle in the transport row, per-clip loop play/pause/resume, looping row highlight and loop-follows-cuts in src/ClipEditor.jsx with CSS - DONE 0.2.61-beta (App.jsx untouched)
@@ -56,6 +55,7 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.42a nameFromText in src/clipSlices.js and an optional texts argument in src/clipExport.js so unnamed clips are named from their text (audio names and CSV match), with appended tests - DONE 0.2.65-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof); 2.42b file names from the clip text in src/ClipEditor.jsx (clipTextList, texts in exportArgs, aligned single download, row download title) - DONE 0.2.66-beta (App.jsx untouched)
 2.43a src/clipTime.js pure typed-time parser (parseTime) and tests - DONE 0.2.67-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
 2.43b Start Reading disabled while the editor is open, visual clip-row reorder by grip drag (src/clipOrder.js with tests), Text panel shows the playing clip's text as one highlight block, and rounded sentence highlight across line breaks - DONE 0.2.68-beta (App.jsx, ClipEditor.jsx, App.css and source tests changed; all wired)
+2.43c cut markers can be deleted (Delete/Backspace or button, nearestMarkerIndex in src/clipCuts.js with tests), clip times/list update live during marker drags, and a Refresh button reloads saved cuts - DONE 0.2.69-beta (all wired; untested live)
 Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no bump); E4d 2.33a/2.33b 0.2.45-beta/0.2.46-beta; E4e 2.34a 0.2.47-beta; E5 2.34c 0.2.48-beta; E6 2.35a 0.2.49-beta; E7 2.36a-2.36c 0.2.50-beta/0.2.51-beta/0.2.52-beta; E8 2.37a/2.37b 0.2.55-beta/0.2.56-beta.
 
 ## Known gaps
@@ -65,7 +65,7 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 - The real encoders (encodeWav/encodeMp3 via clipExportDeps.encode) and the save dialog (saveClipFile) are wired; output is untested live.
 - src/clipMarkerStore.js is wired to the editor for markers; names are not saved or restored, and clear is not wired yet.
 - src/clipSnap.js snapToQuiet is wired to Shift snapping for slice click, M, marker drag and the hover line; untested live.
-- Marker drag is wired (preview, commit, ew-resize cursor) but untested live; arrow-key nudge and delete are not wired yet.
+- Marker drag previews the clip list live and commits on release, and Delete/Backspace removes the nearest cut, but both are untested live; arrow-key nudge is still not wired. Refresh reloads saved cuts for the current audio only and is untested live.
 - Marker saving and restore are untested live in Brave.
 - A name is dropped when its clip is deleted (no name history); undo cannot bring that name back.
 - Zero-length segments are skipped in audio files but still listed in cut-list.csv (buildCutListFile takes no skip input).
@@ -94,6 +94,6 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 Follow AGENTS.md and the voice skill. One task per message. Touch only named files. App.jsx is one big component: exact anchors and the duplicate check. New pure modules go in src/*.js with tests/*.test.mjs (node cannot import .jsx). Mock everything; no real audio or IndexedDB here, so the owner tests live. EVERY clip-editor task ends by updating this file in place (task log, known gaps, verified, version) and lists it in READY TO COMMIT with its own git add line.
 
 ## Verified
-- npm test: 507 pass, 0 fail (2026-11-28, 0.2.68-beta; full raw run pasted in the task report).
-- node --check clean on src/clipOrder.js, tests/clipOrder.test.mjs and tests/clipEditorSource.test.mjs; the App.jsx duplicate check shows only the two known false positives (const chunks, const commit). .jsx and .css cannot be compiled here, so the owner's vship build is the real check.
-- Owner must test live in Brave: open the editor and confirm Start Reading is greyed out with the reason below the button; drag a clip row by its grip and confirm only the list order changes (cuts, playback, names and exports keep their original order); play clips in the editor and check the Text panel highlights that clip's text; check a sentence highlight crossing a line break has rounded ends on both fragments.
+- npm test: 511 pass, 0 fail (2026-11-28, 0.2.69-beta; full raw run pasted in the task report).
+- node --check clean on src/clipCuts.js, tests/clipCuts.test.mjs and tests/clipEditorSource.test.mjs; the App.jsx duplicate check shows only the two known false positives (const chunks, const commit). .jsx and .css cannot be compiled here, so the owner's vship build is the real check.
+- Owner must test live in Brave: drag a marker and watch the clip rows' times and text change during the drag, then release and confirm the saved cut matches; press Delete (or the new button) with the playhead near a cut and confirm that cut disappears and undo restores it; change saved cuts in another tab, press Refresh and confirm markers and the clip list reload; check the on-screen reasons when no cut is near the playhead or no audio is loaded.
