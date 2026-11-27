@@ -87,6 +87,13 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     if (!textMapper || !cuts || cuts.markers.length === 0) return null;
     return segments(cuts).map((s) => textMapper.textForRange(s.start, s.end));
   }, [textMapper, cuts]);
+  const clipTextList = useMemo(
+    () => (clipTexts ? clipTexts.map((c) => c.text) : []),
+    [clipTexts],
+  );
+  const rowFileNames = clipExportDeps
+    ? clipFileNames(namesRef.current, clipSegments.length, clipExportDeps.format, clipTextList)
+    : [];
   const clipList = clipTexts ? segments(cuts) : null;
   const nowClipIndex = clipList
     ? clipList.reduce((last, segment, i) => (segment.start <= playPos ? i : last), clipList.length - 1)
@@ -733,6 +740,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     rate: audio.sampleRate,
     segments: cutsRef.current ? segments(cutsRef.current) : [],
     names: namesRef.current,
+    texts: clipTextList,
     format: clipExportDeps.format,
     fadeIn,
     fadeOut,
@@ -748,11 +756,17 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const downloadClip = (index) => {
     setExportMsg('');
     const all = exportArgs();
-    const name = clipFileNames(namesRef.current, all.segments.length, clipExportDeps.format)[index];
+    const name = clipFileNames(namesRef.current, all.segments.length, clipExportDeps.format, clipTextList)[index];
     const mime = clipExportDeps.format === 'wav' ? 'audio/wav' : 'audio/mpeg';
     const fadeClips = fadeScope === 'selected' ? (selectedClips.includes(index) ? [0] : []) : null;
     clipExportDeps.save(name, mime, async () => {
-      const { files } = await buildClipFiles({ ...all, segments: [all.segments[index]], fadeClips });
+      const { files } = await buildClipFiles({
+        ...all,
+        segments: [all.segments[index]],
+        names: [all.names[index]],
+        texts: [clipTextList[index]],
+        fadeClips,
+      });
       return files.length > 0 ? files[0].bytes : new Uint8Array(0);
     }).then(exportFailed);
   };
@@ -906,7 +920,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
                     type="button"
                     className="icon-btn"
                     aria-label={'Download clip ' + (segment.index + 1)}
-                    title={exportDisabledReason || 'Download clip ' + (segment.index + 1)}
+                    title={exportDisabledReason || ('Download clip ' + (segment.index + 1) + ' as ' + rowFileNames[segment.index])}
                     disabled={Boolean(exportDisabledReason)}
                     onClick={(e) => { e.stopPropagation(); downloadClip(segment.index); }}
                   ><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 7v8M8.5 11.5L12 15l3.5-3.5" /></svg></button>

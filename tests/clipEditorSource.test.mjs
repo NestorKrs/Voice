@@ -177,3 +177,9 @@ test('ClipEditor maps each clip to its own spoken text', () => {
   assert.ok(!source.includes('setItem('));
   assert.ok(!source.includes('getItem('));
 });
+
+test('ClipEditor names exported files from the clip text', () => {
+  assert.ok(source.includes('clipTextList'));
+  assert.ok(source.includes('texts: clipTextList'));
+  assert.ok(source.includes('Download clip'));
+});

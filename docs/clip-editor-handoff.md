@@ -1,7 +1,7 @@
 # Clip editor handoff
 
 Scope: ONLY the clip editor feature. The general project status stays in docs/handoff.md (stale at 0.2.19-beta; do not use it for this feature).
-Owner: @Eleven. Updated 2026-11-27. Version when written: 0.2.65-beta. Agents: Hermes (code), Claude (planning, task texts).
+Owner: @Eleven. Updated 2026-11-27. Version when written: 0.2.66-beta. Agents: Hermes (code), Claude (planning, task texts).
 
 ## Goal
 Cut one generated audio (one chunk, or the whole joined audio) into many clips by time, locally, with ZERO extra requests. The owner pastes unrelated sentences, generates once, then cuts them into separate files. Used mainly for voiceover for animation and video. Meant for all visitors of the site, desktop only in v1.
@@ -52,12 +52,12 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.37b export from the editor: saveClipFile + clipExportDeps in App.jsx, ZIP/CSV/per-clip buttons, fade toggle and CSS - DONE 0.2.56-beta (wired; App.jsx handlers untouched)
 2.40a separate fade-in/fade-out and per-clip fades in clipSlices.js and clipExport.js - DONE 0.2.57-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof); 2.40b looping in src/clipPlayer.js (play opts.loop, setLoop, wrapped position, loop-aware seek, getState range) with appended tests - DONE 0.2.58-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
 2.40c fit the editor into the panel height (tools above waveform, transport below, only the list flexes and scrolls, chunk strip last) and per-clip row reordered to play, download, name, times, duration - DONE 0.2.59-beta (App.jsx untouched)
-2.40d draggable playhead (ruler strip scrub, playhead handle, grab the line in the waveform) and Go to start button + Home key in src/ClipEditor.jsx with CSS - DONE 0.2.60-beta (App.jsx untouched)
-2.40e Loop clips toggle in the transport row, per-clip loop play/pause/resume, looping row highlight and loop-follows-cuts in src/ClipEditor.jsx with CSS - DONE 0.2.61-beta (App.jsx untouched)
+2.40d draggable playhead (ruler strip scrub, playhead handle, grab the line in the waveform) and Go to start button + Home key in src/ClipEditor.jsx with CSS - DONE 0.2.60-beta (App.jsx untouched); 2.40e Loop clips toggle in the transport row, per-clip loop play/pause/resume, looping row highlight and loop-follows-cuts in src/ClipEditor.jsx with CSS - DONE 0.2.61-beta (App.jsx untouched)
 2.40f Fade in / Fade out toggles, All/Selected scope picker and row selection (click, Ctrl+click, Shift+click) driving per-clip fades in src/ClipEditor.jsx with CSS - DONE 0.2.62-beta (App.jsx untouched)
 2.41a src/clipText.js pure sample-range to text mapper (SNAP_CHARS, MAX_TEXT_CHARS, createClipTextMapper) and tests - DONE 0.2.63-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
 2.41b clip row and strip show each clip's own text (name placeholder, hover title, "Clip N of M - chunk K") in src/ClipEditor.jsx and src/App.css - DONE 0.2.64-beta (App.jsx untouched)
 2.42a nameFromText in src/clipSlices.js and an optional texts argument in src/clipExport.js so unnamed clips are named from their text (audio names and CSV match), with appended tests - DONE 0.2.65-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
+2.42b file names from the clip text in src/ClipEditor.jsx (clipTextList, texts in exportArgs, aligned single download, row download title) - DONE 0.2.66-beta (App.jsx untouched)
 Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no bump); E4d 2.33a/2.33b 0.2.45-beta/0.2.46-beta; E4e 2.34a 0.2.47-beta; E5 2.34c 0.2.48-beta; E6 2.35a 0.2.49-beta; E7 2.36a-2.36c 0.2.50-beta/0.2.51-beta/0.2.52-beta; E8 2.37a/2.37b 0.2.55-beta/0.2.56-beta.
 
 ## Known gaps
@@ -83,7 +83,7 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 - The ruler strip, playhead handle, grab-the-line scrub and Go to start (button and Home) are wired but untested live in Brave.
 - Clip text is approximate unless the cut lands on a pause: src/clipText.js falls back to a linear position estimate and marks that part estimated.
 - Clip text placeholders, the hover title and the clip strip ("Clip N of M - chunk K") are wired but untested live in Brave.
-- nameFromText and the optional texts argument are not wired into the app yet (test import is the wiring proof); the app still names unnamed clips clip-001.
+- nameFromText and the texts argument are wired into the export path (ZIP, CSV, single download, row download title) but untested live in Brave.
 
 ## Open decisions
 - Reaction-time compensation value and playhead offset (tuned live).
@@ -94,6 +94,6 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 Follow AGENTS.md and the voice skill. One task per message. Touch only named files. App.jsx is one big component: exact anchors and the duplicate check. New pure modules go in src/*.js with tests/*.test.mjs (node cannot import .jsx). Mock everything; no real audio or IndexedDB here, so the owner tests live. EVERY clip-editor task ends by updating this file in place (task log, known gaps, verified, version) and lists it in READY TO COMMIT with its own git add line.
 
 ## Verified
-- npm test: 485 pass, 0 fail (2026-11-27, 0.2.65-beta; full raw run pasted in the task report).
-- node --check clean on src/clipSlices.js, src/clipExport.js, tests/clipSlices.test.mjs and tests/clipExport.test.mjs; .jsx and .css cannot be compiled here, so the owner's vship build is the real check.
-- Nothing to test live until nameFromText is wired: then check that an unnamed clip's audio file name and its CSV name column both come from the first six words of its text (50 characters max), and that a typed name still wins.
+- npm test: 486 pass, 0 fail (2026-11-27, 0.2.66-beta; full raw run pasted in the task report).
+- node --check clean on tests/clipEditorSource.test.mjs; .jsx and .css cannot be compiled here, so the owner's vship build is the real check.
+- Owner must test live in Brave: cut three sentences and download the ZIP without typing names (files named from the first words, e.g. One-two-three-four-five-six.wav, and cut-list.csv carries the same names); a typed name overrides it in the ZIP, the single download and the CSV; two clips starting with the same words become -2; a clip with no mapped text is named clip-001 style; hovering a row's download button shows the file name it will save.

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.66-beta - 2026-11-27
+- Clip editor: file names now come from the clip text in src/ClipEditor.jsx (ZIP, CSV, single download and the row download title), with the single clip aligned to its own segment; App.jsx untouched
+
 ## 0.2.65-beta - 2026-11-27
 - Clip editor: unnamed clips are named from the first six words of their text (nameFromText in src/clipSlices.js, optional texts argument in src/clipExport.js), so audio file names and the CSV name column match; no UI change
 
