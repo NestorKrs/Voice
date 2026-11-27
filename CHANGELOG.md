@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.57-beta - 2026-11-27
+- Separate fade-in/fade-out and per-clip fade selection in clipSlices.js and clipExport.js, with tests (no UI change)
+
 ## 0.2.56-beta - 2026-11-27
 - Clip editor export: ZIP, single-clip and cut-list CSV download buttons with picker-first saving, injected encoders and an opt-in fade toggle
 

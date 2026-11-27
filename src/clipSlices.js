@@ -8,7 +8,16 @@ export function fadeSamples(ms, rate) {
   return Math.max(0, Math.round(ms * rate / 1000));
 }
 
-export function sliceClip(samples, start, end, fadeN) {
+function fadeAmount(fade, end, half) {
+  if (typeof fade === 'number') return fade > 0 ? Math.min(fade, half) : 0;
+  if (fade && typeof fade === 'object') {
+    const value = fade[end];
+    return Number.isInteger(value) && value >= 0 ? Math.min(value, half) : 0;
+  }
+  return 0;
+}
+
+export function sliceClip(samples, start, end, fade) {
   const lo = clamp(start, 0, samples.length);
   const hi = clamp(end, 0, samples.length);
   if (hi <= lo) return new Float32Array(0);
@@ -16,16 +25,23 @@ export function sliceClip(samples, start, end, fadeN) {
   const out = new Float32Array(hi - lo);
   for (let i = 0; i < out.length; i += 1) out[i] = samples[lo + i];
 
-  const n = fadeN > 0 ? Math.min(fadeN, Math.floor(out.length / 2)) : 0;
-  if (n > 0) {
-    for (let i = 0; i < n; i += 1) out[i] *= i / n;
-    for (let j = 0; j < n; j += 1) out[out.length - 1 - j] *= j / n;
+  const half = Math.floor(out.length / 2);
+  const inN = fadeAmount(fade, 'inN', half);
+  const outN = fadeAmount(fade, 'outN', half);
+  if (inN > 0) {
+    for (let i = 0; i < inN; i += 1) out[i] *= i / inN;
+  }
+  if (outN > 0) {
+    for (let j = 0; j < outN; j += 1) out[out.length - 1 - j] *= j / outN;
   }
   return out;
 }
 
-export function sliceAll(samples, segments, fadeN) {
-  return segments.map((segment) => sliceClip(samples, segment.start, segment.end, fadeN));
+export function sliceAll(samples, segments, fade) {
+  const fadeFor = typeof fade === 'function' ? fade : () => fade;
+  return segments.map((segment, index) => sliceClip(
+    samples, segment.start, segment.end, fadeFor(index),
+  ));
 }
 
 export function defaultClipName(i) {

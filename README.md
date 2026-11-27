@@ -23,7 +23,8 @@ Features:
 - Font leading slider and spell check toggle.
 - Highlight mode (words, sentences or none).
 - Provider switch between Fish Audio and HeyGen.
-- Phone layout (highlight and the selection speaker icon are off on phones).
+- Phone layout (the selection speaker icon is off on phones).
+- Clip editor (desktop only): cut one generated audio (a chunk or the whole text) into separate clips at exact sample positions, with a zoomable waveform, a moving playhead, an M-key and scissors cut tool, snap to the quietest nearby spot (hold Shift), undo/redo, saved cut markers per audio, editable clip names, per-clip and ZIP download, and a cut list CSV. No extra speech requests are used.
 
 Run: npm install, then npm run dev, then open http://127.0.0.1:5180/. Tests: npm test.
 Web build: npm run build makes dist/, built for the path /voice/app/ (set in vite.config.js).
@@ -33,5 +34,6 @@ Key: The OpenRouter API key is typed into Settings and stays in this browser's l
 Privacy: The pasted text is sent to OpenRouter and to the selected provider (Fish Audio or HeyGen) to make the speech.
 
 Limits: OpenRouter free models allow 50 requests per UTC day (1000 if the account has bought $10 of credits in total) and 20 per minute, shared with all free models. Every attempt counts, including failed ones.
+The clip editor decodes audio in memory: editing the whole text at once is limited to 15 minutes; choose a single chunk for longer texts.
 
 Plan: docs/plan.md (original, partly outdated). Rules for coding agents: AGENTS.md.

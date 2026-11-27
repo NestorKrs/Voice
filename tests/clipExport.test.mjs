@@ -186,3 +186,124 @@ test('buildZipEntries does not modify its inputs', async () => {
   assert.deepEqual(segments, segmentsCopy);
   assert.deepEqual(names, namesCopy);
 });
+
+function captureMono(captured) {
+  return async (mono) => {
+    captured.push(Array.from(mono));
+    return new Uint8Array([mono.length % 256]);
+  };
+}
+
+function threeClipArgs(overrides = {}) {
+  return makeArgs({
+    samples: new Float32Array(12).fill(1),
+    segments: [
+      { start: 0, end: 4 },
+      { start: 4, end: 8 },
+      { start: 8, end: 12 },
+    ],
+    names: ['A', 'B', 'C'],
+    fadeMs: 2,
+    ...overrides,
+  });
+}
+
+test('buildClipFiles with fadeIn only fades the start of every clip', async () => {
+  const seen = [];
+  await buildClipFiles(threeClipArgs({ fadeIn: true, encode: captureMono(seen) }));
+  assert.deepEqual(seen, [
+    [0, 0.5, 1, 1],
+    [0, 0.5, 1, 1],
+    [0, 0.5, 1, 1],
+  ]);
+});
+
+test('buildClipFiles with fadeOut only fades the end of every clip', async () => {
+  const seen = [];
+  await buildClipFiles(threeClipArgs({ fadeOut: true, encode: captureMono(seen) }));
+  assert.deepEqual(seen, [
+    [1, 1, 0.5, 0],
+    [1, 1, 0.5, 0],
+    [1, 1, 0.5, 0],
+  ]);
+});
+
+test('buildClipFiles with fadeClips [1] fades only the second clip', async () => {
+  const seen = [];
+  await buildClipFiles(threeClipArgs({
+    fadeIn: true, fadeOut: false, fadeClips: [1], encode: captureMono(seen),
+  }));
+  assert.deepEqual(seen, [
+    [1, 1, 1, 1],
+    [0, 0.5, 1, 1],
+    [1, 1, 1, 1],
+  ]);
+});
+
+test('buildClipFiles with an empty fadeClips fades no clip', async () => {
+  const seen = [];
+  await buildClipFiles(threeClipArgs({
+    fadeIn: true, fadeOut: true, fadeClips: [], encode: captureMono(seen),
+  }));
+  assert.deepEqual(seen, [
+    [1, 1, 1, 1],
+    [1, 1, 1, 1],
+    [1, 1, 1, 1],
+  ]);
+});
+
+test('buildClipFiles with fadeClips null or undefined fades all clips', async () => {
+  const seen = [];
+  await buildClipFiles(threeClipArgs({
+    fadeIn: true, fadeClips: null, encode: captureMono(seen),
+  }));
+  await buildClipFiles(threeClipArgs({
+    fadeIn: true, fadeClips: undefined, encode: captureMono(seen),
+  }));
+  assert.deepEqual(seen, [
+    [0, 0.5, 1, 1], [0, 0.5, 1, 1], [0, 0.5, 1, 1],
+    [0, 0.5, 1, 1], [0, 0.5, 1, 1], [0, 0.5, 1, 1],
+  ]);
+});
+
+test('buildClipFiles legacy fadeMs alone still fades both ends of every clip', async () => {
+  const seen = [];
+  await buildClipFiles(threeClipArgs({ encode: captureMono(seen) }));
+  assert.deepEqual(seen, [
+    [0, 0.5, 0.5, 0],
+    [0, 0.5, 0.5, 0],
+    [0, 0.5, 0.5, 0],
+  ]);
+});
+
+test('buildZipEntries forwards the new fade arguments', async () => {
+  const encode = async (mono) => new Uint8Array([mono[0]]);
+  const { entries, skipped } = await buildZipEntries(threeClipArgs({
+    fadeIn: true, fadeOut: false, fadeClips: [1], encode,
+  }));
+  assert.deepEqual(entries.slice(0, 3).map((entry) => entry.bytes[0]), [1, 0, 1]);
+  assert.equal(entries[3].name, 'cut-list.csv');
+  assert.deepEqual(skipped, []);
+});
+
+test('buildClipFiles with new fade arguments does not modify its inputs', async () => {
+  const samples = new Float32Array(12).fill(1);
+  const segments = [
+    { start: 0, end: 4 },
+    { start: 4, end: 8 },
+    { start: 8, end: 12 },
+  ];
+  const names = ['A', 'B', 'C'];
+  const fadeClips = [1];
+  const sourceCopy = Array.from(samples);
+  const segmentsCopy = JSON.parse(JSON.stringify(segments));
+  const namesCopy = [...names];
+  const fadeClipsCopy = [...fadeClips];
+  await buildClipFiles(threeClipArgs({
+    samples, segments, names, fadeClips, fadeIn: true,
+  }));
+  assert.deepEqual(Array.from(samples), sourceCopy);
+  assert.deepEqual(segments, segmentsCopy);
+  assert.deepEqual(names, namesCopy);
+  assert.deepEqual(fadeClips, fadeClipsCopy);
+});

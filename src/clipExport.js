@@ -12,9 +12,20 @@ export function clipFileNames(names, count, ext) {
   return effectiveNames(names, count).map((name) => name + '.' + ext);
 }
 
-export async function buildClipFiles({ samples, rate, segments, names, format, fadeMs, encode }) {
-  const fadeN = fadeMs ? fadeSamples(fadeMs, rate) : 0;
-  const clips = sliceAll(samples, segments, fadeN);
+export async function buildClipFiles({
+  samples, rate, segments, names, format, fadeMs, encode, fadeIn, fadeOut, fadeClips,
+}) {
+  let fade;
+  if (fadeIn === undefined && fadeOut === undefined) {
+    fade = fadeMs ? fadeSamples(fadeMs, rate) : 0;
+  } else {
+    const n = fadeMs ? fadeSamples(fadeMs, rate) : 0;
+    const selected = fadeClips == null ? null : new Set(fadeClips);
+    fade = (index) => (selected && !selected.has(index)
+      ? 0
+      : { inN: fadeIn ? n : 0, outN: fadeOut ? n : 0 });
+  }
+  const clips = sliceAll(samples, segments, fade);
   const fileNames = clipFileNames(names, segments.length, format);
   const files = [];
   const skipped = [];

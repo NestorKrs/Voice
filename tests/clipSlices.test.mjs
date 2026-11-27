@@ -115,3 +115,95 @@ test('sliceAll and uniqueNames do not modify their inputs', () => {
   assert.deepEqual(segments, segmentsCopy);
   assert.deepEqual(names, namesCopy);
 });
+
+test('sliceClip with { inN: 2, outN: 0 } fades only the start', () => {
+  const result = sliceClip(new Float32Array(6).fill(1), 0, 6, { inN: 2, outN: 0 });
+  assert.deepEqual(Array.from(result), [0, 0.5, 1, 1, 1, 1]);
+});
+
+test('sliceClip with { inN: 0, outN: 2 } fades only the end', () => {
+  const result = sliceClip(new Float32Array(6).fill(1), 0, 6, { inN: 0, outN: 2 });
+  assert.deepEqual(Array.from(result), [1, 1, 1, 1, 0.5, 0]);
+});
+
+test('sliceClip object fade uses independent in and out lengths', () => {
+  const result = sliceClip(new Float32Array(8).fill(1), 0, 8, { inN: 2, outN: 4 });
+  assert.deepEqual(Array.from(result), [0, 0.5, 1, 1, 0.75, 0.5, 0.25, 0]);
+});
+
+test('sliceClip object fade caps each end at half the clip length', () => {
+  const result = sliceClip(new Float32Array(5).fill(1), 0, 5, { inN: 10, outN: 10 });
+  assert.deepEqual(Array.from(result), [0, 0.5, 1, 0.5, 0]);
+});
+
+test('sliceClip number form still fades both ends exactly as before', () => {
+  const signal = new Float32Array(6).fill(1);
+  const numberFade = sliceClip(signal, 0, 6, 2);
+  const objectFade = sliceClip(signal, 0, 6, { inN: 2, outN: 2 });
+  assert.deepEqual(Array.from(numberFade), [0, 0.5, 1, 1, 0.5, 0]);
+  assert.deepEqual(Array.from(objectFade), Array.from(numberFade));
+});
+
+test('sliceClip missing or invalid fade gives a plain copy', () => {
+  const samples = new Float32Array([1, 2, 3, 4]);
+  assert.deepEqual(Array.from(sliceClip(samples, 0, 4)), [1, 2, 3, 4]);
+  assert.deepEqual(Array.from(sliceClip(samples, 0, 4, { inN: -1, outN: 'x' })), [1, 2, 3, 4]);
+  assert.deepEqual(Array.from(sliceClip(samples, 0, 4, { inN: 1.5, outN: true })), [1, 2, 3, 4]);
+  assert.deepEqual(Array.from(sliceClip(samples, 0, 4, { inN: 1 })), [0, 2, 3, 4]);
+});
+
+test('sliceAll applies one object fade to every clip', () => {
+  const samples = new Float32Array([
+    1, 1, 1, 1,
+    2, 2, 2, 2,
+    3, 3, 3, 3,
+  ]);
+  const segments = [
+    { start: 0, end: 4 },
+    { start: 4, end: 8 },
+    { start: 8, end: 12 },
+  ];
+  const result = sliceAll(samples, segments, { inN: 1, outN: 0 });
+  assert.deepEqual(result.map((clip) => Array.from(clip)), [
+    [0, 1, 1, 1],
+    [0, 2, 2, 2],
+    [0, 3, 3, 3],
+  ]);
+});
+
+test('sliceAll calls a fade function with each clip index', () => {
+  const samples = new Float32Array([
+    1, 1, 1, 1,
+    2, 2, 2, 2,
+    3, 3, 3, 3,
+  ]);
+  const segments = [
+    { start: 0, end: 4 },
+    { start: 4, end: 8 },
+    { start: 8, end: 12 },
+  ];
+  const seen = [];
+  const result = sliceAll(samples, segments, (index) => {
+    seen.push(index);
+    return [0, { inN: 2, outN: 0 }, 2][index];
+  });
+  assert.deepEqual(seen, [0, 1, 2]);
+  assert.deepEqual(result.map((clip) => Array.from(clip)), [
+    [1, 1, 1, 1],
+    [0, 1, 2, 2],
+    [0, 1.5, 1.5, 0],
+  ]);
+});
+
+test('sliceAll with an object fade does not modify its inputs', () => {
+  const samples = new Float32Array([1, 1, 1, 1, 2, 2, 2, 2]);
+  const segments = [{ start: 0, end: 4 }, { start: 4, end: 8 }];
+  const fade = { inN: 2, outN: 1 };
+  const sourceCopy = Array.from(samples);
+  const segmentsCopy = JSON.parse(JSON.stringify(segments));
+  const fadeCopy = { ...fade };
+  sliceAll(samples, segments, fade);
+  assert.deepEqual(Array.from(samples), sourceCopy);
+  assert.deepEqual(segments, segmentsCopy);
+  assert.deepEqual(fade, fadeCopy);
+});
