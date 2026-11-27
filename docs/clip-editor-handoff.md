@@ -1,7 +1,7 @@
 # Clip editor handoff
 
 Scope: ONLY the clip editor feature. The general project status stays in docs/handoff.md (stale at 0.2.19-beta; do not use it for this feature).
-Owner: @Eleven. Updated 2026-11-27. Version when written: 0.2.63-beta. Agents: Hermes (code), Claude (planning, task texts).
+Owner: @Eleven. Updated 2026-11-27. Version when written: 0.2.64-beta. Agents: Hermes (code), Claude (planning, task texts).
 
 ## Goal
 Cut one generated audio (one chunk, or the whole joined audio) into many clips by time, locally, with ZERO extra requests. The owner pastes unrelated sentences, generates once, then cuts them into separate files. Used mainly for voiceover for animation and video. Meant for all visitors of the site, desktop only in v1.
@@ -31,11 +31,9 @@ Rejected by the owner: it costs credits (50 per day free, 1000 with credits, 20 
 Integer time; every edit a pure command with undo; peak overviews; tiny fades at cut edges against clicks; cut list CSV export; markers saved per audio in the browser; nudge steps. Not wanted: plugins, MIDI, multitrack, automation.
 
 ## Task log (statuses from CHANGELOG.md)
-2.29a orient; 2.29b src/clipCuts.js pure cut state with undo/redo - DONE 0.2.29-beta; 2.29d src/waveformPeaks.js peak pyramid - DONE 0.2.30-beta (sent twice; the second run stopped with no change)
-2.30a src/clipEditorAudio.js concatMono; 2.30b src/ClipEditor.jsx read-only waveform view and CSS - DONE 0.2.31-beta/0.2.32-beta; 2.30c src/clipEditorLoad.js loader - DONE 0.2.33-beta
+2.29a orient; 2.29b src/clipCuts.js pure cut state with undo/redo - DONE 0.2.29-beta; 2.29d src/waveformPeaks.js peak pyramid - DONE 0.2.30-beta (sent twice; the second run stopped with no change); 2.30a src/clipEditorAudio.js concatMono; 2.30b src/ClipEditor.jsx read-only waveform view and CSS - DONE 0.2.31-beta/0.2.32-beta; 2.30c src/clipEditorLoad.js loader - DONE 0.2.33-beta
 2.30d wiring into App.jsx (Edit clips button, state, load handlers, Reader swap) - DONE 0.2.34-beta. Live test by the owner: looks right, cannot cut yet.
-2.30e tooltip fix and close-on-stale - STOPPED by Hermes (the reset effect is declared above closeClipEditor); replaced by 2.30f
-2.30f tooltip fix and close-on-stale (new effect below closeClipEditor) - DONE 0.2.35-beta
+2.30e tooltip fix and close-on-stale - STOPPED by Hermes (the reset effect is declared above closeClipEditor); 2.30f tooltip fix and close-on-stale (new effect below closeClipEditor) - DONE 0.2.35-beta
 2.31a src/clipView.js pure zoom and scroll maths; 2.31b src/clipPlayer.js Web Audio player (fake-context tests) - DONE 0.2.37-beta/0.2.36-beta; 2.31c ClipEditor zoom, wheel, drag, X and plus/minus icons - DONE 0.2.38-beta (refined 0.2.39-beta)
 2.32g src/clipEditorLoad.js decoded length limit (MAX_EDIT_SECONDS 900) and tests - DONE 0.2.40-beta
 2.32b src/clipCsv.js cut-list CSV writer and tests - DONE 0.2.41-beta (not imported by the app yet)
@@ -60,6 +58,7 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.40e Loop clips toggle in the transport row, per-clip loop play/pause/resume, looping row highlight and loop-follows-cuts in src/ClipEditor.jsx with CSS - DONE 0.2.61-beta (App.jsx untouched)
 2.40f Fade in / Fade out toggles, All/Selected scope picker and row selection (click, Ctrl+click, Shift+click) driving per-clip fades in src/ClipEditor.jsx with CSS - DONE 0.2.62-beta (App.jsx untouched)
 2.41a src/clipText.js pure sample-range to text mapper (SNAP_CHARS, MAX_TEXT_CHARS, createClipTextMapper) and tests - DONE 0.2.63-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
+2.41b clip row and strip show each clip's own text (name placeholder, hover title, "Clip N of M - chunk K") in src/ClipEditor.jsx and src/App.css - DONE 0.2.64-beta (App.jsx untouched)
 Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no bump); E4d 2.33a/2.33b 0.2.45-beta/0.2.46-beta; E4e 2.34a 0.2.47-beta; E5 2.34c 0.2.48-beta; E6 2.35a 0.2.49-beta; E7 2.36a-2.36c 0.2.50-beta/0.2.51-beta/0.2.52-beta; E8 2.37a/2.37b 0.2.55-beta/0.2.56-beta.
 
 ## Known gaps
@@ -84,6 +83,7 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 - Looping is wired to the editor (Loop clips toggle, per-clip loop play, looping row highlight, loop follows cuts) but untested live in Brave; resuming a paused non-loop clip and a paused loop after a cut change need a live check.
 - The ruler strip, playhead handle, grab-the-line scrub and Go to start (button and Home) are wired but untested live in Brave.
 - Clip text is approximate unless the cut lands on a pause: src/clipText.js falls back to a linear position estimate and marks that part estimated.
+- Clip text placeholders, the hover title and the clip strip ("Clip N of M - chunk K") are wired but untested live in Brave.
 
 ## Open decisions
 - Reaction-time compensation value and playhead offset (tuned live).
@@ -94,6 +94,6 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 Follow AGENTS.md and the voice skill. One task per message. Touch only named files. App.jsx is one big component: exact anchors and the duplicate check. New pure modules go in src/*.js with tests/*.test.mjs (node cannot import .jsx). Mock everything; no real audio or IndexedDB here, so the owner tests live. EVERY clip-editor task ends by updating this file in place (task log, known gaps, verified, version) and lists it in READY TO COMMIT with its own git add line.
 
 ## Verified
-- npm test: 469 pass, 0 fail (2026-11-27, 0.2.63-beta; full raw run pasted in the task report).
-- node --check clean on src/clipText.js and tests/clipText.test.mjs; .jsx and .css cannot be compiled here, so the owner's vship build is the real check.
-- Nothing to test live until src/clipText.js is wired: then check that a clip row shows the words at its start, that a cut on a pause shows a whole sentence, and that a cut mid-word shows the shorter phrase.
+- npm test: 470 pass, 0 fail (2026-11-27, 0.2.64-beta; full raw run pasted in the task report).
+- node --check clean on tests/clipEditorSource.test.mjs; .jsx and .css cannot be compiled here, so the owner's vship build is the real check.
+- Owner must test live in Brave: cut a text of several sentences at the pauses; each row's name field shows that clip's sentence(s) as a grey placeholder; the strip shows the same text for the clip under the playhead with "Clip N of M - chunk K"; a mid-sentence cut shows a ~ prefix; a clip spanning two chunks joins both parts; typing a name hides the placeholder but the hover title still shows the text; with no cuts the strip looks as before; the first cut on a long chunk does not freeze the page.

@@ -8,6 +8,10 @@ import { compensateKeyPress, snapToQuiet, SNAP_RADIUS_MS, FADE_MS } from './clip
 import { createMarkerStore } from './clipMarkerStore.js';
 import { createClipPlayer } from './clipPlayer.js';
 import { fullView, zoomAt, wheelFactor, panByPixels, sampleAtX, xAtSample, ensureVisible, MIN_SPAN, isFullView } from './clipView.js';
+import { createClipTextMapper } from './clipText.js';
+import { findSilences } from './silenceMap.js';
+import { alignTimeMap } from './alignMap.js';
+import { sentenceRanges, charWeights } from './highlight.js';
 
 export default function ClipEditor({ audio, loading, error, scopeValue, scopeOptions, onScopeChange, chunkTexts = [], audioKey = null, clipExportDeps }) {
   const rootRef = useRef(null);
@@ -69,6 +73,30 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const nowText = nowChunk >= 0 && chunkTexts[nowChunk]
     ? chunkTexts[nowChunk].slice(0, 200) + (chunkTexts[nowChunk].length > 200 ? '…' : '')
     : '';
+
+  const textMapper = useMemo(() => {
+    try {
+      return audio && chunkTexts && chunkTexts.length
+        ? createClipTextMapper({ audio, chunkTexts, deps: { findSilences, alignTimeMap, charWeights, sentenceRanges } })
+        : null;
+    } catch (e) {
+      return null;
+    }
+  }, [audio, chunkTexts]);
+  const clipTexts = useMemo(() => {
+    if (!textMapper || !cuts || cuts.markers.length === 0) return null;
+    return segments(cuts).map((s) => textMapper.textForRange(s.start, s.end));
+  }, [textMapper, cuts]);
+  const clipList = clipTexts ? segments(cuts) : null;
+  const nowClipIndex = clipList
+    ? clipList.reduce((last, segment, i) => (segment.start <= playPos ? i : last), clipList.length - 1)
+    : -1;
+  const nowClip = nowClipIndex >= 0 && clipList ? clipList[nowClipIndex] : null;
+  const nowClipChunkPos = nowClip && audio
+    ? audio.offsets.reduce((last, offset, i) => (offset <= nowClip.start ? i : last), -1)
+    : -1;
+  const nowClipChunkNo = nowClipChunkPos >= 0 && audio ? audio.indexes[nowClipChunkPos] + 1 : 0;
+  const nowClipText = nowClip && clipTexts ? clipTexts[nowClipIndex] : null;
 
   const snapIf = (sample, shiftHeld) => (shiftHeld ? snapToQuiet(audio.samples, rate, sample) : sample);
 
@@ -856,6 +884,11 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
               const chunk = audio ? audio.offsets.reduce((last, offset, i) => (offset <= segment.start ? i : last), -1) : -1;
               const chunkId = chunk >= 0 ? audio.indexes[chunk] : -1;
               const previewText = chunkId >= 0 && chunkTexts[chunkId] ? firstSentence(chunkTexts[chunkId]) : '';
+              const clipText = clipTexts ? clipTexts[segment.index] : null;
+              const rowText = clipText && clipText.text ? (clipText.estimated ? '~ ' : '') + clipText.text : '';
+              const rowTitle = clipText && clipText.text
+                ? clipText.text + (clipText.estimated ? ' (estimated: no clear pause found at the cut)' : '')
+                : '';
               return (
                 <div className={'clip-row' + (isLooping ? ' looping' : '') + (selectedClips.includes(segment.index) ? ' selected' : '')} key={segment.index} onClick={(event) => onRowClick(event, segment.index)}>
                   <button
@@ -880,7 +913,8 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
                   <input
                     maxLength={60}
                     aria-label="Clip name"
-                    placeholder={previewText || defaultClipName(segment.index)}
+                    placeholder={rowText || previewText || defaultClipName(segment.index)}
+                    title={rowTitle || undefined}
                     value={names[segment.index] || ''}
                     onChange={(event) => {
                       const next = [...namesRef.current];
@@ -926,7 +960,16 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
         {restoreNote ? <div className="clip-hint clip-restore">{restoreNote}</div> : null}
       </div>
       <div className="clip-now">
-        {audio && nowIndex >= 0 ? (
+        {clipTexts && nowClip ? (
+          <>
+            <div>{'Clip ' + (nowClipIndex + 1) + ' of ' + clipList.length + ' - chunk ' + nowClipChunkNo}</div>
+            {nowClipText && nowClipText.text ? (
+              <div title={nowClipText.text + (nowClipText.estimated ? ' (estimated: no clear pause found at the cut)' : '')}>
+                {(nowClipText.estimated ? '~ ' : '') + nowClipText.text}
+              </div>
+            ) : null}
+          </>
+        ) : audio && nowIndex >= 0 ? (
           <>
             <div>{'Chunk ' + (audio.indexes[nowIndex] + 1) + ' of ' + audio.offsets.length}</div>
             {nowText ? <div>{nowText}</div> : null}

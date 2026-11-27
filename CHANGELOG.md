@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.64-beta - 2026-11-27
+- Clip editor: each clip row's name field shows that clip's own spoken text as its placeholder (with a ~ prefix and a hover title when estimated), and the strip below shows the clip under the playhead as "Clip N of M - chunk K"; src/ClipEditor.jsx and src/App.css only
+
 ## 0.2.63-beta - 2026-11-27
 - Clip editor: new pure src/clipText.js maps a sample range back to the spoken text (pause-aligned, sentence and word snapping, 300-character cap) with tests; not imported by the app yet
 

@@ -163,3 +163,17 @@ test('ClipEditor wires the fade toggles, scope picker and clip selection', () =>
   assert.ok(!source.includes('fadeOn'));
   assert.ok(!source.includes('type="checkbox"'));
 });
+
+test('ClipEditor maps each clip to its own spoken text', () => {
+  assert.ok(source.includes("from './clipText.js'"));
+  assert.ok(source.includes("from './silenceMap.js'"));
+  assert.ok(source.includes("from './alignMap.js'"));
+  assert.ok(source.includes("from './highlight.js'"));
+  assert.ok(source.includes('createClipTextMapper'));
+  assert.ok(source.includes('textForRange'));
+  assert.ok(source.includes('estimated: no clear pause found at the cut'));
+  // The editor passes window.localStorage to an injected store, so the text
+  // feature must not add direct storage reads or writes of its own.
+  assert.ok(!source.includes('setItem('));
+  assert.ok(!source.includes('getItem('));
+});
