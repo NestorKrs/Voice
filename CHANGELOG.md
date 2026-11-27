@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.63-beta - 2026-11-27
+- Clip editor: new pure src/clipText.js maps a sample range back to the spoken text (pause-aligned, sentence and word snapping, 300-character cap) with tests; not imported by the app yet
+
 ## 0.2.62-beta - 2026-11-27
 - Clip editor: Fade in / Fade out toggles and an All clips / Selected clips scope picker in the export row; rows are selectable (click, Ctrl+click, Shift+click) and the selection drives per-clip fades
 

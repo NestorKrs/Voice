@@ -1,7 +1,7 @@
 # Clip editor handoff
 
 Scope: ONLY the clip editor feature. The general project status stays in docs/handoff.md (stale at 0.2.19-beta; do not use it for this feature).
-Owner: @Eleven. Updated 2026-11-27. Version when written: 0.2.62-beta. Agents: Hermes (code), Claude (planning, task texts).
+Owner: @Eleven. Updated 2026-11-27. Version when written: 0.2.63-beta. Agents: Hermes (code), Claude (planning, task texts).
 
 ## Goal
 Cut one generated audio (one chunk, or the whole joined audio) into many clips by time, locally, with ZERO extra requests. The owner pastes unrelated sentences, generates once, then cuts them into separate files. Used mainly for voiceover for animation and video. Meant for all visitors of the site, desktop only in v1.
@@ -36,8 +36,7 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.30d wiring into App.jsx (Edit clips button, state, load handlers, Reader swap) - DONE 0.2.34-beta. Live test by the owner: looks right, cannot cut yet.
 2.30e tooltip fix and close-on-stale - STOPPED by Hermes (the reset effect is declared above closeClipEditor); replaced by 2.30f
 2.30f tooltip fix and close-on-stale (new effect below closeClipEditor) - DONE 0.2.35-beta
-2.31a src/clipView.js pure zoom and scroll maths; 2.31b src/clipPlayer.js Web Audio player (fake-context tests) - DONE 0.2.37-beta/0.2.36-beta
-2.31c ClipEditor zoom, wheel, drag, X and plus/minus icons - DONE 0.2.38-beta (refined 0.2.39-beta)
+2.31a src/clipView.js pure zoom and scroll maths; 2.31b src/clipPlayer.js Web Audio player (fake-context tests) - DONE 0.2.37-beta/0.2.36-beta; 2.31c ClipEditor zoom, wheel, drag, X and plus/minus icons - DONE 0.2.38-beta (refined 0.2.39-beta)
 2.32g src/clipEditorLoad.js decoded length limit (MAX_EDIT_SECONDS 900) and tests - DONE 0.2.40-beta
 2.32b src/clipCsv.js cut-list CSV writer and tests - DONE 0.2.41-beta (not imported by the app yet)
 2.32c src/clipSlices.js sample slicing, fades and safe clip names - DONE 0.2.42-beta (not imported by the app yet)
@@ -60,6 +59,7 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.40d draggable playhead (ruler strip scrub, playhead handle, grab the line in the waveform) and Go to start button + Home key in src/ClipEditor.jsx with CSS - DONE 0.2.60-beta (App.jsx untouched)
 2.40e Loop clips toggle in the transport row, per-clip loop play/pause/resume, looping row highlight and loop-follows-cuts in src/ClipEditor.jsx with CSS - DONE 0.2.61-beta (App.jsx untouched)
 2.40f Fade in / Fade out toggles, All/Selected scope picker and row selection (click, Ctrl+click, Shift+click) driving per-clip fades in src/ClipEditor.jsx with CSS - DONE 0.2.62-beta (App.jsx untouched)
+2.41a src/clipText.js pure sample-range to text mapper (SNAP_CHARS, MAX_TEXT_CHARS, createClipTextMapper) and tests - DONE 0.2.63-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
 Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no bump); E4d 2.33a/2.33b 0.2.45-beta/0.2.46-beta; E4e 2.34a 0.2.47-beta; E5 2.34c 0.2.48-beta; E6 2.35a 0.2.49-beta; E7 2.36a-2.36c 0.2.50-beta/0.2.51-beta/0.2.52-beta; E8 2.37a/2.37b 0.2.55-beta/0.2.56-beta.
 
 ## Known gaps
@@ -83,6 +83,7 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 - Fade in / Fade out toggles, the All/Selected scope picker and row selection (click, Ctrl+click, Shift+click) are wired into the export calls but untested live in Brave; the single-clip download fades by the original clip index (restricted set [] or [0]).
 - Looping is wired to the editor (Loop clips toggle, per-clip loop play, looping row highlight, loop follows cuts) but untested live in Brave; resuming a paused non-loop clip and a paused loop after a cut change need a live check.
 - The ruler strip, playhead handle, grab-the-line scrub and Go to start (button and Home) are wired but untested live in Brave.
+- Clip text is approximate unless the cut lands on a pause: src/clipText.js falls back to a linear position estimate and marks that part estimated.
 
 ## Open decisions
 - Reaction-time compensation value and playhead offset (tuned live).
@@ -93,7 +94,6 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 Follow AGENTS.md and the voice skill. One task per message. Touch only named files. App.jsx is one big component: exact anchors and the duplicate check. New pure modules go in src/*.js with tests/*.test.mjs (node cannot import .jsx). Mock everything; no real audio or IndexedDB here, so the owner tests live. EVERY clip-editor task ends by updating this file in place (task log, known gaps, verified, version) and lists it in READY TO COMMIT with its own git add line.
 
 ## Verified
-- npm test: 456 pass, 0 fail (2026-11-27, 0.2.62-beta; full raw run pasted in the task report).
-- node --check clean on tests/clipEditorSource.test.mjs; .jsx and .css cannot be compiled here, so the owner's vship build is the real check.
-- Appended test asserts ClipEditor.jsx contains Fade in, Fade out, aria-label="Apply fades to", Select clips in the list first, fadeClips, and no fadeOn or type="checkbox"; the earlier source-scan tests still pass.
-- Live in Brave (owner, 0.2.62-beta): the two toggles look like the Settings Spell check switch; clicking a row selects it, Ctrl+click adds, Shift+click selects a range; Selected clips is disabled with its reason until something is selected; Fade in only fades the start, Fade out only the end, scope Selected fades only the selected clips; adding a cut clears the selection and moving one keeps it; the single clip download follows the same rule.
+- npm test: 469 pass, 0 fail (2026-11-27, 0.2.63-beta; full raw run pasted in the task report).
+- node --check clean on src/clipText.js and tests/clipText.test.mjs; .jsx and .css cannot be compiled here, so the owner's vship build is the real check.
+- Nothing to test live until src/clipText.js is wired: then check that a clip row shows the words at its start, that a cut on a pause shows a whole sentence, and that a cut mid-word shows the shorter phrase.
