@@ -1,19 +1,23 @@
 // Pure clip export helpers for a later clip editor. No DOM, no file writes.
 
-import { sliceAll, fadeSamples, uniqueNames } from './clipSlices.js';
+import { sliceAll, fadeSamples, uniqueNames, nameFromText } from './clipSlices.js';
 import { buildCutListCsv } from './clipCsv.js';
 
-function effectiveNames(names, count) {
-  const padded = Array.from({ length: count }, (_, i) => names[i] ?? '');
+function effectiveNames(names, count, texts) {
+  const padded = Array.from({ length: count }, (_, i) => {
+    const typed = names[i];
+    if (typeof typed === 'string' && typed.trim() !== '') return typed;
+    return texts ? nameFromText(texts[i]) : '';
+  });
   return uniqueNames(padded);
 }
 
-export function clipFileNames(names, count, ext) {
-  return effectiveNames(names, count).map((name) => name + '.' + ext);
+export function clipFileNames(names, count, ext, texts) {
+  return effectiveNames(names, count, texts).map((name) => name + '.' + ext);
 }
 
 export async function buildClipFiles({
-  samples, rate, segments, names, format, fadeMs, encode, fadeIn, fadeOut, fadeClips,
+  samples, rate, segments, names, texts, format, fadeMs, encode, fadeIn, fadeOut, fadeClips,
 }) {
   let fade;
   if (fadeIn === undefined && fadeOut === undefined) {
@@ -26,7 +30,7 @@ export async function buildClipFiles({
       : { inN: fadeIn ? n : 0, outN: fadeOut ? n : 0 });
   }
   const clips = sliceAll(samples, segments, fade);
-  const fileNames = clipFileNames(names, segments.length, format);
+  const fileNames = clipFileNames(names, segments.length, format, texts);
   const files = [];
   const skipped = [];
 
@@ -47,8 +51,8 @@ export async function buildClipFiles({
   return { files, skipped };
 }
 
-export function buildCutListFile({ names, segments, rate }) {
-  const bases = effectiveNames(names, segments.length);
+export function buildCutListFile({ names, segments, rate, texts }) {
+  const bases = effectiveNames(names, segments.length, texts);
   const clips = segments.map((segment, i) => ({
     name: bases[i],
     start: segment.start,

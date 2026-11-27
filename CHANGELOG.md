@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.65-beta - 2026-11-27
+- Clip editor: unnamed clips are named from the first six words of their text (nameFromText in src/clipSlices.js, optional texts argument in src/clipExport.js), so audio file names and the CSV name column match; no UI change
+
 ## 0.2.64-beta - 2026-11-27
 - Clip editor: each clip row's name field shows that clip's own spoken text as its placeholder (with a ~ prefix and a hover title when estimated), and the strip below shows the clip under the playhead as "Clip N of M - chunk K"; src/ClipEditor.jsx and src/App.css only
 

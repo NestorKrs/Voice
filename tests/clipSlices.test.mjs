@@ -207,3 +207,43 @@ test('sliceAll with an object fade does not modify its inputs', () => {
   assert.deepEqual(segments, segmentsCopy);
   assert.deepEqual(fade, fadeCopy);
 });
+
+import { nameFromText } from '../src/clipSlices.js';
+
+test('nameFromText takes the first six words joined with hyphens', () => {
+  assert.equal(
+    nameFromText('One two three four five six seven'),
+    'One-two-three-four-five-six',
+  );
+});
+
+test('nameFromText strips punctuation from each word', () => {
+  assert.equal(nameFromText("Hello, world! It's 5 o'clock."), 'Hello-world-Its-5-oclock');
+});
+
+test('nameFromText hard-cuts a single long word at maxChars', () => {
+  assert.equal(nameFromText('a'.repeat(200)), 'a'.repeat(50));
+});
+
+test('nameFromText cuts back to the last hyphen within maxChars', () => {
+  const a = 'A'.repeat(20);
+  const b = 'B'.repeat(20);
+  const c = 'C'.repeat(20);
+  assert.equal(nameFromText([a, b, c].join(' ')), a + '-' + b);
+});
+
+test('nameFromText keeps unicode letters', () => {
+  assert.equal(nameFromText('Café Zürich'), 'Café-Zürich');
+});
+
+test('nameFromText returns empty for empty, blank, punctuation, null and a number', () => {
+  assert.equal(nameFromText(''), '');
+  assert.equal(nameFromText('   '), '');
+  assert.equal(nameFromText('!!!'), '');
+  assert.equal(nameFromText(null), '');
+  assert.equal(nameFromText(42), '');
+});
+
+test('nameFromText honours maxWords', () => {
+  assert.equal(nameFromText('One two three four', 2), 'One-two');
+});

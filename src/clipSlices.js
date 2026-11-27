@@ -73,3 +73,17 @@ export function uniqueNames(names) {
     return candidate;
   });
 }
+
+export function nameFromText(text, maxWords = 6, maxChars = 50) {
+  if (typeof text !== 'string') return '';
+  const words = text
+    .split(/\s+/)
+    .map((word) => word.replace(/[^\p{L}\p{N}-]+/gu, ''))
+    .filter((word) => word !== '');
+  let result = words.slice(0, maxWords).join('-');
+  if (result.length > maxChars) {
+    const cut = result.lastIndexOf('-', maxChars);
+    result = cut === -1 ? result.slice(0, maxChars) : result.slice(0, cut);
+  }
+  return result.replace(/^-+|-+$/g, '');
+}

@@ -307,3 +307,55 @@ test('buildClipFiles with new fade arguments does not modify its inputs', async 
   assert.deepEqual(names, namesCopy);
   assert.deepEqual(fadeClips, fadeClipsCopy);
 });
+
+test('a typed name wins over the clip text', () => {
+  assert.deepEqual(clipFileNames(['A'], 1, 'wav', ['hello world']), ['A.wav']);
+});
+
+test('an empty typed name falls back to the clip text', () => {
+  assert.deepEqual(clipFileNames([''], 1, 'wav', ['Hello world']), ['Hello-world.wav']);
+});
+
+test('with neither a typed name nor text the default clip name is used', () => {
+  assert.deepEqual(clipFileNames([''], 1, 'wav', ['']), ['clip-001.wav']);
+  assert.deepEqual(clipFileNames([], 1, 'wav'), ['clip-001.wav']);
+});
+
+test('two clips with the same first words get unique file names', () => {
+  assert.deepEqual(
+    clipFileNames(['', ''], 2, 'wav', ['Hello there', 'Hello there']),
+    ['Hello-there.wav', 'Hello-there-2.wav'],
+  );
+});
+
+test('the CSV name column equals the audio base names', async () => {
+  const args = makeArgs({
+    segments: [{ start: 0, end: 4 }, { start: 4, end: 8 }],
+    names: ['', ''],
+    texts: ['Hello there', 'Hello there'],
+    encode: countingEncode([]),
+  });
+  const { files } = await buildClipFiles(args);
+  const cutList = buildCutListFile(args);
+  const lines = new TextDecoder().decode(cutList.bytes).split('\r\n');
+  assert.deepEqual(files.map((file) => file.name), ['Hello-there.wav', 'Hello-there-2.wav']);
+  assert.deepEqual(lines.slice(1, 3).map((line) => line.split(',')[0]), ['Hello-there', 'Hello-there-2']);
+});
+
+test('texts shorter than the clip count is fine', () => {
+  assert.deepEqual(clipFileNames(['', ''], 2, 'wav', ['Only one']), ['Only-one.wav', 'clip-002.wav']);
+});
+
+test('without texts the old output is unchanged', () => {
+  assert.deepEqual(clipFileNames(['A'], 3, 'wav'), ['A.wav', 'clip-002.wav', 'clip-003.wav']);
+});
+
+test('clipFileNames does not modify its inputs', () => {
+  const names = ['', ''];
+  const texts = ['Hello there', 'Hello there'];
+  const namesCopy = [...names];
+  const textsCopy = [...texts];
+  clipFileNames(names, 2, 'wav', texts);
+  assert.deepEqual(names, namesCopy);
+  assert.deepEqual(texts, textsCopy);
+});
