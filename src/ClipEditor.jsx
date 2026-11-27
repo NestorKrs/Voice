@@ -17,18 +17,23 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const viewRef = useRef(null);
   const dragRef = useRef(null);
   const markerDragRef = useRef(null);
+  const scrubRef = useRef(null);
   const namesRef = useRef([]);
   const clipRangeRef = useRef(null);
   const playerRef = useRef(null);
+  const loopOnRef = useRef(false);
   const cutsRef = useRef(null);
   const storeRef = useRef(null);
   const restoringRef = useRef(false);
   const [width, setWidth] = useState(0);
   const [view, setView] = useState(null);
   const [dragging, setDragging] = useState(false);
+  const [nearPlayhead, setNearPlayhead] = useState(false);
   const [playPos, setPlayPos] = useState(0);
   const [playStatus, setPlayStatus] = useState('idle');
   const [playbackError, setPlaybackError] = useState('');
+  const [loopOn, setLoopOn] = useState(false);
+  loopOnRef.current = loopOn;
   const [cuts, setCuts] = useState(null);
   const [names, setNames] = useState([]);
   const [playingClip, setPlayingClip] = useState(null);
@@ -47,10 +52,13 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const peaks = useMemo(() => (audio ? buildPeaks(audio.samples) : null), [audio]);
   const message = loading ? 'Decoding audio...' : playbackError || storeMessage || exportMsg || error || (total === 0 ? 'No ready chunks to edit yet.' : '');
   const current = view || fullView(total);
+  const headX = total > 0 && width > 0 ? xAtSample(current, playPos, width) : -1;
+  const headVisible = headX >= 0 && headX <= width;
   const minSpan = Math.min(total, Math.max(MIN_SPAN, Math.round(rate * 0.4)));
   const cutsRefCurrent = cuts && cuts.total === total && cuts.rate === rate ? cuts : null;
   cutsRef.current = cutsRefCurrent;
   const clipSegments = cutsRefCurrent ? segments(cutsRefCurrent) : [];
+  const loopState = playerRef.current ? playerRef.current.getState() : null;
   const nowIndex = audio ? audio.offsets.reduce((last, offset, i) => (offset <= playPos ? i : last), -1) : -1;
   const nowChunk = nowIndex >= 0 ? audio.indexes[nowIndex] : -1;
   const nowText = nowChunk >= 0 && chunkTexts[nowChunk]
@@ -119,6 +127,27 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     }, 400);
     return () => clearTimeout(timer);
   }, [cuts, audioKey, audio]);
+
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player) return;
+    const state = player.getState();
+    if (!state.looping || state.rangeStart === null) return;
+    const active = clipRangeRef.current;
+    if (!active) return;
+    const list = cutsRef.current ? segments(cutsRef.current) : [];
+    const clip = list.find((item) => item.index === active.index);
+    if (!clip) {
+      player.pause();
+      clipRangeRef.current = null;
+      setPlayingClip(null);
+      setPlayStatus('paused');
+      return;
+    }
+    clipRangeRef.current = { index: clip.index, start: clip.start, end: clip.end };
+    if (state.status === 'paused') player.seek(clip.start);
+    else player.play(clip.start, clip.end, { loop: true });
+  }, [cuts]);
 
   useEffect(() => {
     setPlayPos(0);
@@ -329,16 +358,33 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const playClip = (segment) => {
     const player = playerRef.current;
     if (!player) return;
-    if (clipRangeRef.current && clipRangeRef.current.index === segment.index && playStatus === 'playing') {
+    const active = clipRangeRef.current;
+    if (active && active.index === segment.index && playStatus === 'playing') {
       player.pause();
       setPlayStatus('paused');
       return;
     }
-    if (!player.play(segment.start, segment.end)) return;
+    if (active && active.index === segment.index && playStatus === 'paused') {
+      if (player.play()) setPlayStatus('playing');
+      return;
+    }
+    if (!player.play(segment.start, segment.end, { loop: loopOnRef.current })) return;
     clipRangeRef.current = { index: segment.index, start: segment.start, end: segment.end };
     setPlayingClip(segment.index);
     setPlayStatus('playing');
     setPlayPos(segment.start);
+  };
+
+  const goToStart = () => {
+    if (!playerRef.current) return;
+    playerRef.current.seek(0);
+    setPlayPos(0);
+    const base = viewRef.current || fullView(total);
+    const next = ensureVisible(base, total, 0);
+    if (next !== base) {
+      viewRef.current = next;
+      setView(next);
+    }
   };
 
   useEffect(() => {
@@ -354,6 +400,11 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       if (event.code === 'Space') {
         event.preventDefault();
         if (event.type === 'keydown') togglePlay();
+        return;
+      }
+      if (event.code === 'Home') {
+        event.preventDefault();
+        if (event.type === 'keydown') goToStart();
         return;
       }
       if (event.type !== 'keydown' || !cutsRef.current) return;
@@ -409,6 +460,63 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     return () => wrap.removeEventListener('wheel', onWheel, { passive: false });
   }, [total, rate, message]);
 
+  const seekTo = (sample) => {
+    const player = playerRef.current;
+    if (!player) return;
+    player.seek(sample);
+    setPlayPos(sample);
+  };
+
+  const beginScrub = (event, sample) => {
+    const player = playerRef.current;
+    if (!player || total === 0) return;
+    const wasPlaying = player.getState().status === 'playing';
+    if (wasPlaying) player.pause();
+    scrubRef.current = { wasPlaying, id: event.pointerId };
+    setNearPlayhead(false);
+    if (event.currentTarget.setPointerCapture) event.currentTarget.setPointerCapture(event.pointerId);
+    seekTo(sample);
+  };
+
+  const endScrub = (event) => {
+    const scrub = scrubRef.current;
+    if (!scrub || scrub.id !== event.pointerId) return;
+    scrubRef.current = null;
+    if (event.currentTarget.hasPointerCapture && event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    if (scrub.wasPlaying && playerRef.current) playerRef.current.play();
+  };
+
+  const rulerSeek = (event) => {
+    const wrap = wrapRef.current;
+    const box = wrap ? wrap.getBoundingClientRect() : null;
+    if (!box || box.width <= 0) return;
+    const base = viewRef.current || fullView(total);
+    seekTo(sampleAtX(base, event.clientX - box.left, box.width));
+  };
+
+  const onRulerDown = (event) => {
+    event.stopPropagation();
+    if (event.button !== 0 || total === 0) return;
+    const wrap = wrapRef.current;
+    const box = wrap ? wrap.getBoundingClientRect() : null;
+    if (!box || box.width <= 0) return;
+    const base = viewRef.current || fullView(total);
+    beginScrub(event, sampleAtX(base, event.clientX - box.left, box.width));
+  };
+
+  const onRulerMove = (event) => {
+    if (!scrubRef.current || scrubRef.current.id !== event.pointerId) return;
+    event.stopPropagation();
+    rulerSeek(event);
+  };
+
+  const onRulerUp = (event) => {
+    event.stopPropagation();
+    endScrub(event);
+  };
+
   const onPointerDown = (event) => {
     if (event.button !== 0 || total === 0) return;
     const wrap = wrapRef.current;
@@ -429,12 +537,25 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
         return;
       }
     }
+    if (box && box.width > 0) {
+      const px = event.clientX - box.left;
+      const headX = xAtSample(base, playPos, box.width);
+      if (headX >= 0 && headX <= box.width && Math.abs(headX - px) <= 6) {
+        beginScrub(event, sampleAtX(base, px, box.width));
+        return;
+      }
+    }
     dragRef.current = { x: event.clientX, startX: event.clientX, moved: 0, id: event.pointerId };
     setDragging(true);
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
   const onPointerMove = (event) => {
+    const scrub = scrubRef.current;
+    if (scrub && scrub.id === event.pointerId) {
+      rulerSeek(event);
+      return;
+    }
     const markerDrag = markerDragRef.current;
     if (markerDrag && markerDrag.id === event.pointerId) {
       const wrap = wrapRef.current;
@@ -455,7 +576,23 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       }
     }
     const drag = dragRef.current;
-    if (!drag || drag.id !== event.pointerId) return;
+    if (!drag || drag.id !== event.pointerId) {
+      const wrap = wrapRef.current;
+      const box = wrap ? wrap.getBoundingClientRect() : null;
+      if (box && box.width > 0 && !sliceMode) {
+        const base = viewRef.current || fullView(total);
+        const px = event.clientX - box.left;
+        const headX = xAtSample(base, playPos, box.width);
+        const nearMarker = cutsRef.current ? cutsRef.current.markers.some((marker) => {
+          const x = xAtSample(base, marker, box.width);
+          return x >= 0 && x <= box.width && Math.abs(x - px) <= 8;
+        }) : false;
+        setNearPlayhead(!nearMarker && headX >= 0 && headX <= box.width && Math.abs(headX - px) <= 6);
+      } else {
+        setNearPlayhead(false);
+      }
+      return;
+    }
     const dx = event.clientX - drag.x;
     drag.moved += Math.abs(dx);
     drag.x = event.clientX;
@@ -469,6 +606,10 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   };
 
   const endDrag = (event) => {
+    if (scrubRef.current && scrubRef.current.id === event.pointerId) {
+      endScrub(event);
+      return;
+    }
     const markerDrag = markerDragRef.current;
     if (markerDrag && markerDrag.id === event.pointerId) {
       markerDragRef.current = null;
@@ -603,19 +744,36 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
             {audio ? <span className="clip-visible">{clipSegments.length} clips</span> : null}
           </div>
           <div
-            className={`clip-wave${dragging ? ' dragging' : ''}${sliceMode ? ' slice' : ''}${dragPreview ? ' marker-drag' : ''}`}
+            className={`clip-wave${dragging ? ' dragging' : ''}${sliceMode ? ' slice' : ''}${dragPreview ? ' marker-drag' : ''}${nearPlayhead ? ' near-playhead' : ''}`}
             ref={wrapRef}
             title="Wheel: zoom. Drag: scroll. Double-click: show all."
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={endDrag}
             onPointerCancel={endDrag}
-            onPointerLeave={() => setHoverSample(null)}
+            onPointerLeave={() => { setHoverSample(null); setNearPlayhead(false); }}
             onDoubleClick={showAll}
           >
+            <div
+              className="clip-ruler"
+              onPointerDown={onRulerDown}
+              onPointerMove={onRulerMove}
+              onPointerUp={onRulerUp}
+              onPointerCancel={onRulerUp}
+            >
+              {headVisible ? <div className="clip-playhead-handle" style={{ left: headX + 'px' }} /> : null}
+            </div>
             <canvas ref={canvasRef} />
           </div>
           <div className="clip-transport">
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Go to start (Home)"
+              title={!audio ? 'No audio loaded' : 'Go to start (Home)'}
+              disabled={!audio}
+              onClick={goToStart}
+            ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 5v14M20 5L9 12l11 7z"/></svg></button>
             <button
               type="button"
               className={'play-primary' + (playStatus === 'playing' ? ' play-active' : '')}
@@ -628,6 +786,15 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
                 ? <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
                 : <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>}
             </button>
+            <button
+              type="button"
+              className={'icon-btn' + (loopOn ? ' active' : '')}
+              aria-label="Loop clips"
+              aria-pressed={loopOn}
+              title={!audio ? 'No audio loaded' : (loopOn ? "Loop clips: ON. A clip's play button repeats between its two cuts." : "Loop clips: OFF. A clip's play button plays it once.")}
+              disabled={!audio}
+              onClick={() => { setLoopOn(!loopOn); if (playerRef.current) playerRef.current.setLoop(!loopOn); }}
+            ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg></button>
             <span className="clip-time">{formatTime(playPos, displayRate)} / {formatTime(total, displayRate)}</span>
           </div>
         </>
@@ -636,12 +803,13 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
         {audio && clipSegments.length > 0
           ? clipSegments.map((segment) => {
               const isPlaying = playingClip === segment.index && playStatus === 'playing';
+              const isLooping = Boolean(loopState && loopState.looping && loopState.rangeStart === segment.start && loopState.rangeEnd === segment.end);
               const buttonLabel = (isPlaying ? 'Pause clip ' : 'Play clip ') + (segment.index + 1);
               const chunk = audio ? audio.offsets.reduce((last, offset, i) => (offset <= segment.start ? i : last), -1) : -1;
               const chunkId = chunk >= 0 ? audio.indexes[chunk] : -1;
               const previewText = chunkId >= 0 && chunkTexts[chunkId] ? firstSentence(chunkTexts[chunkId]) : '';
               return (
-                <div className="clip-row" key={segment.index}>
+                <div className={'clip-row' + (isLooping ? ' looping' : '')} key={segment.index}>
                   <button
                     type="button"
                     className={'icon-btn' + (isPlaying ? ' play-active' : '')}
@@ -688,7 +856,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
         <button type="button" disabled={Boolean(exportDisabledReason)} title={exportDisabledReason || 'Download the cut list as a CSV file'} onClick={exportCsv}>Download cut list (CSV)</button>
       </div>
       <div className="clip-hints">
-        <div className="clip-hint">M: cut at the playhead. Blade: cut where you click. Ctrl+Z: undo. Hold Shift while cutting to snap to the quietest spot within {SNAP_RADIUS_MS} ms.</div>
+        <div className="clip-hint">M: cut at the playhead. Blade: cut where you click. Ctrl+Z: undo. Hold Shift while cutting to snap to the quietest spot within {SNAP_RADIUS_MS} ms. Loop: play a clip's button with the loop toggle on to repeat it between its two cuts.</div>
         {restoreNote ? <div className="clip-hint clip-restore">{restoreNote}</div> : null}
       </div>
       <div className="clip-now">

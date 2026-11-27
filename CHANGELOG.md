@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.61-beta - 2026-11-27
+- Clip editor: a Loop clips toggle in the transport row; a clip's play button repeats between its two cuts while on, the looping row is highlighted, and cuts that change restart the loop on the new range
+
+## 0.2.60-beta - 2026-11-27
+- Clip editor: draggable playhead (ruler strip scrub, playhead handle, grab the line in the waveform) and a Go to start button plus Home key
+
 ## 0.2.59-beta - 2026-11-27
 - Clip editor fits the panel height: tools row above the waveform, transport below, only the clip list flexes and scrolls, the chunk text strip stays last and fully visible; per-clip row reordered to play, download, name, times, duration
 

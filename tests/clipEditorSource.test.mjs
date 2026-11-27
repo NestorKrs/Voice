@@ -137,3 +137,19 @@ test('clip-now is the last clip-* className in the file', () => {
   const tail = source.slice(last.index);
   assert.ok(tail.startsWith('className="clip-now"'), 'the last clip-* className is clip-now');
 });
+
+test('ClipEditor has a draggable ruler, playhead handle and Go to start', () => {
+  assert.ok(source.includes('clip-ruler'));
+  assert.ok(source.includes('Go to start (Home)'));
+  assert.ok(source.includes('Home'));
+  assert.ok(source.includes('stopPropagation'));
+  assert.ok(source.includes('setPointerCapture'));
+});
+
+test('ClipEditor wires the loop toggle and looping rows', () => {
+  assert.ok(source.includes('setLoop'));
+  assert.ok(source.includes('Loop clips'));
+  assert.ok(source.includes('aria-pressed={loopOn}'));
+  assert.ok(source.includes('{ loop: loopOnRef.current }'));
+  assert.ok(source.includes('looping'));
+});

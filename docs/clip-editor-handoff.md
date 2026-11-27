@@ -1,7 +1,7 @@
 # Clip editor handoff
 
 Scope: ONLY the clip editor feature. The general project status stays in docs/handoff.md (stale at 0.2.19-beta; do not use it for this feature).
-Owner: @Eleven. Updated 2026-11-27. Version when written: 0.2.59-beta. Agents: Hermes (code), Claude (planning, task texts).
+Owner: @Eleven. Updated 2026-11-27. Version when written: 0.2.61-beta. Agents: Hermes (code), Claude (planning, task texts).
 
 ## Goal
 Cut one generated audio (one chunk, or the whole joined audio) into many clips by time, locally, with ZERO extra requests. The owner pastes unrelated sentences, generates once, then cuts them into separate files. Used mainly for voiceover for animation and video. Meant for all visitors of the site, desktop only in v1.
@@ -31,8 +31,7 @@ Rejected by the owner: it costs credits (50 per day free, 1000 with credits, 20 
 Integer time; every edit a pure command with undo; peak overviews; tiny fades at cut edges against clicks; cut list CSV export; markers saved per audio in the browser; nudge steps. Not wanted: plugins, MIDI, multitrack, automation.
 
 ## Task log (statuses from CHANGELOG.md)
-2.29a orient; 2.29b src/clipCuts.js pure cut state with undo/redo - DONE 0.2.29-beta
-2.29d src/waveformPeaks.js peak pyramid - DONE 0.2.30-beta (sent twice by mistake; the second run stopped with no change)
+2.29a orient; 2.29b src/clipCuts.js pure cut state with undo/redo - DONE 0.2.29-beta; 2.29d src/waveformPeaks.js peak pyramid - DONE 0.2.30-beta (sent twice; the second run stopped with no change)
 2.30a src/clipEditorAudio.js concatMono; 2.30b src/ClipEditor.jsx read-only waveform view and CSS - DONE 0.2.31-beta/0.2.32-beta
 2.30c src/clipEditorLoad.js loader - DONE 0.2.33-beta
 2.30d wiring into App.jsx (Edit clips button, state, load handlers, Reader swap) - DONE 0.2.34-beta. Live test by the owner: looks right, cannot cut yet.
@@ -51,8 +50,7 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.34c remember cut markers per audio (audio key, store restore, debounced save) - DONE 0.2.48-beta
 2.35a hold Shift to snap slice click, M key, marker drag and hover line to the quietest spot within 80 ms; hint and CSS - DONE 0.2.49-beta (the dragMarker STOP anchor was stale; marker drag was added here)
 2.36a clip list with per-clip play/pause and editable names; src/clipNames.js alignment helper and CSS - DONE 0.2.50-beta (the clipNames.js STOP anchor was stale; the pure module was created here)
-2.36b list feedback: highlight only the row's play button, first-sentence placeholders, roomier rows, no timeline end numbers, chunk info pinned to the bottom, playbar-style transport button - DONE 0.2.51-beta
-2.36c footer layout: shortcut hint and restored-cut note in one row above the bottom separator, taller clip list, wider name inputs - DONE 0.2.52-beta
+2.36b list feedback (row play highlight, first-sentence placeholders, roomier rows, no end numbers, chunk info pinned, playbar-style transport) and 2.36c footer layout (hint and restore note in one row, taller list, wider name inputs) - DONE 0.2.51-beta/0.2.52-beta
 2.36d editor opening takes two thirds of the width via CSS, coral markers and faded shortcut row, blade icon/text, taller list, play/timer on the zoom row - DONE 0.2.53-beta (App.jsx untouched)
 2.36e centre the zoom/blade/undo tools, remove the helper highlight and dim its text to teal, use the Settings × close button, list +1 row - DONE 0.2.54-beta (one App.jsx line changed)
 2.37a src/clipExport.js pure clip export (clipFileNames, buildClipFiles, buildCutListFile, buildZipEntries) and tests - DONE 0.2.55-beta (not imported by the app yet; test import is the wiring proof; App.jsx untouched)
@@ -60,6 +58,8 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.40a separate fade-in/fade-out and per-clip fades in clipSlices.js and clipExport.js - DONE 0.2.57-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
 2.40b looping in src/clipPlayer.js (play opts.loop, setLoop, wrapped position, loop-aware seek, getState range) with appended tests - DONE 0.2.58-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
 2.40c fit the editor into the panel height (tools above waveform, transport below, only the list flexes and scrolls, chunk strip last) and per-clip row reordered to play, download, name, times, duration - DONE 0.2.59-beta (App.jsx untouched)
+2.40d draggable playhead (ruler strip scrub, playhead handle, grab the line in the waveform) and Go to start button + Home key in src/ClipEditor.jsx with CSS - DONE 0.2.60-beta (App.jsx untouched)
+2.40e Loop clips toggle in the transport row, per-clip loop play/pause/resume, looping row highlight and loop-follows-cuts in src/ClipEditor.jsx with CSS - DONE 0.2.61-beta (App.jsx untouched)
 Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no bump); E4d 2.33a/2.33b 0.2.45-beta/0.2.46-beta; E4e 2.34a 0.2.47-beta; E5 2.34c 0.2.48-beta; E6 2.35a 0.2.49-beta; E7 2.36a-2.36c 0.2.50-beta/0.2.51-beta/0.2.52-beta; E8 2.37a/2.37b 0.2.55-beta/0.2.56-beta.
 
 ## Known gaps
@@ -81,7 +81,8 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 - The new height fit (tools row above the waveform, transport below, only the list flexes and scrolls, chunk strip pinned last) and the reordered clip row (play, download, name, times, duration) are untested live in Brave.
 - The playhead may look early on a Bluetooth headset; the manual offset is tuned in a later task.
 - The new fadeIn/fadeOut/fadeClips arguments in clipSlices.js and clipExport.js are not used by the UI yet: ClipEditor still passes only legacy fadeMs, so separate-end and per-clip fades need a later wiring task and a live audio check.
-- Looping in src/clipPlayer.js has no editor UI control yet; play(opts.loop), setLoop and loop-aware seek need a live audio check once wired.
+- Looping is wired to the editor (Loop clips toggle, per-clip loop play, looping row highlight, loop follows cuts) but untested live in Brave; resuming a paused non-loop clip and a paused loop after a cut change need a live check.
+- The ruler strip, playhead handle, grab-the-line scrub and Go to start (button and Home) are wired but untested live in Brave.
 
 ## Open decisions
 - Reaction-time compensation value and playhead offset (tuned live).
@@ -92,7 +93,7 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 Follow AGENTS.md and the voice skill. One task per message. Touch only named files. App.jsx is one big component: exact anchors and the duplicate check. New pure modules go in src/*.js with tests/*.test.mjs (node cannot import .jsx). Mock everything; no real audio or IndexedDB here, so the owner tests live. EVERY clip-editor task ends by updating this file in place (task log, known gaps, verified, version) and lists it in READY TO COMMIT with its own git add line.
 
 ## Verified
-- npm test: 453 pass, 0 fail (2026-11-27, 0.2.59-beta; full raw run pasted in the task report).
+- npm test: 455 pass, 0 fail (2026-11-27, 0.2.61-beta; full raw run pasted in the task report).
 - node --check clean on tests/clipEditorSource.test.mjs; .jsx and .css cannot be compiled here, so the owner's vship build is the real check.
-- Appended tests assert the body order (list before export before hint before now) and that clip-now is the last clip-* className; the old "zoom tools share the row" test was rewritten for the new tools-above/transport-below layout, and the max-height: 430px assertion became the new .clip-list flex rule.
-- Live in Brave (owner): with several clips the list scrolls inside its own area and the text strip stays fully visible at the bottom; shrinking the window height shrinks the list first; play, download and name cells sit together at the left of each row; the Download all clips / cut list buttons and the hint stay visible; at maximum window height nothing looks stretched.
+- Appended test asserts ClipEditor.jsx contains setLoop, "Loop clips", aria-pressed={loopOn}, { loop: loopOnRef.current } and looping; the earlier source-scan tests still pass.
+- Live in Brave (owner, 0.2.61-beta): with Loop off a clip plays once and stops at its end; with Loop on it repeats between its two cuts until paused; toggling Loop during playback switches at once; dragging or nudging a cut while a clip loops makes the loop follow the new range; deleting a cut that merges the looping clip stops it; the whole-audio Play never loops; the looping row is highlighted.
