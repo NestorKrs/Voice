@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.85-beta - 2026-11-28
+- The / command menu now renders inside the Text panel find row, so its absolute CSS anchor is the row and the tag list appears under the input; added a placement regression test and created docs/lessons.md
+
+## 0.2.84-beta - 2026-11-28
+- chunkText now protects delivery tags and break tags with private placeholders while splitting, restores them byte for byte, and merges chunks with nothing speakable into a neighbour; text without directives chunks exactly as before
+
 ## 0.2.83-beta - 2026-11-28
 - New pure src/pauseMarkers.js (extractPauses, hasPauses, stripForRequest) pulls <break> tags out of the text and reports each pause's clean-text index and seconds (comma decimals, 60 s clamp, adjacent tags merged); not imported by the app yet
 

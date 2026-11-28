@@ -67,3 +67,75 @@ test('custom maxChars respected', () => {
   const r = chunkText('hello world this is a test', 10);
   for (const c of r) assert.ok(c.length <= 10);
 });
+test('a break tag with a space is never split from its closing (long sentence, maxChars 40)', () => {
+  const text = 'one two three four five <break time="1.2s" /> six seven eight nine ten';
+  const r = chunkText(text, 40);
+  for (const c of r) {
+    if (c.includes('<break')) assert.ok(c.includes('/>'), 'chunk has <break without />: ' + c);
+  }
+  assert.equal(r.join(' ').split('<break').length - 1, 1);
+});
+
+test('a multi-word tag is never split from its closing bracket', () => {
+  const text = "one two three four five [under one's breath] six seven eight nine ten";
+  const r = chunkText(text, 40);
+  for (const c of r) {
+    if (c.includes('[')) assert.ok(c.includes(']'), 'chunk has [ without ]: ' + c);
+  }
+});
+
+test('a paragraph that is only a break tag merges into the previous chunk', () => {
+  const r = chunkText('First para\n\n<break time="1s"/>', 12);
+  assert.deepEqual(r, ['First para <break time="1s"/>']);
+});
+
+test('a leading paragraph that is only a break tag merges into the next chunk', () => {
+  const r = chunkText('<break time="1s"/>\n\nSecond para', 12);
+  assert.deepEqual(r, ['<break time="1s"/> Second para']);
+});
+
+test('a paragraph that is only [slowly] merges the same way', () => {
+  const r = chunkText('First para\n\n[slowly]', 12);
+  assert.deepEqual(r, ['First para [slowly]']);
+});
+
+test('a lone non-speakable text returns one chunk', () => {
+  assert.deepEqual(chunkText('<break time="1s"/>'), ['<break time="1s"/>']);
+});
+
+test('directives round-trip exactly once and in order', () => {
+  const d1 = '<break time="1.2s" />';
+  const d2 = "[under one's breath]";
+  const text = 'Start ' + d1 + ' middle ' + d2 + ' end.';
+  const joined = chunkText(text, 2000).join(' ');
+  assert.equal(joined.split(d1).length - 1, 1);
+  assert.equal(joined.split(d2).length - 1, 1);
+  assert.ok(joined.indexOf(d1) < joined.indexOf(d2));
+});
+
+test('text without directives gives the recorded chunks', () => {
+  assert.deepEqual(chunkText('a\n\nb', 100), ['a\n\nb']);
+});
+
+test('a tag inside a long word run is never cut', () => {
+  const tag = "[under one's breath]";
+  const word = 'a'.repeat(10) + tag + 'b'.repeat(10);
+  const r = chunkText(word, 10);
+  assert.equal(r.join('').split(tag).length - 1, 1);
+  for (const c of r) {
+    if (c.includes('[')) assert.ok(c.includes(']'), 'chunk has [ without ]: ' + c);
+  }
+});
+
+test('loose-form breaks are restored unchanged', () => {
+  const loose1 = '<break time="1,5s" />';
+  const loose2 = '<break time="2s" />';
+  const joined = chunkText('A ' + loose1 + ' B ' + loose2 + ' C', 2000).join(' ');
+  assert.ok(joined.includes(loose1));
+  assert.ok(joined.includes(loose2));
+});
+
+test('chunkText does not leak regex state across two calls', () => {
+  const input = 'one <break time="1s" /> two [slowly] three';
+  assert.deepEqual(chunkText(input, 40), chunkText(input, 40));
+});

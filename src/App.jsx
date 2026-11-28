@@ -1552,29 +1552,29 @@ export default function App() {
             <button type="button" className="find-btn" onClick={handleFindNext} disabled={reading || matches.length === 0} title={reading ? 'Find works when reading is stopped' : (matches.length === 0 ? (findQuery ? 'No matches' : 'Type something to find') : undefined)} aria-label="Next match">↓</button>
             {findQuery ? <button type="button" className="find-clear" onClick={handleFindClear} disabled={reading} title="Clear find query" aria-label="Clear find query">×</button> : null}
             {reading ? <span className="find-reason">Find works when reading is stopped</span> : null}
+            {slash.active ? (
+              <div className="slash-menu" role="listbox">
+                {slashItems.map((item, i) => (
+                  <div key={item.id}>
+                    {(i === 0 || slashItems[i - 1].group !== item.group) ? <div className="slash-group">{item.group}</div> : null}
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={i === slashIndex}
+                      className={i === slashIndex ? 'active' : ''}
+                      disabled={item.disabled}
+                      title={item.disabled ? item.reason : undefined}
+                      onMouseDown={(e) => { e.preventDefault(); insertSlashItem(item); }}
+                    >
+                      {item.label}
+                      {item.note ? <span className="slash-note">{item.note}</span> : null}
+                    </button>
+                  </div>
+                ))}
+                <div className="slash-hint">{slash.hint}</div>
+              </div>
+            ) : null}
           </div>
-          {slash.active ? (
-            <div className="slash-menu" role="listbox">
-              {slashItems.map((item, i) => (
-                <div key={item.id}>
-                  {(i === 0 || slashItems[i - 1].group !== item.group) ? <div className="slash-group">{item.group}</div> : null}
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={i === slashIndex}
-                    className={i === slashIndex ? 'active' : ''}
-                    disabled={item.disabled}
-                    title={item.disabled ? item.reason : undefined}
-                    onMouseDown={(e) => { e.preventDefault(); insertSlashItem(item); }}
-                  >
-                    {item.label}
-                    {item.note ? <span className="slash-note">{item.note}</span> : null}
-                  </button>
-                </div>
-              ))}
-              <div className="slash-hint">{slash.hint}</div>
-            </div>
-          ) : null}
           <textarea ref={textRef} value={text} spellCheck={settings.spellCheck} onChange={(e) => { setText(e.target.value); setSelectedChars(0); }} onSelect={(e) => { const s = e.target.selectionStart; const t = e.target.selectionEnd; lastSelRef.current = { start: s, end: t }; setSelectedChars(t > s ? t - s : 0); }} onMouseUp={(e) => { lastSelRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd }; const ex = e.clientX; const ey = e.clientY; setTimeout(() => { const ta = e.target; const s = ta.selectionStart; const t = ta.selectionEnd; const sel = t > s ? ta.value.slice(s, t) : ''; if (!sel) { setSelIcon(null); return; } const p = selectionTopRight(ta) || { x: ex, y: ey }; setSelIcon({ x: p.x, y: p.y, text: sel }); }, 0); }} style={{ fontSize: `${textZoom}%`, display: reading || (editorOpen && clipView) ? 'none' : undefined }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} onKeyUp={(e) => { lastSelRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd }; }} onBlur={(e) => { lastSelRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd }; }} className={textDropActive ? 'drop-active' : ''} />
           {reading || (editorOpen && clipView) ? (
             <TextReadView chunk={editorOpen && clipView ? clipView.text : readChunk} mode={settings.highlightMode} engineRef={playerEngineRef} chunkIndex={reading ? playerState.index : 0} mapRef={mapRef} textZoom={textZoom} onZoom={setTextZoom} onSelectText={setSelectedChars} onSelectIcon={setSelIcon} staticRange={editorOpen && clipView ? { start: clipView.start, end: clipView.end } : null} />

@@ -28,3 +28,11 @@ test('App renders the slash-menu', () => {
 test('App never logs the document text', () => {
   assert.equal(/logEvent\(text\)/.test(src), false);
 });
+
+test('slash menu sits inside the find row it is positioned against', () => {
+  const rowStart = src.indexOf('<div className="find-row">');
+  const menuStart = src.indexOf('<div className="slash-menu"');
+  const rowEnd = src.indexOf('</div>\n          <textarea', rowStart);
+  assert.ok(rowStart !== -1 && menuStart !== -1 && rowEnd !== -1);
+  assert.ok(menuStart > rowStart && menuStart < rowEnd);
+});
