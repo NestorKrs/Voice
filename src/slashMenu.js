@@ -191,3 +191,17 @@ export function moveHighlight(index, delta, items) {
   const next = (((pos + delta) % n) + n) % n;
   return enabled[next];
 }
+
+export function slashContext(text, caret) {
+  if (typeof text !== 'string') return { active: false };
+  const pos = Math.max(0, Math.min(Math.trunc(caret) || 0, text.length));
+  const lineStart = text.lastIndexOf('\n', pos - 1) + 1;
+  const seg = text.slice(lineStart, pos);
+  const trimmed = seg.replace(/^[ \t]+/, '');
+  if (!trimmed.startsWith('/')) return { active: false };
+  const start = lineStart + (seg.length - trimmed.length);
+  const query = text.slice(start, pos);
+  if (query.length > 1 && (query[1] === ' ' || query[1] === '\t')) return { active: false };
+  if (query.length > 40) return { active: false };
+  return { active: true, start, end: pos, query };
+}

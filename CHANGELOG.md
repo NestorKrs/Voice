@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.82-beta - 2026-11-28
+- New pure slashContext(text, caret) in src/slashMenu.js decides whether a textarea caret is typing a slash command (line-start slash, no space after it, query <= 40 chars), with appended tests; not used by the app yet
+
 ## 0.2.81-beta - 2026-11-28
 - Text panel find row: typing / opens a slash command menu (src/slashMenu.js) under the find input to insert delivery tags and break pauses at the last caret; arrows/Enter insert, Esc closes, disabled items show the model reason, inserting while reading shows "Stop playback to edit the text."; new tests/slashMenuSource.test.mjs
 

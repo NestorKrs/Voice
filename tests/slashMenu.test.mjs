@@ -149,3 +149,72 @@ test('inputs are not modified', () => {
   parseSlashInput('/slow', support);
   assert.equal(JSON.stringify(support), snapshot);
 });
+import { slashContext } from '../src/slashMenu.js';
+
+test('slashContext: "/" at the very start, caret after it', () => {
+  assert.deepEqual(slashContext('/', 1), { active: true, start: 0, end: 1, query: '/' });
+});
+
+test('slashContext: after a newline in the middle of a text', () => {
+  const text = 'line one\n/slo';
+  assert.deepEqual(slashContext(text, text.length), { active: true, start: 9, end: 13, query: '/slo' });
+});
+
+test('slashContext: leading spaces before the slash', () => {
+  assert.deepEqual(slashContext('  /slo', 6), { active: true, start: 2, end: 6, query: '/slo' });
+});
+
+test('slashContext: a slash that is not the first character of its line is inactive', () => {
+  assert.deepEqual(slashContext('hello /slo', 10), { active: false });
+});
+
+test('slashContext: caret before the slash is inactive', () => {
+  assert.deepEqual(slashContext('/slo', 0), { active: false });
+});
+
+test('slashContext: "/ " and "/ x" are inactive', () => {
+  assert.deepEqual(slashContext('/ ', 2), { active: false });
+  assert.deepEqual(slashContext('/ x', 3), { active: false });
+});
+
+test('slashContext: 40-char query active, 41-char inactive', () => {
+  const q40 = '/' + 'a'.repeat(39);
+  assert.equal(slashContext(q40, q40.length).active, true);
+  const q41 = '/' + 'a'.repeat(40);
+  assert.deepEqual(slashContext(q41, q41.length), { active: false });
+});
+
+test('slashContext: caret in the middle of "/slowly" (caret 4)', () => {
+  assert.deepEqual(slashContext('/slowly', 4), { active: true, start: 0, end: 4, query: '/slo' });
+});
+
+test('slashContext: two lines, only the second has a command', () => {
+  const text = 'hello there\n/slo';
+  const firstLineCaret = 5;
+  assert.deepEqual(slashContext(text, firstLineCaret), { active: false });
+  assert.deepEqual(slashContext(text, text.length), { active: true, start: 12, end: 16, query: '/slo' });
+});
+
+test('slashContext: caret at 0 and beyond the end are clamped', () => {
+  assert.deepEqual(slashContext('/slo', 0), { active: false });
+  assert.deepEqual(slashContext('/slo', 999), { active: true, start: 0, end: 4, query: '/slo' });
+});
+
+test('slashContext: empty text, null and a number are inactive', () => {
+  assert.deepEqual(slashContext('', 0), { active: false });
+  assert.deepEqual(slashContext(null, 0), { active: false });
+  assert.deepEqual(slashContext(42, 0), { active: false });
+});
+
+test('slashContext: never mutates anything', () => {
+  const text = '  /slo';
+  const copy = text.slice();
+  slashContext(text, 6);
+  assert.equal(text, copy);
+});
+
+test('slashContext: query feeds parseSlashInput to active true', () => {
+  const ctx = slashContext('/slo', 4);
+  const parsed = parseSlashInput(ctx.query, { tags: 'confirmed', breaks: 'unknown', breakMode: 'unknown', reasonTags: '', reasonBreaks: '' });
+  assert.equal(parsed.active, true);
+});
