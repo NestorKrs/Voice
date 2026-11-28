@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.78-beta - 2026-11-28
+- New pure src/directives.js (TAG_RE, BREAK_RE, formatBreak, formatTag, normalizeBreaks, findBreaks, directiveRanges, safeSplitIndex, stripDirectives, stripWithMap, hasSpeakableText, insertAt) and src/deliveryTags.js (TAG_CATEGORIES, RETEST_TAGS, TAGS_TESTED_ON, allTags, isKnownTag) for delivery tags and break tags, with tests; not imported by the app yet
+
 ## 0.2.77-beta - 2026-11-28
 - Clip editor: volume and speed sliders in the transport row drive the clip player (setVolume/setRate on src/clipPlayer.js with a master gain and per-source playbackRate); the zoom buttons move under the waveform next to play; the close button gets the settings-cog hover highlight; the editor widens to three quarters. App.jsx untouched
 
