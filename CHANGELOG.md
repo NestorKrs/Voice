@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.80-beta - 2026-11-28
+- New pure src/slashMenu.js (BREAK_PRESETS, parseSlashInput, moveHighlight) builds the / command menu for tags and break tags from directiveSupport flags, with tests; not imported by the app yet
+
 ## 0.2.79-beta - 2026-11-28
 - Per-provider directive capabilities: every provider entry in src/providers.js carries directives { tags, breaks, breakMode, reasonTags, reasonBreaks } and directiveSupport(provider) returns a validated copy with 'unknown' defaults; TAGS_TESTED_ON set to heygen/heygen-voice-1-turbo:free; tests appended; not wired into the app yet
 
