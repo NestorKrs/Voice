@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.81-beta - 2026-11-28
+- Text panel find row: typing / opens a slash command menu (src/slashMenu.js) under the find input to insert delivery tags and break pauses at the last caret; arrows/Enter insert, Esc closes, disabled items show the model reason, inserting while reading shows "Stop playback to edit the text."; new tests/slashMenuSource.test.mjs
+
 ## 0.2.80-beta - 2026-11-28
 - New pure src/slashMenu.js (BREAK_PRESETS, parseSlashInput, moveHighlight) builds the / command menu for tags and break tags from directiveSupport flags, with tests; not imported by the app yet
 

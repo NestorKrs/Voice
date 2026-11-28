@@ -14,7 +14,9 @@ import { createServices } from './wiring.js';
 import { createPlayerEngine } from './playerEngine.js';
 import { newlyReady, readyFlags, playheadToSend } from './followPlayback.js';
 import { RATES, activeRowIndex } from './playerCore.js';
-import { allProviders, loadCustomProviders, getProvider, providerLabel } from './providers.js';
+import { allProviders, loadCustomProviders, getProvider, providerLabel, directiveSupport } from './providers.js';
+import { parseSlashInput, moveHighlight } from './slashMenu.js';
+import { insertAt } from './directives.js';
 import { PCM_DEFAULT_RATE, PCM_DEFAULT_CHANNELS, audioMime } from './audioFormat.js';
 import { chunkFileName, audioKind, convertChunk, encodeWav } from './chunkDownload.js';
 import { createMp3Encoder, encodeMp3, pcmToInt16Channels, floatToInt16 } from './mp3Encoder.js';
@@ -258,6 +260,7 @@ export default function App() {
   const selAudioRef = useRef(null);
   const [findQuery, setFindQuery] = useState('');
   const [findIndex, setFindIndex] = useState(-1);
+  const [slashIndex, setSlashIndex] = useState(-1);
   const [chunkNotes, setChunkNotes] = useState({});
   const [zipRunning, setZipRunning] = useState(false);
   const [joinedRunning, setJoinedRunning] = useState(false);
@@ -305,6 +308,7 @@ export default function App() {
   const textPanelRef = useRef(null);
   const findInputRef = useRef(null);
   const findLoggedRef = useRef(false);
+  const lastSelRef = useRef({ start: 0, end: 0 });
   const [customProviders] = useState(() => (storage ? loadCustomProviders(storage) : []));
   const [dragId, setDragId] = useState(null);
   const [drop, setDrop] = useState(null);
@@ -383,6 +387,9 @@ export default function App() {
   const stats = computeStats({ text, chunkSize: settings.chunkSize, usedToday, dailyLimit: settings.dailyLimit });
   const providers = allProviders(customProviders);
   const provider = getProvider(providers, settings.provider);
+  const support = directiveSupport(provider);
+  const slash = parseSlashInput(findQuery, support);
+  const slashItems = slash.items;
   const switchLocked = schedState.state === 'generating';
 
   const canStart = !editorOpen && text.trim() !== '' && keySet && usedToday < settings.dailyLimit;
@@ -690,11 +697,36 @@ export default function App() {
   const chunks = chunkText(text, settings.chunkSize);
   const matches = useMemo(() => findMatches(text, findQuery), [text, findQuery]);
 
+  const insertSlashItem = (item) => {
+    if (!item || item.disabled) return;
+    if (reading) {
+      setNotice('Stop playback to edit the text.');
+      logEvent('Stop playback to edit the text.');
+      return;
+    }
+    const result = insertAt(text, lastSelRef.current.start, lastSelRef.current.end, item.snippet);
+    setText(result.text);
+    setSelectedChars(0);
+    setFindQuery('');
+    setFindIndex(-1);
+    findLoggedRef.current = false;
+    const caret = result.caret;
+    requestAnimationFrame(() => {
+      const ta = textRef.current;
+      if (!ta) return;
+      ta.focus();
+      ta.setSelectionRange(caret, caret);
+      lastSelRef.current = { start: caret, end: caret };
+    });
+    logEvent('Inserted ' + (item.kind === 'break' ? 'pause ' + item.label : 'tag ' + item.label));
+  };
+
   const handleFindChange = (e) => {
     const q = e.target.value;
     setFindQuery(q);
     setFindIndex(-1);
     findLoggedRef.current = false;
+    if (parseSlashInput(q, support).active) return;
     const list = findMatches(text, q);
     if (list.length === 0) return;
     const ta = textRef.current;
@@ -729,6 +761,21 @@ export default function App() {
   const handleFindPrev = () => { jumpToMatch(nextIndex(findIndex, matches.length, -1)); };
   const handleFindClear = () => { setFindQuery(''); setFindIndex(-1); findLoggedRef.current = false; };
   const handleFindKeyDown = (e) => {
+    if (slash.active) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSlashIndex(moveHighlight(slashIndex, 1, slashItems));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSlashIndex(moveHighlight(slashIndex, -1, slashItems));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        insertSlashItem(slashItems[slashIndex]);
+      } else if (e.key === 'Escape') {
+        handleFindClear();
+      }
+      return;
+    }
     if (e.key === 'Enter') {
       e.preventDefault();
       if (e.shiftKey) handleFindPrev(); else handleFindNext();
@@ -736,6 +783,12 @@ export default function App() {
       handleFindClear();
     }
   };
+  const slashKey = slashItems.map((i) => i.id).join('|');
+  const slashItemsRef = useRef(slashItems);
+  slashItemsRef.current = slashItems;
+  useEffect(() => {
+    setSlashIndex(moveHighlight(-1, 1, slashItemsRef.current));
+  }, [slashKey]);
   playerDataRef.current = { text, settings, chunks, provider };
 
   useEffect(() => {
@@ -1486,11 +1539,11 @@ export default function App() {
               ref={findInputRef}
               className="find-input"
               type="text"
-              placeholder="Find in text"
+              placeholder="Find in text, or type / to insert a tag or pause"
               value={findQuery}
               disabled={reading}
-              title={reading ? 'Find works when reading is stopped' : undefined}
-              aria-label="Find in text"
+              title={reading ? 'Find works when reading is stopped' : 'Find in text, or type / to insert a tag or pause'}
+              aria-label="Find in text, or type / to insert a tag or pause"
               onChange={handleFindChange}
               onKeyDown={handleFindKeyDown}
             />
@@ -1500,7 +1553,29 @@ export default function App() {
             {findQuery ? <button type="button" className="find-clear" onClick={handleFindClear} disabled={reading} title="Clear find query" aria-label="Clear find query">×</button> : null}
             {reading ? <span className="find-reason">Find works when reading is stopped</span> : null}
           </div>
-          <textarea ref={textRef} value={text} spellCheck={settings.spellCheck} onChange={(e) => { setText(e.target.value); setSelectedChars(0); }} onSelect={(e) => { const s = e.target.selectionStart; const t = e.target.selectionEnd; setSelectedChars(t > s ? t - s : 0); }} onMouseUp={(e) => { const ex = e.clientX; const ey = e.clientY; setTimeout(() => { const ta = e.target; const s = ta.selectionStart; const t = ta.selectionEnd; const sel = t > s ? ta.value.slice(s, t) : ''; if (!sel) { setSelIcon(null); return; } const p = selectionTopRight(ta) || { x: ex, y: ey }; setSelIcon({ x: p.x, y: p.y, text: sel }); }, 0); }} style={{ fontSize: `${textZoom}%`, display: reading || (editorOpen && clipView) ? 'none' : undefined }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} className={textDropActive ? 'drop-active' : ''} />
+          {slash.active ? (
+            <div className="slash-menu" role="listbox">
+              {slashItems.map((item, i) => (
+                <div key={item.id}>
+                  {(i === 0 || slashItems[i - 1].group !== item.group) ? <div className="slash-group">{item.group}</div> : null}
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={i === slashIndex}
+                    className={i === slashIndex ? 'active' : ''}
+                    disabled={item.disabled}
+                    title={item.disabled ? item.reason : undefined}
+                    onMouseDown={(e) => { e.preventDefault(); insertSlashItem(item); }}
+                  >
+                    {item.label}
+                    {item.note ? <span className="slash-note">{item.note}</span> : null}
+                  </button>
+                </div>
+              ))}
+              <div className="slash-hint">{slash.hint}</div>
+            </div>
+          ) : null}
+          <textarea ref={textRef} value={text} spellCheck={settings.spellCheck} onChange={(e) => { setText(e.target.value); setSelectedChars(0); }} onSelect={(e) => { const s = e.target.selectionStart; const t = e.target.selectionEnd; lastSelRef.current = { start: s, end: t }; setSelectedChars(t > s ? t - s : 0); }} onMouseUp={(e) => { lastSelRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd }; const ex = e.clientX; const ey = e.clientY; setTimeout(() => { const ta = e.target; const s = ta.selectionStart; const t = ta.selectionEnd; const sel = t > s ? ta.value.slice(s, t) : ''; if (!sel) { setSelIcon(null); return; } const p = selectionTopRight(ta) || { x: ex, y: ey }; setSelIcon({ x: p.x, y: p.y, text: sel }); }, 0); }} style={{ fontSize: `${textZoom}%`, display: reading || (editorOpen && clipView) ? 'none' : undefined }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} onKeyUp={(e) => { lastSelRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd }; }} onBlur={(e) => { lastSelRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd }; }} className={textDropActive ? 'drop-active' : ''} />
           {reading || (editorOpen && clipView) ? (
             <TextReadView chunk={editorOpen && clipView ? clipView.text : readChunk} mode={settings.highlightMode} engineRef={playerEngineRef} chunkIndex={reading ? playerState.index : 0} mapRef={mapRef} textZoom={textZoom} onZoom={setTextZoom} onSelectText={setSelectedChars} onSelectIcon={setSelIcon} staticRange={editorOpen && clipView ? { start: clipView.start, end: clipView.end } : null} />
           ) : null}
