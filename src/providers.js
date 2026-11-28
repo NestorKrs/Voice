@@ -1,9 +1,14 @@
 export const CUSTOM_KEY = 'voice.customProviders';
 export const FORMATS = ['mp3', 'pcm'];
 
+const DIRECTIVE_DEFAULTS = { tags: 'unknown', breaks: 'unknown', breakMode: 'unknown', reasonTags: '', reasonBreaks: '' };
+const DIRECTIVE_TAGS = ['confirmed', 'unknown', 'unsupported'];
+const DIRECTIVE_BREAKS = ['confirmed', 'unknown', 'unsupported'];
+const DIRECTIVE_BREAK_MODES = ['unknown', 'decimal', 'whole'];
+
 export const BUILTIN_PROVIDERS = [
-  { id: 'fish', label: 'Fish Audio', name: 'S2.1 Pro Free', model: 'fish-audio/s2.1-pro-free:free', format: 'mp3', voiceHint: 'Voice ID, for example b347db033a6549378b48d00acb0d06cd. Empty uses the default voice.', voices: [], builtin: true },
-  { id: 'heygen', label: 'HeyGen', name: 'Voice Turbo Free', model: 'heygen/heygen-voice-1-turbo:free', format: 'pcm', voiceHint: 'Voice name, for example nadine (10 default voices).', voices: ['nadine','tabitha','bram','gareth','noelle','meredith','sabrina','lucian','weston','vincent'], builtin: true },
+  { id: 'fish', label: 'Fish Audio', name: 'S2.1 Pro Free', model: 'fish-audio/s2.1-pro-free:free', format: 'mp3', voiceHint: 'Voice ID, for example b347db033a6549378b48d00acb0d06cd. Empty uses the default voice.', voices: [], builtin: true, directives: { tags: 'unknown', breaks: 'unknown', breakMode: 'unknown', reasonTags: '', reasonBreaks: '' } },
+  { id: 'heygen', label: 'HeyGen', name: 'Voice Turbo Free', model: 'heygen/heygen-voice-1-turbo:free', format: 'pcm', voiceHint: 'Voice name, for example nadine (10 default voices).', voices: ['nadine','tabitha','bram','gareth','noelle','meredith','sabrina','lucian','weston','vincent'], builtin: true, directives: { tags: 'confirmed', breaks: 'unknown', breakMode: 'unknown', reasonTags: '', reasonBreaks: '' } },
 ];
 
 export function isFreeModel(model) {
@@ -22,7 +27,19 @@ export function normalizeProvider(p) {
   const label = typeof p.label === 'string' && p.label.trim() ? p.label.trim().slice(0, 40) : model.split('/')[0];
   const name = typeof p.name === 'string' ? p.name.trim().slice(0, 40) : '';
   const voiceHint = typeof p.voiceHint === 'string' ? p.voiceHint.trim().slice(0, 200) : '';
-  return { id: providerIdFor(model), label, name, model, format: p.format, voiceHint, builtin: false };
+  return { id: providerIdFor(model), label, name, model, format: p.format, voiceHint, builtin: false, directives: { ...DIRECTIVE_DEFAULTS } };
+}
+
+export function directiveSupport(provider) {
+  const d = provider && typeof provider === 'object' ? provider.directives : null;
+  const pick = (value, allowed, fallback) => (allowed.includes(value) ? value : fallback);
+  return {
+    tags: pick(d && d.tags, DIRECTIVE_TAGS, DIRECTIVE_DEFAULTS.tags),
+    breaks: pick(d && d.breaks, DIRECTIVE_BREAKS, DIRECTIVE_DEFAULTS.breaks),
+    breakMode: pick(d && d.breakMode, DIRECTIVE_BREAK_MODES, DIRECTIVE_DEFAULTS.breakMode),
+    reasonTags: d && typeof d.reasonTags === 'string' ? d.reasonTags : DIRECTIVE_DEFAULTS.reasonTags,
+    reasonBreaks: d && typeof d.reasonBreaks === 'string' ? d.reasonBreaks : DIRECTIVE_DEFAULTS.reasonBreaks,
+  };
 }
 
 function dedupe(list) {

@@ -36,8 +36,8 @@ test('RETEST_TAGS are not in allTags', () => {
   for (const t of RETEST_TAGS) assert.equal(names.includes(t), false);
 });
 
-test('TAGS_TESTED_ON is null until the owner confirms', () => {
-  assert.equal(TAGS_TESTED_ON, null);
+test('TAGS_TESTED_ON is the model the owner tested on', () => {
+  assert.equal(TAGS_TESTED_ON, 'heygen/heygen-voice-1-turbo:free');
 });
 
 test('inputs are never mutated', () => {
@@ -45,4 +45,7 @@ test('inputs are never mutated', () => {
   allTags();
   isKnownTag('slowly');
   assert.equal(JSON.stringify(TAG_CATEGORIES), snapshot);
+});
+test('TAGS_TESTED_ON equals the HeyGen model id', () => {
+  assert.equal(TAGS_TESTED_ON, 'heygen/heygen-voice-1-turbo:free');
 });

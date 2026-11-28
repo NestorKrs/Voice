@@ -36,3 +36,48 @@ test('speechClient rejects a non-free model without sending a request', async ()
   assert.equal(r.error.kind, 'bad_provider');
   assert.match(r.error.message, /free/i);
 });
+
+import { directiveSupport } from '../src/providers.js';
+
+const DEFAULTS = { tags: 'unknown', breaks: 'unknown', breakMode: 'unknown', reasonTags: '', reasonBreaks: '' };
+
+function byId(id) {
+  return BUILTIN_PROVIDERS.find((p) => p.id === id);
+}
+
+test('directiveSupport reads the HeyGen entry', () => {
+  assert.deepEqual(directiveSupport(byId('heygen')), {
+    tags: 'confirmed', breaks: 'unknown', breakMode: 'unknown', reasonTags: '', reasonBreaks: '',
+  });
+});
+
+test('directiveSupport reads the Fish entry', () => {
+  assert.deepEqual(directiveSupport(byId('fish')), DEFAULTS);
+});
+
+test('directiveSupport gives an owner-added provider the defaults', () => {
+  const custom = { id: 'custom-x', model: 'x/y-free:free', format: 'mp3', builtin: false, directives: { ...DEFAULTS } };
+  assert.deepEqual(directiveSupport(custom), DEFAULTS);
+  assert.deepEqual(directiveSupport({ id: 'custom-y', model: 'x/y-free:free', format: 'mp3' }), DEFAULTS);
+});
+
+test('directiveSupport falls back on a malformed field and drops extra fields', () => {
+  const bad = { directives: { tags: 'maybe', breaks: 'confirmed', breakMode: 'half', reasonTags: 7, reasonBreaks: 'why', extra: 1 } };
+  assert.deepEqual(directiveSupport(bad), {
+    tags: 'unknown', breaks: 'confirmed', breakMode: 'unknown', reasonTags: '', reasonBreaks: 'why',
+  });
+});
+
+test('directiveSupport returns the defaults for null and undefined', () => {
+  assert.deepEqual(directiveSupport(null), DEFAULTS);
+  assert.deepEqual(directiveSupport(undefined), DEFAULTS);
+});
+
+test('directiveSupport returns a copy that does not change the provider', () => {
+  const heygen = byId('heygen');
+  const got = directiveSupport(heygen);
+  got.tags = 'unsupported';
+  got.reasonTags = 'mutated';
+  assert.equal(heygen.directives.tags, 'confirmed');
+  assert.equal(heygen.directives.reasonTags, '');
+});

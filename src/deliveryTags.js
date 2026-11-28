@@ -13,8 +13,8 @@ export const TAG_CATEGORIES = [
 
 export const RETEST_TAGS = ['emphatically', 'energetically'];
 
-// set to the model id the list was tested on when the owner confirms it.
-export const TAGS_TESTED_ON = null;
+// The owner tested the tag list on this model.
+export const TAGS_TESTED_ON = 'heygen/heygen-voice-1-turbo:free';
 
 export function allTags() {
   return TAG_CATEGORIES.flatMap((c) => c.tags);

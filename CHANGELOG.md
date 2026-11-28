@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.79-beta - 2026-11-28
+- Per-provider directive capabilities: every provider entry in src/providers.js carries directives { tags, breaks, breakMode, reasonTags, reasonBreaks } and directiveSupport(provider) returns a validated copy with 'unknown' defaults; TAGS_TESTED_ON set to heygen/heygen-voice-1-turbo:free; tests appended; not wired into the app yet
+
 ## 0.2.78-beta - 2026-11-28
 - New pure src/directives.js (TAG_RE, BREAK_RE, formatBreak, formatTag, normalizeBreaks, findBreaks, directiveRanges, safeSplitIndex, stripDirectives, stripWithMap, hasSpeakableText, insertAt) and src/deliveryTags.js (TAG_CATEGORIES, RETEST_TAGS, TAGS_TESTED_ON, allTags, isKnownTag) for delivery tags and break tags, with tests; not imported by the app yet
 
