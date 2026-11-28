@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.76-beta - 2026-11-28
+- Clip editor: new pure src/mixEngine.js (createMixEngine) drives the live mix graph (voiceGain, musicGain, fade, duck, master) from one shared plan, with load/setPlan/play/pause/seek/getPosition/getState/setOnEnd/close and a hand-written fake-context test; not imported by the app yet
+
+## 0.2.75-beta - 2026-11-28
+- Clip editor: new pure src/mixPlan.js (MAX_MIX_VOICE_SECONDS, DEFAULT_PARAMS, normalizeParams, clampStartSec, parseOffsetTime, buildMixPlan, fadeValueAt, scheduleAt, peakBound) builds one shared plan of numbers and curves for both the live preview graph and the offline export graph, with tests; not imported by the app yet
+
 ## 0.2.74-beta - 2026-11-28
 - Clip editor: new pure src/mixLoad.js (musicFileRejection, loadMusicFile) guards and decodes a music file (.mp3/.wav/.m4a/.ogg, 30 MB, 5:00, rate match) for the mixer, with tests; not imported by the app yet
 
