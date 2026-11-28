@@ -1,0 +1,1 @@
+An absolutely positioned popup was rendered as a sibling of the element with position: relative, so top: 100% resolved against the viewport and the tag list stayed off-screen -> Render the popup inside the positioned element it anchors to, and add a source-scan test that checks the DOM nesting because logic unit tests cannot catch placement.
