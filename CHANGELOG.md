@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.93-beta - 2026-11-28
+- App-made pauses are wired into the reader: a chunk with a break tag is requested once as clean text, the extra silence is derived and cached under the chunk key, the status bar and row show added/skipped pauses, and a selection read derives the same way; new tests/pausesWiringSource.test.mjs
+
 ## 0.2.92-beta - 2026-11-28
 - The scheduler accepts an optional pauses config (prepare/derive/onReport): raw audio is fetched and cached under the clean text's key, the derived audio is cached under the chunk key, and a changed pause value costs no request; without the config nothing changes
 

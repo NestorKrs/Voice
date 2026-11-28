@@ -9,6 +9,8 @@ import { scrollTextareaToIndex } from './textScroll.js';
 import { highlightRange, charWeights, charAtFraction } from './highlight.js';
 import { findSilences } from './silenceMap.js';
 import { alignTimeMap } from './alignMap.js';
+import { extractPauses, hasPauses } from './pauseMarkers.js';
+import { applyPauses, mapPausesToSpoken } from './pauseApply.js';
 import { createScheduler } from './scheduler.js';
 import { createServices } from './wiring.js';
 import { createPlayerEngine } from './playerEngine.js';
@@ -265,6 +267,7 @@ export default function App() {
   const [editorSlash, setEditorSlash] = useState(null);
   const [flashTag, setFlashTag] = useState(null);
   const [chunkNotes, setChunkNotes] = useState({});
+  const [pauseNotes, setPauseNotes] = useState({});
   const [zipRunning, setZipRunning] = useState(false);
   const [joinedRunning, setJoinedRunning] = useState(false);
 
@@ -439,6 +442,7 @@ export default function App() {
       setSchedState({ state: 'idle', resetAt: null, playhead: 0, chunks: [] });
       if (playerEngineRef.current) playerEngineRef.current.stop();
       mapRef.current.clear();
+      setPauseNotes({});
       setSelIcon(null);
       stopSelectionAudio();
       setJobError('');
@@ -448,6 +452,21 @@ export default function App() {
       setJobError(m);
       logEvent(m);
     }
+  };
+
+  const handlePauseReport = (index, report) => {
+    const list = Array.isArray(report) ? report : [];
+    const added = list.filter((r) => r && r.status !== 'skipped' && r.status !== 'failed');
+    const skipped = list.filter((r) => r && (r.status === 'skipped' || r.status === 'failed'));
+    const parts = [];
+    if (added.length) {
+      const secs = added.map((r) => '+' + r.seconds + ' s').join(', ');
+      parts.push(added.length + (added.length === 1 ? ' pause added: ' : ' pauses added: ') + secs);
+    }
+    const noteParts = skipped.map((r) => (r.status === 'failed' ? r.reason : 'pause ' + r.number + ' skipped: ' + r.reason));
+    if (noteParts.length) parts.push(noteParts.join(' '));
+    logEvent('Chunk ' + (index + 1) + ': ' + parts.join('; '));
+    setPauseNotes((prev) => ({ ...prev, [index]: noteParts.join(' ') }));
   };
 
   const handleStart = async () => {
@@ -468,6 +487,7 @@ export default function App() {
       speak: (a) => services.speak({ ...a, provider }),
       counter: services.counter,
       makeKey: (a) => services.makeKey({ ...a, provider }),
+      pauses: { prepare: (t) => (hasPauses(t) ? { requestText: extractPauses(t).clean } : null), derive: deriveChunkAudio, onReport: handlePauseReport },
       onLog: (msg) => logEvent(msg),
       onChange: (p) => {
         const fresh = newlyReady(readySeenRef.current, p.chunks);
@@ -624,6 +644,7 @@ export default function App() {
           lastPlayheadRef.current = null;
         }
         setSchedState({ state: 'idle', resetAt: null, playhead: 0, chunks: [] });
+        setPauseNotes({});
         setJobError('');
         setNotice('Settings saved. Press Start Reading to use them.');
       }
@@ -653,6 +674,7 @@ export default function App() {
     try {
       setText('');
       mapRef.current.clear();
+      setPauseNotes({});
       setSelIcon(null);
       stopSelectionAudio();
       if (storage) saveText(storage, '');
@@ -683,6 +705,7 @@ export default function App() {
       setJobError('');
       if (playerEngineRef.current) playerEngineRef.current.reset();
       mapRef.current.clear();
+      setPauseNotes({});
       setSelIcon(null);
       stopSelectionAudio();
       if (services) {
@@ -1394,15 +1417,35 @@ export default function App() {
       const key = services.makeKey({ text: st.text, voice: settings.voice, provider });
       let bytes = null;
       let hit = false;
-      try { hit = await services.cache.has(key); } catch { hit = false; }
-      if (hit) {
-        bytes = await services.cache.get(key);
-      } else {
-        const r = await services.speak({ input: st.text, voice: settings.voice, provider });
-        if (r && r.attempts) try { services.counter.add(r.attempts); } catch {}
-        if (!r || !r.ok) { setNotice(r && r.error ? r.error.message : 'Speak failed'); return; }
-        bytes = r.bytes;
+      if (hasPauses(st.text)) {
+        const requestText = extractPauses(st.text).clean;
+        const rawKey = services.makeKey({ text: requestText, voice: settings.voice, provider });
+        let rawBytes = null;
+        let rawHit = false;
+        try { rawHit = await services.cache.has(rawKey); } catch { rawHit = false; }
+        if (rawHit) {
+          rawBytes = await services.cache.get(rawKey);
+        } else {
+          const r = await services.speak({ input: requestText, voice: settings.voice, provider });
+          if (r && r.attempts) try { services.counter.add(r.attempts); } catch {}
+          if (!r || !r.ok) { setNotice(r && r.error ? r.error.message : 'Speak failed'); return; }
+          rawBytes = r.bytes;
+          try { await services.cache.put(rawKey, rawBytes); } catch {}
+        }
+        const derived = await deriveChunkAudio(rawBytes, st.text);
+        bytes = derived.bytes;
         try { await services.cache.put(key, bytes); } catch {}
+      } else {
+        try { hit = await services.cache.has(key); } catch { hit = false; }
+        if (hit) {
+          bytes = await services.cache.get(key);
+        } else {
+          const r = await services.speak({ input: st.text, voice: settings.voice, provider });
+          if (r && r.attempts) try { services.counter.add(r.attempts); } catch {}
+          if (!r || !r.ok) { setNotice(r && r.error ? r.error.message : 'Speak failed'); return; }
+          bytes = r.bytes;
+          try { await services.cache.put(key, bytes); } catch {}
+        }
       }
       const url = URL.createObjectURL(new Blob([bytes], { type: audioMime(bytes) }));
       const audio = new Audio(url);
@@ -1567,6 +1610,18 @@ export default function App() {
     save: saveClipFile,
   };
 
+  const deriveChunkAudio = async (rawBytes, text) => {
+    const { channels, sampleRate } = await decodeChunk(rawBytes);
+    const mono = mixToMono(channels);
+    const { clean, pauses } = extractPauses(text);
+    const mapped = mapPausesToSpoken(clean, pauses);
+    const silence = findSilences(mono, sampleRate);
+    const fine = findSilences(mono, sampleRate, { minSilence: 0.03 });
+    const weights = charWeights(mapped.text);
+    const align = alignTimeMap(mapped.text, silence, { weightAt: (i) => weights[i] });
+    const r = applyPauses({ samples: mono, rate: sampleRate, text: mapped.text, pauses: mapped.pauses, silence, align, fineSilences: fine, options: { snapRadiusSec: 0.3 } });
+    return { bytes: encodeWav([r.samples], sampleRate), report: r.report };
+  };
   const panelClass = (id, extra) =>
     'panel ' + extra + (dragId === id ? ' dragging' : '') + (drop && drop.id === id ? ' drop-' + drop.side : '');
 
@@ -1757,6 +1812,7 @@ export default function App() {
                   </div>
                   <div className="chunk-preview">{c.slice(0, 400)}</div>
                   {chunkNotes[i] ? <div className="err">{chunkNotes[i]}</div> : null}
+                  {pauseNotes[i] ? <div className="err">{pauseNotes[i]}</div> : null}
                   {err ? <div className="err">{typeof err.status === 'number' ? 'HTTP ' + err.status + ': ' : ''}{err.message}</div> : null}
                 </div>
               );
