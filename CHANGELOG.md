@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.73-beta - 2026-11-28
+- Clip editor: new pure src/mixCore.js (mixDown) mixes a mono voice with optional mono/stereo music into a stereo pair with gain, offset, loop, fades, ducking and a 0.99 limiter, with tests; not imported by the app yet
+
 ## 0.2.72-beta - 2026-11-28
 - Clip editor: new pure src/mixDuck.js (duckEnvelope, gainAtSample) builds a per-frame ducking gain envelope from a voice track for mixing under music, with tests; not imported by the app yet
 

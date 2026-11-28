@@ -1,7 +1,7 @@
 # Clip editor handoff
 
 Scope: ONLY the clip editor feature. The general project status stays in docs/handoff.md (stale at 0.2.19-beta; do not use it for this feature).
-Owner: @Eleven. Updated 2026-11-28. Version when written: 0.2.72-beta. Agents: Hermes (code), Claude (planning, task texts).
+Owner: @Eleven. Updated 2026-11-28. Version when written: 0.2.73-beta. Agents: Hermes (code), Claude (planning, task texts).
 
 ## Goal
 Cut one generated audio (one chunk, or the whole joined audio) into many clips by time, locally, with ZERO extra requests. The owner pastes unrelated sentences, generates once, then cuts them into separate files. Used mainly for voiceover for animation and video. Meant for all visitors of the site, desktop only in v1.
@@ -42,8 +42,7 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.35a hold Shift to snap slice click, M key, marker drag and hover line to the quietest spot within 80 ms; hint and CSS - DONE 0.2.49-beta (the dragMarker STOP anchor was stale; marker drag was added here)
 2.36a clip list with per-clip play/pause and editable names; src/clipNames.js alignment helper and CSS - DONE 0.2.50-beta (the clipNames.js STOP anchor was stale; the pure module was created here)
 2.36b list feedback (row play highlight, first-sentence placeholders, roomier rows, no end numbers, chunk info pinned, playbar-style transport) and 2.36c footer layout (hint and restore note in one row, taller list, wider name inputs) - DONE 0.2.51-beta/0.2.52-beta
-2.36d editor opening takes two thirds of the width via CSS, coral markers and faded shortcut row, blade icon/text, taller list, play/timer on the zoom row - DONE 0.2.53-beta (App.jsx untouched)
-2.36e centre the zoom/blade/undo tools, remove the helper highlight and dim its text to teal, use the Settings × close button, list +1 row - DONE 0.2.54-beta (one App.jsx line changed)
+2.36d editor opening takes two thirds of the width via CSS, coral markers and faded shortcut row, blade icon/text, taller list, play/timer on the zoom row - DONE 0.2.53-beta (App.jsx untouched); 2.36e centre the zoom/blade/undo tools, remove the helper highlight and dim its text to teal, use the Settings × close button, list +1 row - DONE 0.2.54-beta (one App.jsx line changed)
 2.37a src/clipExport.js pure clip export (clipFileNames, buildClipFiles, buildCutListFile, buildZipEntries) and tests - DONE 0.2.55-beta (not imported by the app yet; test import is the wiring proof; App.jsx untouched); 2.37b export from the editor: saveClipFile + clipExportDeps in App.jsx, ZIP/CSV/per-clip buttons, fade toggle and CSS - DONE 0.2.56-beta (wired; App.jsx handlers untouched)
 2.40a separate fade-in/fade-out and per-clip fades in clipSlices.js and clipExport.js - DONE 0.2.57-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof); 2.40b looping in src/clipPlayer.js (play opts.loop, setLoop, wrapped position, loop-aware seek, getState range) with appended tests - DONE 0.2.58-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
 2.40c fit the editor into the panel height (tools above waveform, transport below, only the list flexes and scrolls, chunk strip last) and per-clip row reordered to play, download, name, times, duration - DONE 0.2.59-beta (App.jsx untouched)
@@ -56,6 +55,7 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.43b typed cut times in src/ClipEditor.jsx (Cut at field, editable selected-marker time, marker picker, timeMsg line) and CSS - DONE 0.2.70-beta (App.jsx untouched; all wired; untested live)
 2.44a src/clipPlayer.js load accepts mono or one/two channel arrays (extra ignored, empty = no audio) with appended tests - DONE 0.2.71-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
 2.44b new pure src/mixDuck.js (DUCK_FRAME_MS, DEFAULT_DUCK, duckEnvelope, gainAtSample) per-frame ducking envelope with tests - DONE 0.2.72-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
+2.44c new pure src/mixCore.js (mixDown) mixes mono voice with optional mono/stereo music into a stereo pair (gain, offset, loop, fades, ducking, 0.99 limiter) with tests - DONE 0.2.73-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
 Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no bump); E4d 2.33a/2.33b 0.2.45-beta/0.2.46-beta; E4e 2.34a 0.2.47-beta; E5 2.34c 0.2.48-beta; E6 2.35a 0.2.49-beta; E7 2.36a-2.36c 0.2.50-beta/0.2.51-beta/0.2.52-beta; E8 2.37a/2.37b 0.2.55-beta/0.2.56-beta.
 
 ## Known gaps
@@ -94,6 +94,6 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 Follow AGENTS.md and the voice skill. One task per message. Touch only named files. App.jsx is one big component: exact anchors and the duplicate check. New pure modules go in src/*.js with tests/*.test.mjs (node cannot import .jsx). Mock everything; no real audio or IndexedDB here, so the owner tests live. EVERY clip-editor task ends by updating this file in place (task log, known gaps, verified, version) and lists it in READY TO COMMIT with its own git add line.
 
 ## Verified
-- npm test: 531 pass, 0 fail (2026-11-28, 0.2.72-beta; full raw run pasted in the task report).
-- node --check clean on src/mixDuck.js and tests/mixDuck.test.mjs. .jsx and .css cannot be compiled here, so the owner's vship build is the real check.
-- Owner must test live in Brave: nothing to test live yet for 2.44b — src/mixDuck.js is not imported by the app until a later task wires ducking under music. When it is wired, play a track with music and confirm the music dips under speech and recovers in the gaps.
+- npm test: 551 pass, 0 fail (2026-11-28, 0.2.73-beta; full raw run pasted in the task report).
+- node --check clean on src/mixCore.js and tests/mixCore.test.mjs. .jsx and .css cannot be compiled here, so the owner's vship build is the real check.
+- Owner must test live in Brave: nothing to test live yet for 2.44c — src/mixCore.js is not imported by the app until a later task wires the mix. When it is wired, mix a voice over music and confirm the music sits under the voice, loops or ends as chosen, fades in and out, and never clips above 0.99.
