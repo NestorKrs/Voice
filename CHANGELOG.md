@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.92-beta - 2026-11-28
+- The scheduler accepts an optional pauses config (prepare/derive/onReport): raw audio is fetched and cached under the clean text's key, the derived audio is cached under the chunk key, and a changed pause value costs no request; without the config nothing changes
+
 ## 0.2.91-beta - 2026-11-28
 - New pure src/pauseApply.js (mapPausesToSpoken, applyPauses) maps pause markers to the spoken text and inserts their seconds as silence (aligned to a matched pause, snapped to a near quiet gap, or skipped with a reason); not imported by the app yet
 

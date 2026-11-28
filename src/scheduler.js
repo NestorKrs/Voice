@@ -1,6 +1,6 @@
 import { nextResetUtcMs } from './requestCounter.js';
 
-export function createScheduler({ chunks, voice, lookahead, cache, speak, counter, makeKey, nowFn = Date.now, onChange = () => {}, onLog = () => {} }) {
+export function createScheduler({ chunks, voice, lookahead, cache, speak, counter, makeKey, pauses, nowFn = Date.now, onChange = () => {}, onLog = () => {} }) {
   const list = Array.isArray(chunks) ? chunks.slice() : [];
   const state = {
     state: 'idle',
@@ -71,28 +71,100 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
         state.chunks[idx].status = 'generating';
         state.chunks[idx].error = null;
         emit();
-        currentController = new AbortController();
-        let result;
-        try {
-          result = await speak({ input: list[idx], voice, signal: currentController.signal });
-        } catch {
-          result = { ok: false, error: { kind: 'network', message: 'Network error.' }, attempts: 0 };
-        }
-        currentController = null;
 
-        if (result && result.ok === false && result.error && result.error.kind === 'aborted') {
-          state.state = 'cancelled';
-          emit();
-          break;
+        // With a pauses config whose prepare returns a request text, the raw
+        // audio is fetched under the clean text's key and the derived audio is
+        // stored under the chunk key. Without it, or when the clean text equals
+        // the chunk text, the old path runs unchanged.
+        let requestInput = list[idx];
+        let rawKey = key;
+        let usePauses = false;
+        if (pauses && typeof pauses.prepare === 'function') {
+          const p = pauses.prepare(list[idx]);
+          if (p !== null && p !== undefined) {
+            const rk = await makeKey({ text: p.requestText, voice });
+            if (rk !== key) {
+              usePauses = true;
+              requestInput = p.requestText;
+              rawKey = rk;
+            }
+          }
         }
 
-        if (result && result.attempts) {
-          try { counter.add(result.attempts); } catch {}
+        let rawBytes = null;
+        if (usePauses) {
+          rawBytes = await cache.get(rawKey);
         }
+        const rawMissing = rawBytes === null || rawBytes === undefined ||
+          (typeof rawBytes.byteLength === 'number' && rawBytes.byteLength === 0);
 
-        if (result && result.ok) {
+        if (!usePauses || rawMissing) {
+          currentController = new AbortController();
+          let result;
           try {
-            await cache.put(key, result.bytes);
+            result = await speak({ input: requestInput, voice, signal: currentController.signal });
+          } catch {
+            result = { ok: false, error: { kind: 'network', message: 'Network error.' }, attempts: 0 };
+          }
+          currentController = null;
+
+          if (result && result.ok === false && result.error && result.error.kind === 'aborted') {
+            state.state = 'cancelled';
+            emit();
+            break;
+          }
+
+          if (result && result.attempts) {
+            try { counter.add(result.attempts); } catch {}
+          }
+
+          if (result && result.ok) {
+            try {
+              await cache.put(rawKey, result.bytes);
+            } catch (e) {
+              onLog('Cache write failed chunk ' + (idx + 1) + ': ' + (e && e.message ? e.message : String(e)));
+              state.chunks[idx].status = 'failed';
+              state.chunks[idx].error = { kind: 'cache', message: 'Could not save audio.' };
+              state.state = 'error';
+              emit();
+              break;
+            }
+            rawBytes = result.bytes;
+          } else {
+            // error
+            const err = (result && result.error) || { kind: 'unknown', message: 'Unknown error.' };
+            if (err.kind === 'daily_cap') {
+              state.chunks[idx].status = 'queued';
+              state.chunks[idx].error = null;
+              state.state = 'waiting_reset';
+              state.resetAt = (typeof err.resetAt === 'number') ? err.resetAt : nextResetUtcMs(nowFn());
+              emit();
+              break;
+            }
+            state.chunks[idx].status = 'failed';
+            state.chunks[idx].error = { kind: err.kind, status: err.status, message: err.message };
+            state.chunks[idx].failedKey = err.kind === 'bad_request' ? state.chunks[idx].key : null;
+            state.state = 'error';
+            emit();
+            break;
+          }
+        }
+
+        if (usePauses) {
+          let bytes;
+          let report;
+          try {
+            const d = await pauses.derive(rawBytes, list[idx], idx);
+            bytes = d.bytes;
+            report = d.report;
+          } catch (e) {
+            bytes = rawBytes;
+            report = [{ number: 0, status: 'failed', reason: 'Pauses were not applied: ' + (e && e.message ? e.message : 'unknown error') }];
+          }
+          // A cancel during derive must not write the cache.
+          if (state.state === 'cancelled') break;
+          try {
+            await cache.put(key, bytes);
           } catch (e) {
             onLog('Cache write failed chunk ' + (idx + 1) + ': ' + (e && e.message ? e.message : String(e)));
             state.chunks[idx].status = 'failed';
@@ -101,28 +173,15 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
             emit();
             break;
           }
-          state.chunks[idx].status = 'ready';
-          state.chunks[idx].error = null;
-          emit();
-          continue;
+          if (typeof pauses.onReport === 'function') {
+            try { pauses.onReport(idx, report); } catch {}
+          }
         }
 
-        // error
-        const err = (result && result.error) || { kind: 'unknown', message: 'Unknown error.' };
-        if (err.kind === 'daily_cap') {
-          state.chunks[idx].status = 'queued';
-          state.chunks[idx].error = null;
-          state.state = 'waiting_reset';
-          state.resetAt = (typeof err.resetAt === 'number') ? err.resetAt : nextResetUtcMs(nowFn());
-          emit();
-          break;
-        }
-        state.chunks[idx].status = 'failed';
-        state.chunks[idx].error = { kind: err.kind, status: err.status, message: err.message };
-        state.chunks[idx].failedKey = err.kind === 'bad_request' ? state.chunks[idx].key : null;
-        state.state = 'error';
+        state.chunks[idx].status = 'ready';
+        state.chunks[idx].error = null;
         emit();
-        break;
+        continue;
       }
     } catch (e) {
       const msg = (e && e.message ? e.message : String(e)).slice(0, 300);

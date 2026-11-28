@@ -477,3 +477,200 @@ test('a skipped resume does not increment the counter', async () => {
   await sched.resume();
   assert.equal(added, 1);
 });
+
+// --- pauses step (task 2.60e) ---
+
+test('pauses: prepare returns clean text -> one request, raw under clean key, derived under chunk key, onReport once', async () => {
+  const chunks = ['hello <break time="1.2s"/> world'];
+  const cache = makeCache();
+  const requests = [];
+  const speak = async ({ input }) => { requests.push(input); return { ok: true, bytes: new Uint8Array([1, 2, 3]), attempts: 1 }; };
+  let added = 0;
+  const counter = { add(n) { added += n; }, resetAt() { return 0; } };
+  const makeKey = async ({ text }) => 'k:' + text;
+  const reports = [];
+  const pauses = {
+    prepare: () => ({ requestText: 'hello  world' }),
+    derive: async () => ({ bytes: new Uint8Array([9, 9]), report: [{ number: 1, status: 'ok' }] }),
+    onReport: (i, r) => reports.push([i, r]),
+  };
+  const s = createScheduler({ chunks, voice: 'v', lookahead: 0, cache, speak, counter, makeKey, pauses });
+  await s.start();
+  await wait();
+  assert.deepEqual(requests, ['hello  world']);
+  assert.equal(requests.length, 1);
+  assert.deepEqual(Array.from(cache._m.get('k:hello  world')), [1, 2, 3]);
+  assert.deepEqual(Array.from(cache._m.get('k:' + chunks[0])), [9, 9]);
+  assert.equal(reports.length, 1);
+  assert.equal(reports[0][0], 0);
+  assert.deepEqual(reports[0][1], [{ number: 1, status: 'ok' }]);
+  assert.equal(added, 1);
+  assert.equal(s.getState().chunks[0].status, 'ready');
+});
+
+test('pauses: a second run with the same chunk text finds the derived entry and makes no request', async () => {
+  const chunks = ['hello <break time="1.2s"/> world'];
+  const cache = makeCache();
+  const makeKey = async ({ text }) => 'k:' + text;
+  const pauses = { prepare: () => ({ requestText: 'hello  world' }), derive: async () => ({ bytes: new Uint8Array([9]), report: [] }) };
+  let calls = 0;
+  const speak = async () => { calls++; return { ok: true, bytes: new Uint8Array([1]), attempts: 1 }; };
+  const counter = { add() {}, resetAt() { return 0; } };
+  const s1 = createScheduler({ chunks, voice: 'v', lookahead: 0, cache, speak, counter, makeKey, pauses });
+  await s1.start();
+  await wait();
+  assert.equal(calls, 1);
+  calls = 0;
+  const s2 = createScheduler({ chunks, voice: 'v', lookahead: 0, cache, speak, counter, makeKey, pauses });
+  await s2.start();
+  await wait();
+  assert.equal(calls, 0);
+  assert.equal(s2.getState().chunks[0].status, 'ready');
+});
+
+test('pauses: the same clean text with a different marker makes no request and stores a new derived entry', async () => {
+  const cache = makeCache();
+  const makeKey = async ({ text }) => 'k:' + text;
+  const pauses = { prepare: () => ({ requestText: 'clean' }), derive: async (raw, t) => ({ bytes: new Uint8Array([t.length]), report: [] }) };
+  let calls = 0;
+  const speak = async () => { calls++; return { ok: true, bytes: new Uint8Array([7]), attempts: 1 }; };
+  const counter = { add() {}, resetAt() { return 0; } };
+  const s1 = createScheduler({ chunks: ['a <break time="1s"/>'], voice: 'v', lookahead: 0, cache, speak, counter, makeKey, pauses });
+  await s1.start();
+  await wait();
+  assert.equal(calls, 1);
+  const s2 = createScheduler({ chunks: ['b <break time="2s"/>'], voice: 'v', lookahead: 0, cache, speak, counter, makeKey, pauses });
+  await s2.start();
+  await wait();
+  assert.equal(calls, 1);
+  assert.deepEqual(Array.from(cache._m.get('k:clean')), [7]);
+  assert.ok(cache._m.has('k:a <break time="1s"/>'));
+  assert.ok(cache._m.has('k:b <break time="2s"/>'));
+});
+
+test('pauses: derive throwing stores the raw bytes under the chunk key and reports a failed entry', async () => {
+  const chunks = ['x <break time="1s"/>'];
+  const cache = makeCache();
+  const makeKey = async ({ text }) => 'k:' + text;
+  const reports = [];
+  const pauses = {
+    prepare: () => ({ requestText: 'x' }),
+    derive: async () => { throw new Error('nope'); },
+    onReport: (i, r) => reports.push(r),
+  };
+  const speak = async () => ({ ok: true, bytes: new Uint8Array([5]), attempts: 1 });
+  const counter = { add() {}, resetAt() { return 0; } };
+  const s = createScheduler({ chunks, voice: 'v', lookahead: 0, cache, speak, counter, makeKey, pauses });
+  await s.start();
+  await wait();
+  assert.deepEqual(Array.from(cache._m.get('k:x <break time="1s"/>')), [5]);
+  assert.equal(reports.length, 1);
+  assert.equal(reports[0][0].status, 'failed');
+  assert.ok(reports[0][0].reason.startsWith('Pauses were not applied: '));
+  assert.equal(s.getState().chunks[0].status, 'ready');
+});
+
+test('pauses: a throwing onReport does not break the loop', async () => {
+  const chunks = ['a <break time="1s"/>', 'b <break time="1s"/>'];
+  const cache = makeCache();
+  const makeKey = async ({ text }) => 'k:' + text;
+  const pauses = {
+    prepare: (t) => ({ requestText: t[0] }),
+    derive: async () => ({ bytes: new Uint8Array([1]), report: [] }),
+    onReport: () => { throw new Error('report boom'); },
+  };
+  const speak = async () => ({ ok: true, bytes: new Uint8Array([1]), attempts: 1 });
+  const counter = { add() {}, resetAt() { return 0; } };
+  const s = createScheduler({ chunks, voice: 'v', lookahead: 2, cache, speak, counter, makeKey, pauses });
+  await s.start();
+  await wait(50);
+  assert.equal(s.getState().chunks[0].status, 'ready');
+  assert.equal(s.getState().chunks[1].status, 'ready');
+});
+
+test('pauses: prepare returning null behaves exactly as before', async () => {
+  const chunks = ['a', 'b'];
+  const cache = makeCache();
+  const requests = [];
+  const speak = async ({ input }) => { requests.push(input); return { ok: true, bytes: new Uint8Array([1]), attempts: 1 }; };
+  const counter = { add() {}, resetAt() { return 0; } };
+  const makeKey = async ({ text }) => 'k:' + text;
+  const pauses = { prepare: () => null, derive: async () => ({ bytes: new Uint8Array([2]), report: [] }) };
+  const s = createScheduler({ chunks, voice: 'v', lookahead: 1, cache, speak, counter, makeKey, pauses });
+  await s.start();
+  await wait();
+  assert.deepEqual(requests, ['a', 'b']);
+  assert.deepEqual(Array.from(cache._m.get('k:a')), [1]);
+  assert.deepEqual(Array.from(cache._m.get('k:b')), [1]);
+});
+
+test('pauses: the counter increases only by the attempts of the one real request', async () => {
+  const cache = makeCache();
+  const makeKey = async ({ text }) => 'k:' + text;
+  const pauses = { prepare: () => ({ requestText: 'clean' }), derive: async () => ({ bytes: new Uint8Array([1]), report: [] }) };
+  let added = 0;
+  const counter = { add(n) { added += n; }, resetAt() { return 0; } };
+  let calls = 0;
+  const speak = async () => { calls++; return { ok: true, bytes: new Uint8Array([1]), attempts: 3 }; };
+  const s1 = createScheduler({ chunks: ['m <break time="1s"/>'], voice: 'v', lookahead: 0, cache, speak, counter, makeKey, pauses });
+  await s1.start();
+  await wait();
+  assert.equal(added, 3);
+  const s2 = createScheduler({ chunks: ['n <break time="2s"/>'], voice: 'v', lookahead: 0, cache, speak, counter, makeKey, pauses });
+  await s2.start();
+  await wait();
+  assert.equal(calls, 1);
+  assert.equal(added, 3);
+});
+
+test('pauses: a daily-cap speak error behaves as the old path', async () => {
+  const chunks = ['a <break time="1s"/>'];
+  const cache = makeCache();
+  const makeKey = async ({ text }) => 'k:' + text;
+  const pauses = { prepare: () => ({ requestText: 'a' }), derive: async () => ({ bytes: new Uint8Array([1]), report: [] }) };
+  const speak = async () => ({ ok: false, error: { kind: 'daily_cap', message: 'cap', resetAt: 999 }, attempts: 1 });
+  const counter = { add() {}, resetAt() { return 0; } };
+  const s = createScheduler({ chunks, voice: 'v', lookahead: 0, cache, speak, counter, makeKey, pauses });
+  await s.start();
+  await wait();
+  assert.equal(s.getState().state, 'waiting_reset');
+  assert.equal(s.getState().resetAt, 999);
+  assert.equal(s.getState().chunks[0].status, 'queued');
+});
+
+test('pauses: a 500 speak error behaves as the old path', async () => {
+  const chunks = ['a <break time="1s"/>'];
+  const cache = makeCache();
+  const makeKey = async ({ text }) => 'k:' + text;
+  const pauses = { prepare: () => ({ requestText: 'a' }), derive: async () => ({ bytes: new Uint8Array([1]), report: [] }) };
+  let calls = 0;
+  const speak = async () => {
+    calls++;
+    if (calls === 1) return { ok: false, error: { kind: 'upstream', status: 500, message: 'boom' }, attempts: 1 };
+    return { ok: true, bytes: new Uint8Array([1]), attempts: 1 };
+  };
+  const counter = { add() {}, resetAt() { return 0; } };
+  const s = createScheduler({ chunks, voice: 'v', lookahead: 0, cache, speak, counter, makeKey, pauses });
+  await s.start();
+  await wait();
+  assert.equal(s.getState().chunks[0].status, 'failed');
+  await s.resume();
+  await waitFor(() => s.getState().chunks[0].status === 'ready');
+  assert.equal(calls, 2);
+  assert.equal(s.getState().chunks[0].status, 'ready');
+});
+
+test('pauses: without a pauses config nothing changes', async () => {
+  const chunks = ['a', 'b'];
+  const cache = makeCache();
+  const requests = [];
+  const speak = async ({ input }) => { requests.push(input); return { ok: true, bytes: new Uint8Array([1]), attempts: 1 }; };
+  const counter = { add() {}, resetAt() { return 0; } };
+  const makeKey = async ({ text }) => 'k:' + text;
+  const s = createScheduler({ chunks, voice: 'v', lookahead: 1, cache, speak, counter, makeKey });
+  await s.start();
+  await wait();
+  assert.deepEqual(requests, ['a', 'b']);
+  assert.deepEqual(Array.from(cache._m.get('k:a')), [1]);
+  assert.deepEqual(Array.from(cache._m.get('k:b')), [1]);
+});
