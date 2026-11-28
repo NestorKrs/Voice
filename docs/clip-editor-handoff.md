@@ -1,7 +1,7 @@
 # Clip editor handoff
 
 Scope: ONLY the clip editor feature. The general project status stays in docs/handoff.md (stale at 0.2.19-beta; do not use it for this feature).
-Owner: @Eleven. Updated 2026-11-27. Version when written: 0.2.69-beta. Agents: Hermes (code), Claude (planning, task texts).
+Owner: @Eleven. Updated 2026-11-27. Version when written: 0.2.70-beta. Agents: Hermes (code), Claude (planning, task texts).
 
 ## Goal
 Cut one generated audio (one chunk, or the whole joined audio) into many clips by time, locally, with ZERO extra requests. The owner pastes unrelated sentences, generates once, then cuts them into separate files. Used mainly for voiceover for animation and video. Meant for all visitors of the site, desktop only in v1.
@@ -53,9 +53,9 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.40f Fade in / Fade out toggles, All/Selected scope picker and row selection (click, Ctrl+click, Shift+click) driving per-clip fades in src/ClipEditor.jsx with CSS - DONE 0.2.62-beta (App.jsx untouched)
 2.41a src/clipText.js pure sample-range to text mapper (SNAP_CHARS, MAX_TEXT_CHARS, createClipTextMapper) and tests - DONE 0.2.63-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof); 2.41b clip row and strip show each clip's own text (name placeholder, hover title, "Clip N of M - chunk K") in src/ClipEditor.jsx and src/App.css - DONE 0.2.64-beta (App.jsx untouched)
 2.42a nameFromText in src/clipSlices.js and an optional texts argument in src/clipExport.js so unnamed clips are named from their text (audio names and CSV match), with appended tests - DONE 0.2.65-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof); 2.42b file names from the clip text in src/ClipEditor.jsx (clipTextList, texts in exportArgs, aligned single download, row download title) - DONE 0.2.66-beta (App.jsx untouched)
-2.43a src/clipTime.js pure typed-time parser (parseTime) and tests - DONE 0.2.67-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
-2.43b Start Reading disabled while the editor is open, visual clip-row reorder by grip drag (src/clipOrder.js with tests), Text panel shows the playing clip's text as one highlight block, and rounded sentence highlight across line breaks - DONE 0.2.68-beta (App.jsx, ClipEditor.jsx, App.css and source tests changed; all wired)
+2.43a src/clipTime.js pure typed-time parser (parseTime) and tests - DONE 0.2.67-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof); 2.43b Start Reading disabled while the editor is open, visual clip-row reorder by grip drag (src/clipOrder.js with tests), Text panel shows the playing clip's text as one highlight block, and rounded sentence highlight across line breaks - DONE 0.2.68-beta (App.jsx, ClipEditor.jsx, App.css and source tests changed; all wired)
 2.43c cut markers can be deleted (Delete/Backspace or button, nearestMarkerIndex in src/clipCuts.js with tests), clip times/list update live during marker drags, and a Refresh button reloads saved cuts - DONE 0.2.69-beta (all wired; untested live)
+2.43b typed cut times in src/ClipEditor.jsx (Cut at field, editable selected-marker time, marker picker, timeMsg line) and CSS - DONE 0.2.70-beta (App.jsx untouched; all wired; untested live)
 Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no bump); E4d 2.33a/2.33b 0.2.45-beta/0.2.46-beta; E4e 2.34a 0.2.47-beta; E5 2.34c 0.2.48-beta; E6 2.35a 0.2.49-beta; E7 2.36a-2.36c 0.2.50-beta/0.2.51-beta/0.2.52-beta; E8 2.37a/2.37b 0.2.55-beta/0.2.56-beta.
 
 ## Known gaps
@@ -82,18 +82,18 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 - Clip text is approximate unless the cut lands on a pause: src/clipText.js falls back to a linear position estimate and marks that part estimated.
 - Clip text placeholders, the hover title and the clip strip ("Clip N of M - chunk K") are wired but untested live in Brave.
 - nameFromText and the texts argument are wired into the export path (ZIP, CSV, single download, row download title) but untested live in Brave.
-- src/clipTime.js parses typed cut times but is not wired into the editor; there is no UI for typing a time yet (typed cut times stay parked).
+- Typed cut times are wired (Cut at field, editable selected-marker time, marker picker) but untested live in Brave, and the marker picker is the only way to select a marker (no click-to-select on the waveform); the "arrows: 1 ms, Shift: 10 ms, Delete removes" hint is shown next to the marker time field, but arrow-key nudge is still not wired.
 - Clip-row drag order is display-only (not saved, not used by playback or export); the Text panel highlight falls back to the whole chunk when the clip text cannot be found in it.
 
 ## Open decisions
 - Reaction-time compensation value and playhead offset (tuned live).
 - Public access (each visitor needs their own OpenRouter key) and request-cost warnings: decide before the editor is announced.
-- Parked features: mixer, auto-suggest from pauses, typed cut times, and Space for the main player.
+- Parked features: mixer, auto-suggest from pauses, and Space for the main player.
 
 ## Rules for agents
 Follow AGENTS.md and the voice skill. One task per message. Touch only named files. App.jsx is one big component: exact anchors and the duplicate check. New pure modules go in src/*.js with tests/*.test.mjs (node cannot import .jsx). Mock everything; no real audio or IndexedDB here, so the owner tests live. EVERY clip-editor task ends by updating this file in place (task log, known gaps, verified, version) and lists it in READY TO COMMIT with its own git add line.
 
 ## Verified
-- npm test: 511 pass, 0 fail (2026-11-28, 0.2.69-beta; full raw run pasted in the task report).
+- npm test: 512 pass, 0 fail (2026-11-28, 0.2.70-beta; full raw run pasted in the task report).
 - node --check clean on src/clipCuts.js, tests/clipCuts.test.mjs and tests/clipEditorSource.test.mjs; the App.jsx duplicate check shows only the two known false positives (const chunks, const commit). .jsx and .css cannot be compiled here, so the owner's vship build is the real check.
-- Owner must test live in Brave: drag a marker and watch the clip rows' times and text change during the drag, then release and confirm the saved cut matches; press Delete (or the new button) with the playhead near a cut and confirm that cut disappears and undo restores it; change saved cuts in another tab, press Refresh and confirm markers and the clip list reload; check the on-screen reasons when no cut is near the playhead or no audio is loaded.
+- Owner must test live in Brave: drag a marker and watch the clip rows' times and text change during the drag, then release and confirm the saved cut matches; press Delete (or the new button) with the playhead near a cut and confirm that cut disappears and undo restores it; change saved cuts in another tab, press Refresh and confirm markers and the clip list reload; check the on-screen reasons when no cut is near the playhead or no audio is loaded. Type 1:05.250 in "Cut at" and press Enter: an orange cut appears exactly there (check the clip list start time); 65,25 and 65.25 give the same cut; a bad entry shows its exact reason under the tools row; a time that already has a cut says so; pick a marker, type a new time and press Enter to move it in one undo step; a time past a neighbouring cut shows the between-message and nothing moves; names stay with their clips when a typed cut is added before them; Space, M and Home do nothing while typing in these fields.

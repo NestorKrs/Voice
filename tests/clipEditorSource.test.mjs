@@ -229,3 +229,12 @@ test('the clip list follows the cut preview during a marker drag', () => {
   assert.ok(source.includes('segments(displayCuts)'));
   assert.ok(source.includes('setPreviewCuts(null)'));
 });
+
+test('typed cut times are wired into the editor', () => {
+  assert.ok(source.includes("from './clipTime.js'"));
+  assert.ok(source.includes('aria-label="Cut at time"'));
+  assert.ok(source.includes('aria-label="Marker time"'));
+  assert.ok(source.includes('parseTime'));
+  assert.ok(source.includes('The cut must stay between'));
+  assert.ok(source.includes('There is already a cut at'));
+});

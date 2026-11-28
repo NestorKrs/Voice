@@ -13,6 +13,7 @@ import { createClipTextMapper } from './clipText.js';
 import { findSilences } from './silenceMap.js';
 import { alignTimeMap } from './alignMap.js';
 import { sentenceRanges, charWeights } from './highlight.js';
+import { parseTime } from './clipTime.js';
 
 export default function ClipEditor({ audio, loading, error, scopeValue, scopeOptions, onScopeChange, chunkTexts = [], audioKey = null, clipExportDeps, onClipView = null }) {
   const rootRef = useRef(null);
@@ -61,6 +62,10 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const [dragIndex, setDragIndex] = useState(null);
   const [dropIndex, setDropIndex] = useState(null);
   const [exportMsg, setExportMsg] = useState('');
+  const [cutText, setCutText] = useState('');
+  const [markerText, setMarkerText] = useState('');
+  const [timeMsg, setTimeMsg] = useState('');
+  const [selectedMarker, setSelectedMarker] = useState(null);
 
   const total = audio ? audio.samples.length : 0;
   const rate = audio ? audio.sampleRate : 0;
@@ -158,6 +163,76 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     applyCuts(deleteMarker(state, index));
   };
 
+  const commitCutAt = () => {
+    const state = cutsRef.current;
+    if (!state) {
+      setTimeMsg('No audio loaded.');
+      return;
+    }
+    const result = parseTime(cutText, rate, total);
+    if (!result.ok) {
+      setTimeMsg(result.reason);
+      return;
+    }
+    if (state.markers.includes(result.sample)) {
+      setTimeMsg('There is already a cut at ' + formatTime(result.sample, rate) + '.');
+      return;
+    }
+    applyCuts(addMarker(state, result.sample));
+    setCutText('');
+    setTimeMsg('');
+  };
+
+  const onCutAtKey = (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      commitCutAt();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      setCutText('');
+      setTimeMsg('');
+    }
+  };
+
+  const commitMarkerTime = () => {
+    const state = cutsRef.current;
+    if (!state || selectedMarker === null || selectedMarker >= state.markers.length) {
+      setMarkerText('');
+      return;
+    }
+    const current = state.markers[selectedMarker];
+    const result = parseTime(markerText, rate, total);
+    if (!result.ok) {
+      setTimeMsg(result.reason);
+      setMarkerText(formatTime(current, rate));
+      return;
+    }
+    const prev = selectedMarker > 0 ? state.markers[selectedMarker - 1] : 0;
+    const next = selectedMarker < state.markers.length - 1 ? state.markers[selectedMarker + 1] : total;
+    if (result.sample <= prev || result.sample >= next) {
+      setTimeMsg('The cut must stay between ' + formatTime(prev, rate) + ' and ' + formatTime(next, rate) + '.');
+      setMarkerText(formatTime(current, rate));
+      return;
+    }
+    setTimeMsg('');
+    setMarkerText(formatTime(result.sample, rate));
+    if (result.sample !== current) applyCuts(moveMarker(state, selectedMarker, result.sample));
+  };
+
+  const onMarkerTimeKey = (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      commitMarkerTime();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      const state = cutsRef.current;
+      setMarkerText(state && selectedMarker !== null && selectedMarker < state.markers.length
+        ? formatTime(state.markers[selectedMarker], rate)
+        : '');
+      setTimeMsg('');
+    }
+  };
+
   const refreshCuts = () => {
     if (!audio || !audioKey) {
       setRestoreNote('Refresh needs loaded audio with a cache identity.');
@@ -230,6 +305,10 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   }, [audio, audioKey]);
 
   useEffect(() => {
+    setTimeMsg('');
+  }, [audio]);
+
+  useEffect(() => {
     if (!cuts || !audioKey || !audio) return undefined;
     if (restoringRef.current) {
       restoringRef.current = false;
@@ -262,6 +341,15 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
     setDragIndex(null);
     setDropIndex(null);
   }, [cuts]);
+
+  useEffect(() => {
+    if (selectedMarker === null || !cuts || selectedMarker >= cuts.markers.length) {
+      if (selectedMarker !== null) setSelectedMarker(null);
+      setMarkerText('');
+      return;
+    }
+    setMarkerText(formatTime(cuts.markers[selectedMarker], rate));
+  }, [selectedMarker, cuts, rate]);
 
   useEffect(() => {
     if (fadeScope === 'selected' && selectedClips.length === 0) setFadeScope('all');
@@ -922,7 +1010,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   };
 
   return (
-    <div className="clip-editor" ref={rootRef}>
+    <div className="clip-editor" ref={rootRef} onPointerDown={(event) => { if (!event.target.closest('.clip-time-input')) setTimeMsg(''); }}>
       <div className="clip-editor-head">
         <span className="panel-title">Clip editor</span>
         <select aria-label="Audio to edit" value={scopeValue} onChange={(event) => onScopeChange(event.target.value)}>
@@ -983,7 +1071,53 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
               onClick={refreshCuts}
             ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 11a8 8 0 10-2.3 5.7"/><path d="M20 5v6h-6"/></svg></button>
             {audio ? <span className="clip-visible">{clipSegments.length} clips</span> : null}
+            {audio ? (
+              <>
+                <label className="clip-visible" htmlFor="clip-cut-at">Cut at</label>
+                <input
+                  id="clip-cut-at"
+                  type="text"
+                  className="clip-time-input"
+                  aria-label="Cut at time"
+                  placeholder="m:ss.mmm"
+                  size={9}
+                  value={cutText}
+                  disabled={!audio}
+                  title={!audio ? 'No audio loaded' : undefined}
+                  onChange={(event) => setCutText(event.target.value)}
+                  onKeyDown={onCutAtKey}
+                />
+                <select
+                  aria-label="Selected marker"
+                  value={selectedMarker === null ? '' : String(selectedMarker)}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setSelectedMarker(value === '' ? null : Number(value));
+                    setTimeMsg('');
+                  }}
+                >
+                  <option value="">No marker</option>
+                  {(cutsRefCurrent ? cutsRefCurrent.markers : []).map((marker, index) => (
+                    <option key={index} value={index}>{'Marker ' + (index + 1) + ' - ' + formatTime(marker, rate)}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  className="clip-time-input"
+                  aria-label="Marker time"
+                  size={9}
+                  value={markerText}
+                  disabled={!audio || selectedMarker === null}
+                  title={!audio ? 'No audio loaded' : (selectedMarker === null ? 'Select a marker first' : 'Type a new time for this cut')}
+                  onChange={(event) => setMarkerText(event.target.value)}
+                  onKeyDown={onMarkerTimeKey}
+                  onBlur={commitMarkerTime}
+                />
+                <span className="clip-visible">arrows: 1 ms, Shift: 10 ms, Delete removes</span>
+              </>
+            ) : null}
           </div>
+          {timeMsg ? <div className="clip-time-msg">{timeMsg}</div> : null}
           <div
             className={`clip-wave${dragging ? ' dragging' : ''}${sliceMode ? ' slice' : ''}${dragPreview ? ' marker-drag' : ''}${nearPlayhead ? ' near-playhead' : ''}`}
             ref={wrapRef}

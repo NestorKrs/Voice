@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.70-beta - 2026-11-28
+- Clip editor: type a cut time (s, m:ss, h:mm:ss, comma decimals) in "Cut at" and press Enter, and edit a selected marker's time in place; exact reasons show under the tools row, with a marker picker, one-undo-step moves and no change to existing handlers
+
 ## 0.2.69-beta - 2026-11-28
 - Clip editor: delete a cut with Delete/Backspace or the new button, clip times and list update live during marker drags, and a Refresh button reloads saved cuts for the current audio
 
