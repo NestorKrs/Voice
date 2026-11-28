@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.72-beta - 2026-11-28
+- Clip editor: new pure src/mixDuck.js (duckEnvelope, gainAtSample) builds a per-frame ducking gain envelope from a voice track for mixing under music, with tests; not imported by the app yet
+
 ## 0.2.71-beta - 2026-11-28
 - Clip editor: src/clipPlayer.js load accepts a mono Float32Array or an array of one or two channel arrays (extra channels ignored, empty array is no audio) and builds the buffer with the matching channel count; no UI change
 
