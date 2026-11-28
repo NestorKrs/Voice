@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.83-beta - 2026-11-28
+- New pure src/pauseMarkers.js (extractPauses, hasPauses, stripForRequest) pulls <break> tags out of the text and reports each pause's clean-text index and seconds (comma decimals, 60 s clamp, adjacent tags merged); not imported by the app yet
+
 ## 0.2.82-beta - 2026-11-28
 - New pure slashContext(text, caret) in src/slashMenu.js decides whether a textarea caret is typing a slash command (line-start slash, no space after it, query <= 40 chars), with appended tests; not used by the app yet
 
