@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.94-beta - 2026-11-28
+- The highlight map and the clip editor align on the spoken text: buildChunkMap strips directives before aligning and maps the result back to the original chunk, and ClipEditor strips tags from clip text, the chunk strip and file names; new tests/spokenTextSource.test.mjs
+
 ## 0.2.93-beta - 2026-11-28
 - App-made pauses are wired into the reader: a chunk with a break tag is requested once as clean text, the extra silence is derived and cached under the chunk key, the status bar and row show added/skipped pauses, and a selection read derives the same way; new tests/pausesWiringSource.test.mjs
 

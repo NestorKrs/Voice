@@ -12,6 +12,7 @@ import { alignTimeMap } from './alignMap.js';
 import { extractPauses, hasPauses } from './pauseMarkers.js';
 import { applyPauses, mapPausesToSpoken } from './pauseApply.js';
 import { createScheduler } from './scheduler.js';
+import { stripWithMap } from './directives.js';
 import { createServices } from './wiring.js';
 import { createPlayerEngine } from './playerEngine.js';
 import { newlyReady, readyFlags, playheadToSend } from './followPlayback.js';
@@ -1475,6 +1476,7 @@ export default function App() {
     const data = playerDataRef.current;
     const chunk = data.chunks[index];
     if (chunk == null) { mapRef.current.delete(index); return; }
+    const spoken = stripWithMap(chunk);
     try {
       if (!services) throw new Error('No services yet.');
       const key = await services.makeKey({ text: chunk, voice: data.settings.voice, provider: data.provider });
@@ -1482,10 +1484,10 @@ export default function App() {
       if (!bytes) { mapRef.current.delete(index); logEvent('Highlight map chunk ' + (index + 1) + ': no cached audio yet (estimated)'); return; }
       const { channels, sampleRate } = await decodeChunk(bytes);
       const silence = findSilences(mixToMono(channels), sampleRate);
-      const weights = charWeights(chunk);
-      const result = alignTimeMap(chunk, silence, { weightAt: (i) => weights[i] });
+      const weights = charWeights(spoken.text);
+      const result = alignTimeMap(spoken.text, silence, { weightAt: (i) => weights[i] });
       if (result.ok) {
-        mapRef.current.set(index, { state: 'ok', timeToIndex: result.timeToIndex, mapDuration: silence.duration });
+        mapRef.current.set(index, { state: 'ok', timeToIndex: (t) => { const k = result.timeToIndex(t); return spoken.map[Math.min(k, spoken.text.length)]; }, mapDuration: silence.duration });
         logEvent('Highlight map chunk ' + (index + 1) + ': aligned ' + result.anchors + ' of ' + result.breaks + ' breaks, ' + result.silences + ' pauses');
       } else {
         mapRef.current.set(index, { state: 'fallback', tries });

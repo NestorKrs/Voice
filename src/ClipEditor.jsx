@@ -10,6 +10,7 @@ import { createClipPlayer } from './clipPlayer.js';
 import { fullView, zoomAt, wheelFactor, panByPixels, sampleAtX, xAtSample, ensureVisible, MIN_SPAN, isFullView } from './clipView.js';
 import { reorderIds } from './clipOrder.js';
 import { createClipTextMapper } from './clipText.js';
+import { stripDirectives } from './directives.js';
 import { findSilences } from './silenceMap.js';
 import { alignTimeMap } from './alignMap.js';
 import { sentenceRanges, charWeights } from './highlight.js';
@@ -94,19 +95,20 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const loopState = playerRef.current ? playerRef.current.getState() : null;
   const nowIndex = audio ? audio.offsets.reduce((last, offset, i) => (offset <= playPos ? i : last), -1) : -1;
   const nowChunk = nowIndex >= 0 ? audio.indexes[nowIndex] : -1;
-  const nowText = nowChunk >= 0 && chunkTexts[nowChunk]
-    ? chunkTexts[nowChunk].slice(0, 200) + (chunkTexts[nowChunk].length > 200 ? '…' : '')
+  const spokenTexts = useMemo(() => (chunkTexts || []).map((t) => stripDirectives(t)), [chunkTexts]);
+  const nowText = nowChunk >= 0 && spokenTexts[nowChunk]
+    ? spokenTexts[nowChunk].slice(0, 200) + (spokenTexts[nowChunk].length > 200 ? '…' : '')
     : '';
 
   const textMapper = useMemo(() => {
     try {
-      return audio && chunkTexts && chunkTexts.length
-        ? createClipTextMapper({ audio, chunkTexts, deps: { findSilences, alignTimeMap, charWeights, sentenceRanges } })
+      return audio && spokenTexts && spokenTexts.length
+        ? createClipTextMapper({ audio, chunkTexts: spokenTexts, deps: { findSilences, alignTimeMap, charWeights, sentenceRanges } })
         : null;
     } catch (e) {
       return null;
     }
-  }, [audio, chunkTexts]);
+  }, [audio, spokenTexts]);
   const clipTexts = useMemo(() => {
     if (!textMapper || !displayCuts || displayCuts.markers.length === 0) return null;
     return segments(displayCuts).map((s) => textMapper.textForRange(s.start, s.end));
@@ -131,7 +133,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const viewChunkId = nowClip
     ? (nowClipChunkPos >= 0 && audio ? audio.indexes[nowClipChunkPos] : -1)
     : nowChunk;
-  const viewChunkText = viewChunkId >= 0 && chunkTexts[viewChunkId] ? chunkTexts[viewChunkId] : '';
+  const viewChunkText = viewChunkId >= 0 && spokenTexts[viewChunkId] ? spokenTexts[viewChunkId] : '';
   const viewClipText = nowClipText && nowClipText.text
     ? nowClipText.text.replace(/^~\s*/, '').replace(/…$/, '')
     : '';
@@ -1211,7 +1213,7 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
               const buttonLabel = (isPlaying ? 'Pause clip ' : 'Play clip ') + (segment.index + 1);
               const chunk = audio ? audio.offsets.reduce((last, offset, i) => (offset <= segment.start ? i : last), -1) : -1;
               const chunkId = chunk >= 0 ? audio.indexes[chunk] : -1;
-              const previewText = chunkId >= 0 && chunkTexts[chunkId] ? firstSentence(chunkTexts[chunkId]) : '';
+              const previewText = chunkId >= 0 && spokenTexts[chunkId] ? firstSentence(spokenTexts[chunkId]) : '';
               const clipText = clipTexts ? clipTexts[segment.index] : null;
               const rowText = clipText && clipText.text ? (clipText.estimated ? '~ ' : '') + clipText.text : '';
               const rowTitle = clipText && clipText.text

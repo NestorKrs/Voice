@@ -238,3 +238,9 @@ test('typed cut times are wired into the editor', () => {
   assert.ok(source.includes('The cut must stay between'));
   assert.ok(source.includes('There is already a cut at'));
 });
+
+test('ClipEditor strips directives for the spoken text', () => {
+  const src = readFileSync(new URL('../src/ClipEditor.jsx', import.meta.url), 'utf8');
+  assert.ok(src.includes('stripDirectives'), 'missing stripDirectives');
+  assert.ok(src.includes('spokenTexts'), 'missing spokenTexts');
+});
