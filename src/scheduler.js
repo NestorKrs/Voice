@@ -6,7 +6,8 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
     state: 'idle',
     resetAt: null,
     playhead: 0,
-    chunks: list.map(() => ({ status: 'queued', error: null, key: null })),
+    note: null,
+    chunks: list.map(() => ({ status: 'queued', error: null, key: null, failedKey: null })),
   };
 
   let currentController = null;
@@ -18,6 +19,7 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
       state: state.state,
       resetAt: state.resetAt,
       playhead: state.playhead,
+      note: state.note,
       chunks: state.chunks.map((c) => ({ status: c.status, error: c.error })),
     };
     onChange(payload);
@@ -116,7 +118,8 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
           break;
         }
         state.chunks[idx].status = 'failed';
-        state.chunks[idx].error = { kind: err.kind, message: err.message };
+        state.chunks[idx].error = { kind: err.kind, status: err.status, message: err.message };
+        state.chunks[idx].failedKey = err.kind === 'bad_request' ? state.chunks[idx].key : null;
         state.state = 'error';
         emit();
         break;
@@ -139,6 +142,7 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
       paused = false;
       state.state = 'generating';
       state.resetAt = null;
+      state.note = null;
       await computeKeys();
       // mark cached as ready
       for (let i = 0; i < list.length; i++) {
@@ -173,14 +177,41 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
     },
     async resume() {
       paused = false;
+      state.note = null;
       if (['waiting_reset', 'error', 'paused', 'cancelled'].includes(state.state)) {
         state.state = 'generating';
         state.resetAt = null;
       }
-      // set failed chunks in window to queued
+      // A chunk rejected with HTTP 400 keeps its failedKey; re-queue it only when
+      // the text, voice or provider changed the key. Every other failure re-queues.
+      let failedCount = 0;
+      let skippedCount = 0;
+      let note = null;
       for (let i = 0; i < list.length; i++) {
-        if (state.chunks[i].status === 'failed') state.chunks[i].status = 'queued';
-        if (!currentController && state.chunks[i].status === 'generating') state.chunks[i].status = 'queued';
+        const c = state.chunks[i];
+        if (c.status === 'failed') {
+          failedCount += 1;
+          if (c.failedKey) {
+            const key = await makeKey({ text: list[i], voice });
+            if (key === c.failedKey) {
+              skippedCount += 1;
+              if (!note) {
+                note = 'Chunk ' + (i + 1) + ' was rejected (HTTP 400) and its text, voice and provider have not changed. Edit the text or change the voice, then press Start Reading.';
+              }
+              continue;
+            }
+          }
+          c.status = 'queued';
+          c.error = null;
+          c.failedKey = null;
+        }
+        if (!currentController && c.status === 'generating') c.status = 'queued';
+      }
+      state.note = note;
+      if (failedCount > 0 && skippedCount === failedCount) {
+        state.state = 'error';
+        emit();
+        return;
       }
       emit();
       runLoop();
@@ -207,6 +238,7 @@ export function createScheduler({ chunks, voice, lookahead, cache, speak, counte
         state: state.state,
         resetAt: state.resetAt,
         playhead: state.playhead,
+        note: state.note,
         chunks: state.chunks.map((c) => ({ status: c.status, error: c.error })),
       };
     },

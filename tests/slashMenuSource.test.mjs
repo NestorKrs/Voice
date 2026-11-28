@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const src = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8');
+const css = readFileSync(new URL('../src/App.css', import.meta.url), 'utf8');
 
 test('App imports the slash menu, directives and directiveSupport', () => {
   assert.match(src, /from '\.\/slashMenu\.js'/);
@@ -35,4 +36,14 @@ test('slash menu sits inside the find row it is positioned against', () => {
   const rowEnd = src.indexOf('</div>\n          <textarea', rowStart);
   assert.ok(rowStart !== -1 && menuStart !== -1 && rowEnd !== -1);
   assert.ok(menuStart > rowStart && menuStart < rowEnd);
+});
+
+test('slash menu shows category tabs and tag buttons in a grid', () => {
+  assert.match(src, /className="slash-tabs"/);
+  assert.match(src, /className="slash-grid"/);
+  assert.match(src, /slashCategory/);
+  assert.match(src, /handleSlashEntry/);
+  assert.equal(src.includes('slash-group'), false);
+  assert.match(css, /\.slash-menu \.slash-tabs \{/);
+  assert.match(css, /\.slash-menu \.slash-grid \{/);
 });

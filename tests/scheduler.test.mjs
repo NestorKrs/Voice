@@ -333,3 +333,147 @@ test('cache get and put failures log and do not crash', async () => {
   assert.equal(s.getState().state, 'error');
   assert.equal(s.getState().chunks[0].error.message, 'Could not save audio.');
 });
+
+function makeSched({ texts, speak, makeKey, counter, lookahead = 1 }) {
+  return createScheduler({
+    chunks: texts,
+    voice: 'v',
+    lookahead,
+    cache: { has: async () => false, put: async () => {} },
+    speak,
+    counter: counter || { add() {} },
+    makeKey: makeKey || (async ({ text }) => 'k:' + text),
+  });
+}
+
+const NOTE_400 = 'Chunk 1 was rejected (HTTP 400) and its text, voice and provider have not changed. Edit the text or change the voice, then press Start Reading.';
+
+async function waitFor(fn, ms = 1000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    if (fn()) return true;
+    await new Promise((r) => setTimeout(r, 2));
+  }
+  return false;
+}
+
+test('a 400 failure stays failed after resume with the same text and shows the note', async () => {
+  let calls = 0;
+  const sched = makeSched({
+    texts: ['hello'],
+    speak: async () => { calls += 1; return { ok: false, error: { kind: 'bad_request', status: 400, message: 'nope' }, attempts: 1 }; },
+  });
+  await sched.start();
+  assert.equal(calls, 1);
+  assert.equal(sched.getState().chunks[0].status, 'failed');
+  await sched.resume();
+  assert.equal(calls, 1);
+  const s = sched.getState();
+  assert.equal(s.chunks[0].status, 'failed');
+  assert.equal(s.note, NOTE_400);
+});
+
+test('resume re-queues a 400 chunk when the key changed and calls speak once', async () => {
+  let calls = 0;
+  let keyMode = 'same';
+  const sched = makeSched({
+    texts: ['hello'],
+    speak: async () => {
+      calls += 1;
+      if (calls === 1) return { ok: false, error: { kind: 'bad_request', status: 400, message: 'nope' }, attempts: 1 };
+      return { ok: true, bytes: new Uint8Array([1]), attempts: 1 };
+    },
+    makeKey: async ({ text }) => (keyMode === 'same' ? 'k:' + text : 'k2:' + text),
+  });
+  await sched.start();
+  assert.equal(calls, 1);
+  keyMode = 'diff';
+  await sched.resume();
+  await waitFor(() => sched.getState().chunks[0].status === 'ready');
+  assert.equal(calls, 2);
+  assert.equal(sched.getState().chunks[0].status, 'ready');
+});
+
+test('a 500 failure is re-queued by resume as before', async () => {
+  let calls = 0;
+  const sched = makeSched({
+    texts: ['hello'],
+    speak: async () => {
+      calls += 1;
+      if (calls === 1) return { ok: false, error: { kind: 'upstream', status: 500, message: 'boom' }, attempts: 1 };
+      return { ok: true, bytes: new Uint8Array([1]), attempts: 1 };
+    },
+  });
+  await sched.start();
+  assert.equal(sched.getState().chunks[0].status, 'failed');
+  await sched.resume();
+  await waitFor(() => sched.getState().chunks[0].status === 'ready');
+  assert.equal(calls, 2);
+  assert.equal(sched.getState().chunks[0].status, 'ready');
+});
+
+test('a 401 failure is re-queued by resume as before', async () => {
+  let calls = 0;
+  const sched = makeSched({
+    texts: ['hello'],
+    speak: async () => {
+      calls += 1;
+      if (calls === 1) return { ok: false, error: { kind: 'auth', status: 401, message: 'bad key' }, attempts: 1 };
+      return { ok: true, bytes: new Uint8Array([1]), attempts: 1 };
+    },
+  });
+  await sched.start();
+  assert.equal(sched.getState().chunks[0].status, 'failed');
+  await sched.resume();
+  await waitFor(() => sched.getState().chunks[0].status === 'ready');
+  assert.equal(calls, 2);
+  assert.equal(sched.getState().chunks[0].status, 'ready');
+});
+
+test('with a 400 and a 500 failure, resume re-queues only the 500 one', async () => {
+  const calls = [];
+  const sched = makeSched({
+    texts: ['a', 'b'],
+    lookahead: 2,
+    speak: async ({ input }) => {
+      calls.push(input);
+      if (input === 'a') return { ok: false, error: { kind: 'bad_request', status: 400, message: 'no' }, attempts: 1 };
+      if (input === 'b' && calls.filter((x) => x === 'b').length === 1) return { ok: false, error: { kind: 'upstream', status: 500, message: 'boom' }, attempts: 1 };
+      return { ok: true, bytes: new Uint8Array([1]), attempts: 1 };
+    },
+  });
+  await sched.start();
+  await sched.start();
+  assert.deepEqual(sched.getState().chunks.map((c) => c.status), ['failed', 'failed']);
+  await sched.resume();
+  await waitFor(() => sched.getState().chunks[1].status === 'ready');
+  assert.deepEqual(sched.getState().chunks.map((c) => c.status), ['failed', 'ready']);
+  assert.equal(calls.filter((x) => x === 'a').length, 1);
+  assert.equal(calls.filter((x) => x === 'b').length, 2);
+});
+
+test('resume with all failures skipped starts no loop and makes no speak call', async () => {
+  let calls = 0;
+  const sched = makeSched({
+    texts: ['hello'],
+    speak: async () => { calls += 1; return { ok: false, error: { kind: 'bad_request', status: 400, message: 'nope' }, attempts: 1 }; },
+  });
+  await sched.start();
+  assert.equal(calls, 1);
+  await sched.resume();
+  assert.equal(calls, 1);
+  assert.equal(sched.getState().state, 'error');
+});
+
+test('a skipped resume does not increment the counter', async () => {
+  let added = 0;
+  const sched = makeSched({
+    texts: ['hello'],
+    counter: { add(n) { added += n; } },
+    speak: async () => ({ ok: false, error: { kind: 'bad_request', status: 400, message: 'nope' }, attempts: 1 }),
+  });
+  await sched.start();
+  assert.equal(added, 1);
+  await sched.resume();
+  assert.equal(added, 1);
+});

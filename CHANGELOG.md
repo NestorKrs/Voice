@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.87-beta - 2026-11-28
+- Speech errors show the HTTP status (status bar, reader note and per-row note); Resume no longer re-sends a chunk rejected with HTTP 400 unless its text, voice or provider changed, and shows a note instead
+
+## 0.2.86-beta - 2026-11-28
+- The / menu now starts with category buttons; clicking one shows that category's tags as a button grid, typing still filters across categories, and arrows/Enter work on both tabs and buttons
+
 ## 0.2.85-beta - 2026-11-28
 - The / command menu now renders inside the Text panel find row, so its absolute CSS anchor is the row and the tag list appears under the input; added a placement regression test and created docs/lessons.md
 

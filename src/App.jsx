@@ -15,7 +15,7 @@ import { createPlayerEngine } from './playerEngine.js';
 import { newlyReady, readyFlags, playheadToSend } from './followPlayback.js';
 import { RATES, activeRowIndex } from './playerCore.js';
 import { allProviders, loadCustomProviders, getProvider, providerLabel, directiveSupport } from './providers.js';
-import { parseSlashInput, moveHighlight } from './slashMenu.js';
+import { parseSlashInput, moveHighlight, slashGroupNames, slashEntries } from './slashMenu.js';
 import { insertAt } from './directives.js';
 import { PCM_DEFAULT_RATE, PCM_DEFAULT_CHANNELS, audioMime } from './audioFormat.js';
 import { chunkFileName, audioKind, convertChunk, encodeWav } from './chunkDownload.js';
@@ -261,6 +261,7 @@ export default function App() {
   const [findQuery, setFindQuery] = useState('');
   const [findIndex, setFindIndex] = useState(-1);
   const [slashIndex, setSlashIndex] = useState(-1);
+  const [slashCategory, setSlashCategory] = useState(null);
   const [chunkNotes, setChunkNotes] = useState({});
   const [zipRunning, setZipRunning] = useState(false);
   const [joinedRunning, setJoinedRunning] = useState(false);
@@ -390,6 +391,10 @@ export default function App() {
   const support = directiveSupport(provider);
   const slash = parseSlashInput(findQuery, support);
   const slashItems = slash.items;
+  const slashFiltering = findQuery.slice(1).trim() !== '';
+  const slashGroups = slashGroupNames(slashItems);
+  const slashEntriesList = slashEntries(slashItems, findQuery.slice(1), slashCategory);
+  const slashGridItems = slashEntriesList.filter((item) => item.kind !== 'group');
   const switchLocked = schedState.state === 'generating';
 
   const canStart = !editorOpen && text.trim() !== '' && keySet && usedToday < settings.dailyLimit;
@@ -481,8 +486,10 @@ export default function App() {
         setUsedToday(services.counter.count());
         if (p.state === 'waiting_reset') logEvent(`waiting for daily reset ${new Date(p.resetAt).toLocaleString()}`);
         if (p.state === 'error') {
-          const m = p.chunks.map((c) => c.error && c.error.message).find(Boolean) || 'error';
-          logEvent(`error ${m}`);
+          const firstErr = p.chunks.find((c) => c.error && c.error.message);
+          const m = firstErr ? firstErr.error.message : 'error';
+          const prefix = firstErr && typeof firstErr.error.status === 'number' ? 'HTTP ' + firstErr.error.status + ': ' : '';
+          logEvent(`error ${prefix}${m}`);
         }
         if (p.state === 'done') logEvent('done');
       },
@@ -501,14 +508,16 @@ export default function App() {
     }
   };
 
-  const handleResume = () => {
+  const handleResume = async () => {
     stopSelectionAudio();
     logEvent('Resume pressed');
     try {
       if (schedulerRef.current) {
         schedulerRef.current.setPlayhead(playerState.index);
         lastPlayheadRef.current = playerState.index;
-        schedulerRef.current.resume();
+        await schedulerRef.current.resume();
+        const note = schedulerRef.current.getState().note;
+        if (note) logEvent(note);
       }
     } catch (e) {
       const m = e && e.message ? e.message : 'error';
@@ -698,7 +707,7 @@ export default function App() {
   const matches = useMemo(() => findMatches(text, findQuery), [text, findQuery]);
 
   const insertSlashItem = (item) => {
-    if (!item || item.disabled) return;
+    if (!item || item.disabled || item.kind === 'group') return;
     if (reading) {
       setNotice('Stop playback to edit the text.');
       logEvent('Stop playback to edit the text.');
@@ -708,6 +717,7 @@ export default function App() {
     setText(result.text);
     setSelectedChars(0);
     setFindQuery('');
+    setSlashCategory(null);
     setFindIndex(-1);
     findLoggedRef.current = false;
     const caret = result.caret;
@@ -721,9 +731,19 @@ export default function App() {
     logEvent('Inserted ' + (item.kind === 'break' ? 'pause ' + item.label : 'tag ' + item.label));
   };
 
+  const handleSlashEntry = (item) => {
+    if (!item) return;
+    if (item.kind === 'group') {
+      setSlashCategory((current) => (current === item.group ? null : item.group));
+      return;
+    }
+    insertSlashItem(item);
+  };
+
   const handleFindChange = (e) => {
     const q = e.target.value;
     setFindQuery(q);
+    setSlashCategory(null);
     setFindIndex(-1);
     findLoggedRef.current = false;
     if (parseSlashInput(q, support).active) return;
@@ -759,18 +779,18 @@ export default function App() {
 
   const handleFindNext = () => { jumpToMatch(nextIndex(findIndex, matches.length, 1)); };
   const handleFindPrev = () => { jumpToMatch(nextIndex(findIndex, matches.length, -1)); };
-  const handleFindClear = () => { setFindQuery(''); setFindIndex(-1); findLoggedRef.current = false; };
+  const handleFindClear = () => { setFindQuery(''); setSlashCategory(null); setFindIndex(-1); findLoggedRef.current = false; };
   const handleFindKeyDown = (e) => {
     if (slash.active) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSlashIndex(moveHighlight(slashIndex, 1, slashItems));
+        setSlashIndex(moveHighlight(slashIndex, 1, slashEntriesList));
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSlashIndex(moveHighlight(slashIndex, -1, slashItems));
+        setSlashIndex(moveHighlight(slashIndex, -1, slashEntriesList));
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        insertSlashItem(slashItems[slashIndex]);
+        handleSlashEntry(slashEntriesList[slashIndex]);
       } else if (e.key === 'Escape') {
         handleFindClear();
       }
@@ -783,9 +803,9 @@ export default function App() {
       handleFindClear();
     }
   };
-  const slashKey = slashItems.map((i) => i.id).join('|');
-  const slashItemsRef = useRef(slashItems);
-  slashItemsRef.current = slashItems;
+  const slashKey = slashEntriesList.map((i) => i.id).join('|');
+  const slashItemsRef = useRef(slashEntriesList);
+  slashItemsRef.current = slashEntriesList;
   useEffect(() => {
     setSlashIndex(moveHighlight(-1, 1, slashItemsRef.current));
   }, [slashKey]);
@@ -1497,7 +1517,8 @@ export default function App() {
   const resumeReason = canResume ? 'Continue making audio from the chunk that is playing now.' : 'Nothing to resume (' + stateWord + ').';
   const cancelReason = canCancel ? 'Stop the job. Audio already made is kept.' : (!jobLive ? 'No job yet.' : 'Nothing to cancel (' + stateWord + ').');
   const noteState = ['paused', 'waiting_reset', 'cancelled', 'error'].includes(schedState.state);
-  const firstChunkError = (schedState.chunks.map((c) => c && c.error && c.error.message).find(Boolean)) || '';
+  const firstErrChunk = schedState.chunks.find((c) => c && c.error && c.error.message);
+  const firstChunkError = firstErrChunk ? (typeof firstErrChunk.error.status === 'number' ? 'HTTP ' + firstErrChunk.error.status + ': ' : '') + firstErrChunk.error.message : '';
 
   const reading = playerState.total > 0 && (playerState.status === 'playing' || playerState.status === 'paused');
   const readChunk = reading && chunks[playerState.index] ? chunks[playerState.index] : '';
@@ -1554,23 +1575,43 @@ export default function App() {
             {reading ? <span className="find-reason">Find works when reading is stopped</span> : null}
             {slash.active ? (
               <div className="slash-menu" role="listbox">
-                {slashItems.map((item, i) => (
-                  <div key={item.id}>
-                    {(i === 0 || slashItems[i - 1].group !== item.group) ? <div className="slash-group">{item.group}</div> : null}
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={i === slashIndex}
-                      className={i === slashIndex ? 'active' : ''}
-                      disabled={item.disabled}
-                      title={item.disabled ? item.reason : undefined}
-                      onMouseDown={(e) => { e.preventDefault(); insertSlashItem(item); }}
-                    >
-                      {item.label}
-                      {item.note ? <span className="slash-note">{item.note}</span> : null}
-                    </button>
+                {!slashFiltering ? (
+                  <div className="slash-tabs">
+                    {slashGroups.map((group, gi) => (
+                      <button
+                        key={group}
+                        type="button"
+                        role="option"
+                        aria-selected={gi === slashIndex}
+                        className={slashCategory === group ? 'active' : ''}
+                        onMouseDown={(e) => { e.preventDefault(); handleSlashEntry({ kind: 'group', group }); }}
+                      >
+                        {group}
+                      </button>
+                    ))}
                   </div>
-                ))}
+                ) : null}
+                {slashGridItems.length ? (
+                  <div className="slash-grid">
+                    {slashEntriesList.map((item, i) => item.kind === 'group' ? null : (
+                      <button
+                        key={item.id}
+                        type="button"
+                        role="option"
+                        aria-selected={i === slashIndex}
+                        className={i === slashIndex ? 'active' : ''}
+                        disabled={item.disabled}
+                        title={item.disabled ? item.reason : undefined}
+                        onMouseDown={(e) => { e.preventDefault(); handleSlashEntry(item); }}
+                      >
+                        {item.label}
+                        {item.note ? <span className="slash-note">{item.note}</span> : null}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="slash-hint">Choose a category, or keep typing to filter.</div>
+                )}
                 <div className="slash-hint">{slash.hint}</div>
               </div>
             ) : null}
@@ -1638,7 +1679,7 @@ export default function App() {
                   </div>
                   <div className="chunk-preview">{c.slice(0, 400)}</div>
                   {chunkNotes[i] ? <div className="err">{chunkNotes[i]}</div> : null}
-                  {err ? <div className="err">{err.message}</div> : null}
+                  {err ? <div className="err">{typeof err.status === 'number' ? 'HTTP ' + err.status + ': ' : ''}{err.message}</div> : null}
                 </div>
               );
             })}
@@ -1646,7 +1687,7 @@ export default function App() {
           {editorOpen ? (<ClipEditor audio={editorAudio} loading={editorLoading} error={editorError} scopeValue={editorScope} scopeOptions={scopeOptions} onScopeChange={(v) => { setEditorScope(v); loadEditor(v); }} chunkTexts={chunks} audioKey={editorAudioKey} clipExportDeps={clipExportDeps} onClipView={setClipView} />) : null}
           {(jobError || noteState) ? (
             <div className={'job-note' + (jobError || schedState.state === 'error' ? ' job-note-error' : '')}>
-              {jobError ? <span>{jobError}</span> : <span>{schedState.state === 'cancelled' ? 'CANCELLED' : 'PAUSED (chunk #' + (schedState.chunks.findIndex((c) => c && c.status !== 'ready') + 1 || playerState.index + 1) + ')'}{schedState.state === 'waiting_reset' ? ' - ' + new Date(schedState.resetAt).toLocaleString() : ''}{schedState.state === 'error' && firstChunkError ? ' - ' + firstChunkError : ''}</span>}
+              {jobError ? <span>{jobError}</span> : <span>{schedState.state === 'cancelled' ? 'CANCELLED' : 'PAUSED (chunk #' + (schedState.chunks.findIndex((c) => c && c.status !== 'ready') + 1 || playerState.index + 1) + ')'}{schedState.state === 'waiting_reset' ? ' - ' + new Date(schedState.resetAt).toLocaleString() : ''}{schedState.state === 'error' && schedState.note ? ' - ' + schedState.note : (schedState.state === 'error' && firstChunkError ? ' - ' + firstChunkError : '')}</span>}
               {canResume ? <div className="reader-actions"><button disabled={!canResume} title={resumeReason} onClick={handleResume}>Resume</button></div> : null}
             </div>
           ) : null}

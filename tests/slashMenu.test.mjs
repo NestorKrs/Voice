@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BREAK_PRESETS, parseSlashInput, moveHighlight } from '../src/slashMenu.js';
+import { BREAK_PRESETS, parseSlashInput, moveHighlight, slashGroupNames, slashEntries } from '../src/slashMenu.js';
 import { TAG_CATEGORIES, RETEST_TAGS } from '../src/deliveryTags.js';
 
 const CONFIRMED = { tags: 'confirmed', breaks: 'confirmed', breakMode: 'decimal', reasonTags: '', reasonBreaks: '' };
@@ -217,4 +217,32 @@ test('slashContext: query feeds parseSlashInput to active true', () => {
   const ctx = slashContext('/slo', 4);
   const parsed = parseSlashInput(ctx.query, { tags: 'confirmed', breaks: 'unknown', breakMode: 'unknown', reasonTags: '', reasonBreaks: '' });
   assert.equal(parsed.active, true);
+});
+
+test('slashGroupNames keeps unique non-empty groups in order', () => {
+  const items = parseSlashInput('/', CONFIRMED).items;
+  const groups = slashGroupNames(items);
+  assert.deepEqual(groups, TAG_CATEGORIES.map((c) => c.label));
+  assert.deepEqual(slashGroupNames([{ group: 'A' }, { group: 'A' }, { group: '' }, null, {}]), ['A']);
+  assert.deepEqual(slashGroupNames(null), []);
+});
+
+test('slashEntries shows category buttons, then one category, then a typed filter', () => {
+  const items = parseSlashInput('/', CONFIRMED).items;
+  const group = slashGroupNames(items)[0];
+  const snapshot = JSON.stringify(items);
+
+  const tabs = slashEntries(items, '', null);
+  assert.deepEqual(tabs.map((e) => e.kind), items.length ? Array(slashGroupNames(items).length).fill('group') : []);
+  assert.equal(slashEntries([], '', null).length, 0);
+
+  const picked = slashEntries(items, '', group);
+  assert.equal(picked.length, tabs.length + items.filter((i) => i.group === group).length);
+  assert.ok(picked.slice(tabs.length).every((i) => i.group === group));
+
+  const filteredItems = parseSlashInput('/slow', CONFIRMED).items;
+  const filtered = slashEntries(filteredItems, 'slow', group);
+  assert.deepEqual(filtered, filteredItems);
+  assert.ok(filtered.every((i) => i.kind !== 'group'));
+  assert.equal(JSON.stringify(items), snapshot);
 });

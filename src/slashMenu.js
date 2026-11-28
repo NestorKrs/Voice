@@ -192,6 +192,28 @@ export function moveHighlight(index, delta, items) {
   return enabled[next];
 }
 
+export function slashGroupNames(items) {
+  const names = [];
+  for (const item of Array.isArray(items) ? items : []) {
+    if (item && item.group && !names.includes(item.group)) names.push(item.group);
+  }
+  return names;
+}
+
+export function slashEntries(items, query, category) {
+  const list = Array.isArray(items) ? items : [];
+  if (typeof query === 'string' && query.trim() !== '') return list;
+  const groups = slashGroupNames(list).map((group) => ({
+    id: 'group:' + group,
+    kind: 'group',
+    group,
+    label: group,
+    disabled: false,
+    reason: '',
+  }));
+  return category ? groups.concat(list.filter((item) => item.group === category)) : groups;
+}
+
 export function slashContext(text, caret) {
   if (typeof text !== 'string') return { active: false };
   const pos = Math.max(0, Math.min(Math.trunc(caret) || 0, text.length));
