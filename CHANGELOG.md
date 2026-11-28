@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.71-beta - 2026-11-28
+- Clip editor: src/clipPlayer.js load accepts a mono Float32Array or an array of one or two channel arrays (extra channels ignored, empty array is no audio) and builds the buffer with the matching channel count; no UI change
+
 ## 0.2.70-beta - 2026-11-28
 - Clip editor: type a cut time (s, m:ss, h:mm:ss, comma decimals) in "Cut at" and press Enter, and edit a selected marker's time in place; exact reasons show under the tools row, with a marker picker, one-undo-step moves and no change to existing handlers
 

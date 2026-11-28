@@ -171,12 +171,16 @@ export function createClipPlayer({ createContext }) {
     looping = false;
   }
 
-  function load(samples, sampleRate) {
+  function load(audio, sampleRate) {
     stopCurrent();
     if (!ctx) ctx = createContext();
-    buffer = ctx.createBuffer(1, samples.length, sampleRate);
-    buffer.copyToChannel(samples, 0);
-    total = samples.length;
+    const channels = Array.isArray(audio) ? audio.slice(0, 2) : [audio];
+    const length = channels.length > 0 ? channels[0].length : 0;
+    buffer = ctx.createBuffer(Math.max(1, channels.length), length, sampleRate);
+    for (let index = 0; index < channels.length; index += 1) {
+      buffer.copyToChannel(channels[index], index);
+    }
+    total = length;
     rate = sampleRate;
     position = 0;
     status = 'idle';

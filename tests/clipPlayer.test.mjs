@@ -470,3 +470,82 @@ test('a plain range play keeps the legacy duration with no loop', () => {
   assert.deepEqual(ctx.sources[0].starts[0], [0, 1, 2]);
   assert.deepEqual(player.getState(), { status: 'playing', position: 1000, total: 5000, rate: 1000, looping: false, rangeStart: 1000, rangeEnd: 3000 });
 });
+
+test('load with a mono Float32Array creates a one-channel buffer as before', () => {
+  const { player, ctx } = harness();
+  const samples = new Float32Array(400);
+  player.load(samples, 8000);
+  const buffer = ctx.buffers[0];
+  assert.equal(buffer.channels, 1);
+  assert.equal(buffer.length, 400);
+  assert.equal(buffer.sampleRate, 8000);
+  assert.equal(buffer.copies.length, 1);
+  assert.strictEqual(buffer.copies[0].array, samples);
+  assert.equal(buffer.copies[0].channel, 0);
+});
+
+test('load with two channels calls createBuffer(2, length, rate) and copies each channel', () => {
+  const { player, ctx } = harness();
+  const left = new Float32Array(300);
+  const right = new Float32Array(300);
+  player.load([left, right], 44100);
+  const buffer = ctx.buffers[0];
+  assert.equal(buffer.channels, 2);
+  assert.equal(buffer.length, 300);
+  assert.equal(buffer.sampleRate, 44100);
+  assert.equal(buffer.copies.length, 2);
+  assert.strictEqual(buffer.copies[0].array, left);
+  assert.equal(buffer.copies[0].channel, 0);
+  assert.strictEqual(buffer.copies[1].array, right);
+  assert.equal(buffer.copies[1].channel, 1);
+});
+
+test('load with three channels uses only the first two', () => {
+  const { player, ctx } = harness();
+  const a = new Float32Array(10);
+  const b = new Float32Array(10);
+  const c = new Float32Array(10);
+  player.load([a, b, c], 1000);
+  const buffer = ctx.buffers[0];
+  assert.equal(buffer.channels, 2);
+  assert.equal(buffer.copies.length, 2);
+  assert.strictEqual(buffer.copies[0].array, a);
+  assert.strictEqual(buffer.copies[1].array, b);
+});
+
+test('load with a one-channel array behaves like mono', () => {
+  const { player, ctx } = harness();
+  const only = new Float32Array(64);
+  player.load([only], 1000);
+  const buffer = ctx.buffers[0];
+  assert.equal(buffer.channels, 1);
+  assert.equal(buffer.length, 64);
+  assert.equal(buffer.copies.length, 1);
+  assert.strictEqual(buffer.copies[0].array, only);
+  assert.equal(buffer.copies[0].channel, 0);
+});
+
+test('load with an empty array loads as empty and play returns false', () => {
+  const { player, ctx } = harness();
+  player.load([], 1000);
+  assert.equal(player.getState().total, 0);
+  assert.equal(player.play(), false);
+  assert.equal(ctx.sources.length, 0);
+});
+
+test('getState().total equals the channel length for a multi-channel load', () => {
+  const { player } = harness();
+  player.load([new Float32Array(512), new Float32Array(512)], 48000);
+  assert.equal(player.getState().total, 512);
+});
+
+test('load does not modify the input channels', () => {
+  const { player } = harness();
+  const left = new Float32Array([1, 2, 3, 4]);
+  const right = new Float32Array([5, 6, 7, 8]);
+  const leftCopy = left.slice();
+  const rightCopy = right.slice();
+  player.load([left, right], 1000);
+  assert.deepEqual(Array.from(left), Array.from(leftCopy));
+  assert.deepEqual(Array.from(right), Array.from(rightCopy));
+});
