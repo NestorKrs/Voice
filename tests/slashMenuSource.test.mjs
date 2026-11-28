@@ -47,3 +47,14 @@ test('slash menu shows category tabs and tag buttons in a grid', () => {
   assert.match(css, /\.slash-menu \.slash-tabs \{/);
   assert.match(css, /\.slash-menu \.slash-grid \{/);
 });
+
+test('insertion scrolls to the caret and flashes the tag text in teal', () => {
+  assert.match(src, /scrollTextareaToIndex\(ta, caret\)/);
+  assert.match(src, /slashContext\(ta\.value, ta\.selectionStart\)/);
+  assert.match(src, /onKeyDown=\{handleEditorKeyDown\}/);
+  assert.match(src, /setFlashTag/);
+  assert.match(src, /clearFlashTag/);
+  assert.match(src, /tag-flash/);
+  assert.match(css, /textarea\.tag-flash::selection/);
+  assert.match(css, /background: transparent; color: var\(--accent\)/);
+});

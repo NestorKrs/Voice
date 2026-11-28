@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BREAK_PRESETS, parseSlashInput, moveHighlight, slashGroupNames, slashEntries } from '../src/slashMenu.js';
 import { TAG_CATEGORIES, RETEST_TAGS } from '../src/deliveryTags.js';
+import { insertAt } from '../src/directives.js';
 
 const CONFIRMED = { tags: 'confirmed', breaks: 'confirmed', breakMode: 'decimal', reasonTags: '', reasonBreaks: '' };
 
@@ -245,4 +246,15 @@ test('slashEntries shows category buttons, then one category, then a typed filte
   assert.deepEqual(filtered, filteredItems);
   assert.ok(filtered.every((i) => i.kind !== 'group'));
   assert.equal(JSON.stringify(items), snapshot);
+});
+
+test('a typed textarea slash command is replaced by the tag with the caret after it', () => {
+  const text = 'Hello\n/slow world';
+  const ctx = slashContext(text, 11);
+  assert.deepEqual(ctx, { active: true, start: 6, end: 11, query: '/slow' });
+  const item = parseSlashInput(ctx.query, CONFIRMED).items[0];
+  const result = insertAt(text, ctx.start, ctx.end, item.snippet);
+  assert.equal(result.text, 'Hello\n[slowly] world');
+  assert.equal(result.caret, 14);
+  assert.equal(result.text.includes('/slow'), false);
 });

@@ -133,3 +133,74 @@ test('drift: a voice 30 percent faster still matches every break to its pause', 
   assert.equal(result.timeToIndex(0.5), 4);
   assert.equal(result.timeToIndex(1.2), 9);
 });
+
+test('pairs reports the matched break offset and the silence seconds', () => {
+  const result = alignTimeMap('One. Two.', {
+    silences: [{ start: 0.5, end: 0.9 }],
+    leadIn: 0.05, tail: 0.05, duration: 2.0,
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.pairs.length, 1);
+  assert.equal(result.pairs[0].offset, 4);
+  assert.equal(result.pairs[0].start, 0.5);
+  assert.equal(result.pairs[0].end, 0.9);
+});
+
+test('no silences: pairs [] and indexToTime(half the length) is half the duration', () => {
+  const result = alignTimeMap('One. Two. Three.', { silences: [], leadIn: 0.1, tail: 0.1, duration: 2.0 });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.pairs, []);
+  assert.ok(Math.abs(result.indexToTime(8) - 1.0) < 1e-3);
+});
+
+test('indexToTime and timeToIndex round-trip both ways', () => {
+  const text = 'One. Two. Three. Four.';
+  const result = alignTimeMap(text, {
+    silences: [
+      { start: 0.55, end: 0.95 },
+      { start: 1.65, end: 2.05 },
+      { start: 2.75, end: 3.15 },
+    ],
+    leadIn: 0.05, tail: 0.05, duration: 4.0,
+  });
+  for (const i of [0, 2, 4, 8, 12, text.length - 1]) {
+    assert.ok(result.timeToIndex(result.indexToTime(i)) >= i, `index ${i} did not round-trip`);
+  }
+  for (const t of [0.2, 0.5, 0.8, 1.2, 1.6]) {
+    assert.ok(result.indexToTime(result.timeToIndex(t)) <= t + 1e-6, `time ${t} did not round-trip`);
+  }
+});
+
+test('indexToTime is non-decreasing in the index', () => {
+  const result = alignTimeMap('One. Two. Three.', {
+    silences: [{ start: 0.5, end: 0.9 }],
+    leadIn: 0.05, tail: 0.05, duration: 2.0,
+  });
+  let previous = -Infinity;
+  for (let i = 0; i <= 16; i += 1) {
+    const t = result.indexToTime(i);
+    assert.ok(t >= previous, `went backward at index ${i}`);
+    previous = t;
+  }
+});
+
+test('indexToTime clamps below 0 and above the length', () => {
+  const result = alignTimeMap('One. Two. Three.', { silences: [], leadIn: 0.1, tail: 0.1, duration: 2.0 });
+  assert.equal(result.indexToTime(-5), 0.1);
+  assert.equal(result.indexToTime(999), 1.9);
+});
+
+test('an ok false result carries pairs [] and indexToTime null', () => {
+  const result = alignTimeMap('', NONE);
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.pairs, []);
+  assert.equal(result.indexToTime, null);
+});
+
+test('alignTimeMap does not mutate its inputs', () => {
+  const text = 'One. Two. Three.';
+  const audio = { silences: [{ start: 0.5, end: 0.9 }], leadIn: 0.05, tail: 0.05, duration: 2.0 };
+  const before = JSON.stringify({ text, audio });
+  alignTimeMap(text, audio);
+  assert.equal(JSON.stringify({ text, audio }), before);
+});

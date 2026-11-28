@@ -15,7 +15,7 @@ import { createPlayerEngine } from './playerEngine.js';
 import { newlyReady, readyFlags, playheadToSend } from './followPlayback.js';
 import { RATES, activeRowIndex } from './playerCore.js';
 import { allProviders, loadCustomProviders, getProvider, providerLabel, directiveSupport } from './providers.js';
-import { parseSlashInput, moveHighlight, slashGroupNames, slashEntries } from './slashMenu.js';
+import { parseSlashInput, moveHighlight, slashGroupNames, slashEntries, slashContext } from './slashMenu.js';
 import { insertAt } from './directives.js';
 import { PCM_DEFAULT_RATE, PCM_DEFAULT_CHANNELS, audioMime } from './audioFormat.js';
 import { chunkFileName, audioKind, convertChunk, encodeWav } from './chunkDownload.js';
@@ -262,6 +262,8 @@ export default function App() {
   const [findIndex, setFindIndex] = useState(-1);
   const [slashIndex, setSlashIndex] = useState(-1);
   const [slashCategory, setSlashCategory] = useState(null);
+  const [editorSlash, setEditorSlash] = useState(null);
+  const [flashTag, setFlashTag] = useState(null);
   const [chunkNotes, setChunkNotes] = useState({});
   const [zipRunning, setZipRunning] = useState(false);
   const [joinedRunning, setJoinedRunning] = useState(false);
@@ -309,6 +311,8 @@ export default function App() {
   const textPanelRef = useRef(null);
   const findInputRef = useRef(null);
   const findLoggedRef = useRef(false);
+  const dismissedSlashRef = useRef('');
+  const flashTimerRef = useRef(null);
   const lastSelRef = useRef({ start: 0, end: 0 });
   const [customProviders] = useState(() => (storage ? loadCustomProviders(storage) : []));
   const [dragId, setDragId] = useState(null);
@@ -389,11 +393,15 @@ export default function App() {
   const providers = allProviders(customProviders);
   const provider = getProvider(providers, settings.provider);
   const support = directiveSupport(provider);
-  const slash = parseSlashInput(findQuery, support);
+  const findSlash = parseSlashInput(findQuery, support);
+  const textSlash = editorSlash ? parseSlashInput(editorSlash.query, support) : null;
+  const slashFromText = !!(textSlash && textSlash.active);
+  const slash = slashFromText ? textSlash : findSlash;
+  const slashInput = slashFromText ? editorSlash.query : findQuery;
   const slashItems = slash.items;
-  const slashFiltering = findQuery.slice(1).trim() !== '';
+  const slashFiltering = slashInput.slice(1).trim() !== '';
   const slashGroups = slashGroupNames(slashItems);
-  const slashEntriesList = slashEntries(slashItems, findQuery.slice(1), slashCategory);
+  const slashEntriesList = slashEntries(slashItems, slashInput.slice(1), slashCategory);
   const slashGridItems = slashEntriesList.filter((item) => item.kind !== 'group');
   const switchLocked = schedState.state === 'generating';
 
@@ -706,43 +714,84 @@ export default function App() {
   const chunks = chunkText(text, settings.chunkSize);
   const matches = useMemo(() => findMatches(text, findQuery), [text, findQuery]);
 
-  const insertSlashItem = (item) => {
+  const insertSlashAt = (item, start, end) => {
     if (!item || item.disabled || item.kind === 'group') return;
     if (reading) {
       setNotice('Stop playback to edit the text.');
       logEvent('Stop playback to edit the text.');
       return;
     }
-    const result = insertAt(text, lastSelRef.current.start, lastSelRef.current.end, item.snippet);
+    if (flashTimerRef.current) { clearTimeout(flashTimerRef.current); flashTimerRef.current = null; }
+    setFlashTag(null);
+    const result = insertAt(text, start, end, item.snippet);
+    const caret = result.caret;
+    const tagStart = result.text.lastIndexOf(item.snippet, caret);
+    const flash = tagStart >= 0 ? { start: tagStart, end: tagStart + item.snippet.length } : null;
     setText(result.text);
     setSelectedChars(0);
     setFindQuery('');
+    setEditorSlash(null);
+    dismissedSlashRef.current = '';
     setSlashCategory(null);
     setFindIndex(-1);
     findLoggedRef.current = false;
-    const caret = result.caret;
+    setFlashTag(flash);
     requestAnimationFrame(() => {
       const ta = textRef.current;
       if (!ta) return;
       ta.focus();
       ta.setSelectionRange(caret, caret);
       lastSelRef.current = { start: caret, end: caret };
+      scrollTextareaToIndex(ta, caret);
+      if (!flash) return;
+      ta.setSelectionRange(flash.start, flash.end);
+      flashTimerRef.current = setTimeout(() => {
+        const current = textRef.current;
+        if (current) {
+          current.setSelectionRange(caret, caret);
+          lastSelRef.current = { start: caret, end: caret };
+        }
+        setFlashTag(null);
+        flashTimerRef.current = null;
+      }, 3000);
     });
     logEvent('Inserted ' + (item.kind === 'break' ? 'pause ' + item.label : 'tag ' + item.label));
   };
 
-  const handleSlashEntry = (item) => {
+  const clearFlashTag = () => {
+    if (flashTimerRef.current) { clearTimeout(flashTimerRef.current); flashTimerRef.current = null; }
+    if (flashTag && textRef.current) {
+      textRef.current.setSelectionRange(flashTag.end, flashTag.end);
+      lastSelRef.current = { start: flashTag.end, end: flashTag.end };
+    }
+    setFlashTag(null);
+  };
+
+  const insertSlashItem = (item) => insertSlashAt(item, lastSelRef.current.start, lastSelRef.current.end);
+
+  const syncEditorSlash = (ta) => {
+    if (!ta) return;
+    const ctx = slashContext(ta.value, ta.selectionStart);
+    const key = ctx.active ? ctx.query + ':' + ctx.end : '';
+    if (key && key === dismissedSlashRef.current) return;
+    setEditorSlash(ctx.active ? ctx : null);
+  };
+
+  const handleSlashEntry = (item, fromText = false) => {
     if (!item) return;
     if (item.kind === 'group') {
       setSlashCategory((current) => (current === item.group ? null : item.group));
       return;
     }
-    insertSlashItem(item);
+    if (fromText && editorSlash) insertSlashAt(item, editorSlash.start, editorSlash.end);
+    else insertSlashItem(item);
   };
 
   const handleFindChange = (e) => {
     const q = e.target.value;
+    clearFlashTag();
     setFindQuery(q);
+    setEditorSlash(null);
     setSlashCategory(null);
     setFindIndex(-1);
     findLoggedRef.current = false;
@@ -779,9 +828,9 @@ export default function App() {
 
   const handleFindNext = () => { jumpToMatch(nextIndex(findIndex, matches.length, 1)); };
   const handleFindPrev = () => { jumpToMatch(nextIndex(findIndex, matches.length, -1)); };
-  const handleFindClear = () => { setFindQuery(''); setSlashCategory(null); setFindIndex(-1); findLoggedRef.current = false; };
+  const handleFindClear = () => { setFindQuery(''); setEditorSlash(null); setSlashCategory(null); setFindIndex(-1); findLoggedRef.current = false; };
   const handleFindKeyDown = (e) => {
-    if (slash.active) {
+    if (findSlash.active && !slashFromText) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setSlashIndex(moveHighlight(slashIndex, 1, slashEntriesList));
@@ -802,6 +851,35 @@ export default function App() {
     } else if (e.key === 'Escape') {
       handleFindClear();
     }
+  };
+  const handleEditorKeyDown = (e) => {
+    if (flashTag && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) clearFlashTag();
+    if (slashFromText) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSlashIndex(moveHighlight(slashIndex, 1, slashEntriesList));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSlashIndex(moveHighlight(slashIndex, -1, slashEntriesList));
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleSlashEntry(slashEntriesList[slashIndex], true);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        dismissedSlashRef.current = editorSlash.query + ':' + editorSlash.end;
+        setEditorSlash(null);
+        return;
+      }
+    }
+    if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); }
+    if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); }
+    if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); }
   };
   const slashKey = slashEntriesList.map((i) => i.id).join('|');
   const slashItemsRef = useRef(slashEntriesList);
@@ -1584,7 +1662,7 @@ export default function App() {
                         role="option"
                         aria-selected={gi === slashIndex}
                         className={slashCategory === group ? 'active' : ''}
-                        onMouseDown={(e) => { e.preventDefault(); handleSlashEntry({ kind: 'group', group }); }}
+                        onMouseDown={(e) => { e.preventDefault(); handleSlashEntry({ kind: 'group', group }, slashFromText); }}
                       >
                         {group}
                       </button>
@@ -1602,7 +1680,7 @@ export default function App() {
                         className={i === slashIndex ? 'active' : ''}
                         disabled={item.disabled}
                         title={item.disabled ? item.reason : undefined}
-                        onMouseDown={(e) => { e.preventDefault(); handleSlashEntry(item); }}
+                        onMouseDown={(e) => { e.preventDefault(); handleSlashEntry(item, slashFromText); }}
                       >
                         {item.label}
                         {item.note ? <span className="slash-note">{item.note}</span> : null}
@@ -1616,7 +1694,7 @@ export default function App() {
               </div>
             ) : null}
           </div>
-          <textarea ref={textRef} value={text} spellCheck={settings.spellCheck} onChange={(e) => { setText(e.target.value); setSelectedChars(0); }} onSelect={(e) => { const s = e.target.selectionStart; const t = e.target.selectionEnd; lastSelRef.current = { start: s, end: t }; setSelectedChars(t > s ? t - s : 0); }} onMouseUp={(e) => { lastSelRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd }; const ex = e.clientX; const ey = e.clientY; setTimeout(() => { const ta = e.target; const s = ta.selectionStart; const t = ta.selectionEnd; const sel = t > s ? ta.value.slice(s, t) : ''; if (!sel) { setSelIcon(null); return; } const p = selectionTopRight(ta) || { x: ex, y: ey }; setSelIcon({ x: p.x, y: p.y, text: sel }); }, 0); }} style={{ fontSize: `${textZoom}%`, display: reading || (editorOpen && clipView) ? 'none' : undefined }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={(e) => { if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); setTextZoom((z) => Math.min(200, z + 10)); } if (e.ctrlKey && (e.key === '-')) { e.preventDefault(); setTextZoom((z) => Math.max(60, z - 10)); } if (e.ctrlKey && (e.key === '0')) { e.preventDefault(); setTextZoom(100); } }} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} onKeyUp={(e) => { lastSelRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd }; }} onBlur={(e) => { lastSelRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd }; }} className={textDropActive ? 'drop-active' : ''} />
+          <textarea ref={textRef} value={text} spellCheck={settings.spellCheck} onChange={(e) => { setText(e.target.value); setSelectedChars(0); syncEditorSlash(e.target); }} onSelect={(e) => { const s = e.target.selectionStart; const t = e.target.selectionEnd; lastSelRef.current = { start: s, end: t }; setSelectedChars(t > s ? t - s : 0); syncEditorSlash(e.target); }} onMouseUp={(e) => { lastSelRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd }; const ex = e.clientX; const ey = e.clientY; setTimeout(() => { const ta = e.target; const s = ta.selectionStart; const t = ta.selectionEnd; const sel = t > s ? ta.value.slice(s, t) : ''; if (!sel) { setSelIcon(null); return; } const p = selectionTopRight(ta) || { x: ex, y: ey }; setSelIcon({ x: p.x, y: p.y, text: sel }); }, 0); }} style={{ fontSize: `${textZoom}%`, display: reading || (editorOpen && clipView) ? 'none' : undefined }} onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setTextZoom((z) => Math.min(200, Math.max(60, z + (e.deltaY < 0 ? 10 : -10)))); } }} onKeyDown={handleEditorKeyDown} onDragOver={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragEnter={(e) => { e.preventDefault(); setTextDropActive(true); }} onDragLeave={() => setTextDropActive(false)} onDrop={handleDropFile} onKeyUp={(e) => { lastSelRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd }; syncEditorSlash(e.target); }} onBlur={(e) => { lastSelRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd }; setEditorSlash(null); }} className={[textDropActive ? 'drop-active' : '', flashTag ? 'tag-flash' : ''].filter(Boolean).join(' ')} />
           {reading || (editorOpen && clipView) ? (
             <TextReadView chunk={editorOpen && clipView ? clipView.text : readChunk} mode={settings.highlightMode} engineRef={playerEngineRef} chunkIndex={reading ? playerState.index : 0} mapRef={mapRef} textZoom={textZoom} onZoom={setTextZoom} onSelectText={setSelectedChars} onSelectIcon={setSelIcon} staticRange={editorOpen && clipView ? { start: clipView.start, end: clipView.end } : null} />
           ) : null}

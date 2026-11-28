@@ -75,7 +75,7 @@ export function alignTimeMap(text, silenceResult, options = {}) {
   const S0 = leadIn;
   const S1 = Number.isFinite(duration) ? duration - tail : 0;
 
-  if (value === '' || !(S1 > S0)) return { ok: false, reason: 'No speech span' };
+  if (value === '' || !(S1 > S0)) return { ok: false, reason: 'No speech span', pairs: [], indexToTime: null };
 
   const weightAt = options && typeof options.weightAt === 'function' ? options.weightAt : () => 1;
   const P = prefixWeights(value, weightAt);
@@ -183,12 +183,34 @@ export function alignTimeMap(text, silenceResult, options = {}) {
     return Math.min(low, value.length - 1);
   }
 
+  const pairsOut = pairs.map((p) => ({
+    offset: breaks[p.i].b,
+    start: silences[p.j].start,
+    end: silences[p.j].end,
+  }));
+
+  // Inverse of timeToIndex: the smallest time in the domain whose index reaches `index`.
+  function indexToTime(index) {
+    const target = Math.max(0, Math.min(Number(index) || 0, value.length));
+    if (target <= timeToIndex(S0)) return S0;
+    if (target >= timeToIndex(S1)) return S1;
+    let lo = S0;
+    let hi = S1;
+    for (let k = 0; k < 60; k += 1) {
+      const mid = (lo + hi) / 2;
+      if (timeToIndex(mid) >= target) hi = mid; else lo = mid;
+    }
+    return hi;
+  }
+
   return {
     ok: true,
     reason: '',
     anchors: pairs.length,
     breaks: n,
     silences: m,
+    pairs: pairsOut,
     timeToIndex,
+    indexToTime,
   };
 }

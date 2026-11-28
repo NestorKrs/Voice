@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.89-beta - 2026-11-28
+- alignTimeMap now also returns pairs (matched break offset and silence seconds) and indexToTime (inverse of timeToIndex by bisection); ok:false results carry pairs [] and indexToTime null; existing fields unchanged
+
+## 0.2.88-beta - 2026-11-28
+- Typing / at a line start in the Text editor opens the same category/tag menu and replaces the command in place; inserted tags scroll into view and flash teal text for 3 seconds
+
 ## 0.2.87-beta - 2026-11-28
 - Speech errors show the HTTP status (status bar, reader note and per-row note); Resume no longer re-sends a chunk rejected with HTTP 400 unless its text, voice or provider changed, and shows a note instead
 
