@@ -58,3 +58,12 @@ test('insertion scrolls to the caret and flashes the tag text in teal', () => {
   assert.match(css, /textarea\.tag-flash::selection/);
   assert.match(css, /background: transparent; color: var\(--accent\)/);
 });
+
+test('slash menu stays visible in fullscreen and on phones with text-sized buttons', () => {
+  assert.match(css, /\.app\.text-fullscreen-mode \.text-panel \.find-row input/);
+  assert.equal(css.includes('.app.text-fullscreen-mode .text-panel .find-row,'), false);
+  assert.equal(css.includes('  .find-row { display: none; }'), false);
+  assert.match(css, /\.slash-menu \.slash-grid \{ display: flex; flex-wrap: wrap;/);
+  assert.match(css, /\.slash-menu \.slash-grid button \{ width: auto; white-space: nowrap; \}/);
+  assert.equal(css.includes('minmax(104px'), false);
+});

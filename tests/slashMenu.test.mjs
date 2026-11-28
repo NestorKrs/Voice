@@ -165,8 +165,9 @@ test('slashContext: leading spaces before the slash', () => {
   assert.deepEqual(slashContext('  /slo', 6), { active: true, start: 2, end: 6, query: '/slo' });
 });
 
-test('slashContext: a slash that is not the first character of its line is inactive', () => {
-  assert.deepEqual(slashContext('hello /slo', 10), { active: false });
+test('slashContext: a slash after other text on the line is active', () => {
+  assert.deepEqual(slashContext('hello /slo', 10), { active: true, start: 6, end: 10, query: '/slo' });
+  assert.deepEqual(slashContext('hello/slo', 9), { active: true, start: 5, end: 9, query: '/slo' });
 });
 
 test('slashContext: caret before the slash is inactive', () => {

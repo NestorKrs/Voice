@@ -247,10 +247,16 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 
 /* Fullscreen shows only the text itself: hide the panel chrome and controls. */
 .app.text-fullscreen-mode .text-panel .panel-head,
-.app.text-fullscreen-mode .text-panel .find-row,
 .app.text-fullscreen-mode .text-panel .stats,
 .app.text-fullscreen-mode .text-panel .row,
 .app.text-fullscreen-mode .text-panel .reason {
+    display: none;
+}
+.app.text-fullscreen-mode .text-panel .find-row input,
+.app.text-fullscreen-mode .text-panel .find-row .find-count,
+.app.text-fullscreen-mode .text-panel .find-row .find-btn,
+.app.text-fullscreen-mode .text-panel .find-row .find-clear,
+.app.text-fullscreen-mode .text-panel .find-row .find-reason {
     display: none;
 }
 
@@ -352,7 +358,8 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .slash-menu .slash-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px 2px 6px; border-bottom: 1px solid var(--line); }
 .slash-menu .slash-tabs button { width: auto; padding: 3px 7px; font-size: 11px; color: var(--muted); }
 .slash-menu .slash-tabs button.active { border-color: var(--accent); color: var(--text); }
-.slash-menu .slash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 4px; padding: 6px 2px 2px; }
+.slash-menu .slash-grid { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 2px 2px; }
+.slash-menu .slash-grid button { width: auto; white-space: nowrap; }
 .slash-menu button { display: block; width: 100%; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 4px; padding: 4px 8px; color: var(--text); font: inherit; cursor: pointer; }
 .slash-menu button:hover:not(:disabled) { background: var(--bg); }
 .slash-menu button.active { border-color: var(--accent); background: var(--bg); }
@@ -411,7 +418,7 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
   .find-row .find-input { flex: 1 1 0; min-width: 0; }
   .find-row .find-count { font-size: 11px; min-width: 6ch; }
   .find-row .find-btn { flex: none; width: 36px; height: 36px; min-width: 36px; padding: 0; }
-  .find-row { display: none; }
+  .find-row input, .find-row .find-count, .find-row .find-btn, .find-row .find-clear, .find-row .find-reason { display: none; }
   .text-panel .panel-head { display: none; }
   .text-panel textarea, .text-panel .text-read { font-size: 16px !important; }
   .text-panel .stats { display: none; }

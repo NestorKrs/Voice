@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.91-beta - 2026-11-28
+- New pure src/pauseApply.js (mapPausesToSpoken, applyPauses) maps pause markers to the spoken text and inserts their seconds as silence (aligned to a matched pause, snapped to a near quiet gap, or skipped with a reason); not imported by the app yet
+
+## 0.2.90-beta - 2026-11-28
+- The / menu now opens wherever a slash is typed in the Text editor, stays visible in fullscreen and on phones, and sizes tag buttons to their own text instead of a fixed-width grid
+
 ## 0.2.89-beta - 2026-11-28
 - alignTimeMap now also returns pairs (matched break offset and silence seconds) and indexToTime (inverse of timeToIndex by bisection); ok:false results carry pairs [] and indexToTime null; existing fields unchanged
 
