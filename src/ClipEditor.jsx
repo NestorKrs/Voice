@@ -14,6 +14,7 @@ import { findSilences } from './silenceMap.js';
 import { alignTimeMap } from './alignMap.js';
 import { sentenceRanges, charWeights } from './highlight.js';
 import { parseTime } from './clipTime.js';
+import { RATES } from './playerCore.js';
 
 export default function ClipEditor({ audio, loading, error, scopeValue, scopeOptions, onScopeChange, chunkTexts = [], audioKey = null, clipExportDeps, onClipView = null }) {
   const rootRef = useRef(null);
@@ -44,6 +45,8 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
   const [playbackError, setPlaybackError] = useState('');
   const [loopOn, setLoopOn] = useState(false);
   loopOnRef.current = loopOn;
+  const [volume, setVolume] = useState(1);
+  const [speed, setSpeed] = useState(1);
   const [cuts, setCuts] = useState(null);
   const [previewCuts, setPreviewCuts] = useState(null);
   const [names, setNames] = useState([]);
@@ -400,6 +403,8 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
         setPlayPos(audio.samples.length);
       });
       playerRef.current.load(audio.samples, audio.sampleRate);
+      playerRef.current.setVolume(volume);
+      playerRef.current.setRate(speed);
     } catch (e) {
       if (playerRef.current) {
         playerRef.current.close();
@@ -1027,8 +1032,6 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
       ) : (
         <>
           <div className="clip-tools">
-            <button type="button" className="icon-btn" aria-label="Zoom out" title={isFullView(current, total) ? 'Already showing the whole audio' : 'Zoom out'} disabled={isFullView(current, total)} onClick={() => zoomBy(1 / 1.5)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/></svg></button>
-            <button type="button" className="icon-btn" aria-label="Zoom in" title={current.span <= minSpan ? 'Zoomed in to the maximum (' + formatTime(minSpan, rate) + ' visible)' : 'Zoom in'} disabled={current.span <= minSpan} onClick={() => zoomBy(1.5)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5v14"/></svg></button>
             <button
               type="button"
               className={'icon-btn' + (sliceMode ? ' active' : '')}
@@ -1149,6 +1152,8 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
               disabled={!audio}
               onClick={goToStart}
             ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 5v14M20 5L9 12l11 7z"/></svg></button>
+            <button type="button" className="icon-btn" aria-label="Zoom out" title={isFullView(current, total) ? 'Already showing the whole audio' : 'Zoom out'} disabled={!audio || isFullView(current, total)} onClick={() => zoomBy(1 / 1.5)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/></svg></button>
+            <button type="button" className="icon-btn" aria-label="Zoom in" title={!audio ? 'No audio loaded' : (current.span <= minSpan ? 'Zoomed in to the maximum (' + formatTime(minSpan, rate) + ' visible)' : 'Zoom in')} disabled={!audio || current.span <= minSpan} onClick={() => zoomBy(1.5)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5v14"/></svg></button>
             <button
               type="button"
               className={'play-primary' + (playStatus === 'playing' ? ' play-active' : '')}
@@ -1171,6 +1176,30 @@ export default function ClipEditor({ audio, loading, error, scopeValue, scopeOpt
               onClick={() => { setLoopOn(!loopOn); if (playerRef.current) playerRef.current.setLoop(!loopOn); }}
             ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg></button>
             <span className="clip-time">{formatTime(playPos, displayRate)} / {formatTime(total, displayRate)}</span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={volume}
+              disabled={!audio}
+              aria-label="Volume"
+              title={!audio ? 'No audio loaded' : 'Volume'}
+              onChange={(event) => { const v = Number(event.target.value); setVolume(v); if (playerRef.current) playerRef.current.setVolume(v); }}
+            />
+            <span className="clip-visible">{Math.round(volume * 100)}%</span>
+            <input
+              type="range"
+              min="0"
+              max={RATES.length - 1}
+              step="1"
+              value={Math.max(0, RATES.indexOf(speed))}
+              disabled={!audio}
+              aria-label="Playback speed"
+              title={!audio ? 'No audio loaded' : 'Playback speed'}
+              onChange={(event) => { const s = RATES[Number(event.target.value)]; setSpeed(s); if (playerRef.current) playerRef.current.setRate(s); }}
+            />
+            <span className="clip-visible">{speed}x</span>
           </div>
         </>
       )}

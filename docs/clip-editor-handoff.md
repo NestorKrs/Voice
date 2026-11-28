@@ -1,7 +1,7 @@
 # Clip editor handoff
 
 Scope: ONLY the clip editor feature. The general project status stays in docs/handoff.md (stale at 0.2.19-beta; do not use it for this feature).
-Owner: @Eleven. Updated 2026-11-28. Version when written: 0.2.76-beta. Agents: Hermes (code), Claude (planning, task texts).
+Owner: @Eleven. Updated 2026-11-28. Version when written: 0.2.77-beta. Agents: Hermes (code), Claude (planning, task texts).
 
 ## Goal
 Cut one generated audio (one chunk, or the whole joined audio) into many clips by time, locally, with ZERO extra requests. The owner pastes unrelated sentences, generates once, then cuts them into separate files. Used mainly for voiceover for animation and video. Meant for all visitors of the site, desktop only in v1.
@@ -58,6 +58,7 @@ Integer time; every edit a pure command with undo; peak overviews; tiny fades at
 2.44d new pure src/mixLoad.js (musicFileRejection, loadMusicFile) guards and decodes a music file (.mp3/.wav/.m4a/.ogg, 30 MB, 5:00, rate match) with tests - DONE 0.2.74-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
 2.45a new pure src/mixPlan.js (MAX_MIX_VOICE_SECONDS, DEFAULT_PARAMS, normalizeParams, clampStartSec, parseOffsetTime, buildMixPlan, fadeValueAt, scheduleAt, peakBound) one shared plan of numbers and curves for the live preview and the export graph with tests - DONE 0.2.75-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
 2.45b new pure src/mixEngine.js (createMixEngine) drives the live mix graph from the shared plan (load/setPlan/play/pause/seek/getPosition/getState/setOnEnd/close) with a hand-written fake-context test - DONE 0.2.76-beta (no UI, App.jsx untouched; not imported by the app yet; test import is the wiring proof)
+2.46a clip editor pass 1: volume + speed sliders in the transport row drive the clip player (setVolume/setRate, master gain, per-source playbackRate), zoom buttons moved under the waveform next to play, close button gets the settings-cog hover highlight, editor widened to 3/4 - DONE 0.2.77-beta (App.jsx untouched; not tested live)
 Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no bump); E4d 2.33a/2.33b 0.2.45-beta/0.2.46-beta; E4e 2.34a 0.2.47-beta; E5 2.34c 0.2.48-beta; E6 2.35a 0.2.49-beta; E7 2.36a-2.36c 0.2.50-beta/0.2.51-beta/0.2.52-beta; E8 2.37a/2.37b 0.2.55-beta/0.2.56-beta.
 
 ## Known gaps
@@ -78,12 +79,11 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 - The playhead may look early on a Bluetooth headset; the manual offset is tuned in a later task.
 - Fade in / Fade out toggles, the All/Selected scope picker and row selection (click, Ctrl+click, Shift+click) are wired into the export calls but untested live in Brave; the single-clip download fades by the original clip index (restricted set [] or [0]).
 - Looping is wired to the editor (Loop clips toggle, per-clip loop play, looping row highlight, loop follows cuts) but untested live in Brave; resuming a paused non-loop clip and a paused loop after a cut change need a live check.
-- The ruler strip, playhead handle, grab-the-line scrub and Go to start (button and Home) are wired but untested live in Brave. Clip text is approximate unless the cut lands on a pause: src/clipText.js falls back to a linear position estimate and marks that part estimated.
-- Clip text placeholders, the hover title and the clip strip ("Clip N of M - chunk K") are wired but untested live in Brave.
-- nameFromText and the texts argument are wired into the export path (ZIP, CSV, single download, row download title) but untested live in Brave.
+- The ruler strip, playhead handle, grab-the-line scrub and Go to start (button and Home) are wired but untested live in Brave. Clip text is approximate unless the cut lands on a pause: src/clipText.js falls back to a linear position estimate and marks that part estimated. The live mix engine (src/mixEngine.js) is untested with real audio: the fake-context test proves call sequences only, not that the mix sounds right.
+- Clip text placeholders, the hover title and the clip strip ("Clip N of M - chunk K") are wired but untested live in Brave. nameFromText and the texts argument are wired into the export path (ZIP, CSV, single download, row download title) but untested live in Brave.
 - Typed cut times are wired (Cut at field, editable selected-marker time, marker picker) but untested live in Brave, and the marker picker is the only way to select a marker (no click-to-select on the waveform); the "arrows: 1 ms, Shift: 10 ms, Delete removes" hint is shown next to the marker time field, but arrow-key nudge is still not wired.
 - Clip-row drag order is display-only (not saved, not used by playback or export); the Text panel highlight falls back to the whole chunk when the clip text cannot be found in it.
-- The live mix engine (src/mixEngine.js) is untested with real audio: the fake-context test proves call sequences only, not that the mix sounds right.
+- Pass 1 of the clip editor UI (volume/speed, zoom row, close highlight, 3/4 width) is untested live in Brave; the header download buttons, selectable rows and the fade-handle redesign are still to do (pass 2).
 
 ## Open decisions
 - Reaction-time compensation value and playhead offset (tuned live).
@@ -94,6 +94,6 @@ Next: none — all earlier planned items are DONE: orient 2.32a (docs only, no b
 Follow AGENTS.md and the voice skill. One task per message. Touch only named files. App.jsx is one big component: exact anchors and the duplicate check. New pure modules go in src/*.js with tests/*.test.mjs (node cannot import .jsx). Mock everything; no real audio or IndexedDB here, so the owner tests live. EVERY clip-editor task ends by updating this file in place (task log, known gaps, verified, version) and lists it in READY TO COMMIT with its own git add line.
 
 ## Verified
-- npm test: 615 pass, 0 fail (2026-11-28, 0.2.76-beta; full raw run pasted in the task report).
-- node --check clean on src/mixEngine.js and tests/mixEngine.test.mjs. .jsx and .css cannot be compiled here, so the owner's vship build is the real check.
-- Owner must test live in Brave: nothing to test live yet for 2.45b — src/mixEngine.js is not imported by the app until a later task wires the mixer. When it is wired, play a voice with and without music, a delayed and a negative music start, a loop, fades and ducking, and confirm it sounds right and the position and pause/seek behave.
+- npm test: 619 pass, 0 fail (2026-11-28, 0.2.77-beta; full raw run pasted in the task report).
+- node --check clean on src/clipPlayer.js and tests/clipPlayer.test.mjs. .jsx and .css cannot be compiled here, so the owner's vship build is the real check.
+- Owner must test live in Brave: nothing to test live yet for 2.45b — src/mixEngine.js is not imported by the app until a later task wires the mixer. For 2.46a, open the clip editor and check the volume and speed sliders change playback, the zoom buttons sit under the waveform next to play, the close × shows the teal hover, and the editor fills three quarters of the width.

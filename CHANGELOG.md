@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.77-beta - 2026-11-28
+- Clip editor: volume and speed sliders in the transport row drive the clip player (setVolume/setRate on src/clipPlayer.js with a master gain and per-source playbackRate); the zoom buttons move under the waveform next to play; the close button gets the settings-cog hover highlight; the editor widens to three quarters. App.jsx untouched
+
 ## 0.2.76-beta - 2026-11-28
 - Clip editor: new pure src/mixEngine.js (createMixEngine) drives the live mix graph (voiceGain, musicGain, fade, duck, master) from one shared plan, with load/setPlan/play/pause/seek/getPosition/getState/setOnEnd/close and a hand-written fake-context test; not imported by the app yet
 

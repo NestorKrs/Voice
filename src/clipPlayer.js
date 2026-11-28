@@ -19,6 +19,9 @@ export function createClipPlayer({ createContext }) {
   let rangeStart = null;
   let rangeEnd = null;
   let looping = false;
+  let volume = 1;
+  let speed = 1;
+  let master = null;
 
   function stopCurrent() {
     if (!currentSource) return;
@@ -34,7 +37,8 @@ export function createClipPlayer({ createContext }) {
 
     const source = ctx.createBufferSource();
     source.buffer = buffer;
-    source.connect(ctx.destination);
+    source.playbackRate.value = speed;
+    source.connect(master);
     source.loop = loop;
     if (loop) {
       source.loopStart = start / rate;
@@ -65,7 +69,7 @@ export function createClipPlayer({ createContext }) {
     const latency = Number.isFinite(ctx.outputLatency) && ctx.outputLatency >= 0
       ? ctx.outputLatency
       : 0;
-    const e = Math.max(0, Math.round((ctx.currentTime - startedAt - latency) * rate));
+    const e = Math.max(0, Math.round((ctx.currentTime - startedAt - latency) * rate * speed));
     if (looping) {
       const offset = startSample - rangeStart;
       return rangeStart + ((offset + e) % (rangeEnd - rangeStart));
@@ -146,6 +150,22 @@ export function createClipPlayer({ createContext }) {
     begin(from, rangeEnd, looping);
   }
 
+  function setVolume(v) {
+    volume = Math.max(0, Math.min(1, v));
+    if (master) master.gain.value = volume;
+  }
+
+  function setRate(r) {
+    const next = r > 0 ? r : 1;
+    if (next === speed) return;
+    const wasPlaying = status === 'playing';
+    const from = wasPlaying ? getPosition() : position;
+    speed = next;
+    if (!wasPlaying) return;
+    if (rangeStart !== null && rangeEnd !== null) begin(from, rangeEnd, looping);
+    else begin(from, total, false);
+  }
+
   function getState() {
     return { status, position: getPosition(), total, rate, looping, rangeStart, rangeEnd };
   }
@@ -159,6 +179,7 @@ export function createClipPlayer({ createContext }) {
     if (ctx) ctx.close();
     ctx = null;
     buffer = null;
+    master = null;
     total = 0;
     rate = 0;
     status = 'idle';
@@ -180,6 +201,9 @@ export function createClipPlayer({ createContext }) {
     for (let index = 0; index < channels.length; index += 1) {
       buffer.copyToChannel(channels[index], index);
     }
+    master = ctx.createGain();
+    master.gain.value = volume;
+    master.connect(ctx.destination);
     total = length;
     rate = sampleRate;
     position = 0;
@@ -192,5 +216,5 @@ export function createClipPlayer({ createContext }) {
     looping = false;
   }
 
-  return { load, play, pause, seek, getPosition, getState, setOnEnd, setLoop, close };
+  return { load, play, pause, seek, getPosition, getState, setOnEnd, setLoop, setVolume, setRate, close };
 }

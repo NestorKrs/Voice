@@ -10,8 +10,14 @@ function makeContext() {
     outputLatency: 0,
     buffers: [],
     sources: [],
+    gains: [],
     resumed: 0,
     closed: 0,
+    createGain() {
+      const gain = { gain: { value: 1 }, connects: [], connect(node) { this.connects.push(node); } };
+      this.gains.push(gain);
+      return gain;
+    },
     createBuffer(channels, length, sampleRate) {
       const buffer = {
         channels, length, sampleRate, copies: [],
@@ -26,6 +32,7 @@ function makeContext() {
       const source = {
         buffer: null,
         onended: null,
+        playbackRate: { value: 1 },
         connects: [],
         starts: [],
         stops: 0,
@@ -99,7 +106,8 @@ test('play from zero starts with the whole buffer as its duration', () => {
   assert.equal(player.play(), true);
   const source = ctx.sources[0];
   assert.strictEqual(source.buffer, ctx.buffers[0]);
-  assert.deepEqual(source.connects, [ctx.destination]);
+  assert.deepEqual(source.connects, [ctx.gains[0]]);
+  assert.deepEqual(ctx.gains[0].connects, [ctx.destination]);
   assert.deepEqual(source.starts[0], [0, 0, 2]);
   assert.equal(player.getState().status, 'playing');
 });
@@ -548,4 +556,48 @@ test('load does not modify the input channels', () => {
   player.load([left, right], 1000);
   assert.deepEqual(Array.from(left), Array.from(leftCopy));
   assert.deepEqual(Array.from(right), Array.from(rightCopy));
+});
+
+test('setVolume clamps to 0..1 and sets the master gain', () => {
+  const { player, ctx } = harness();
+  load(player, 1000);
+  player.setVolume(0.5);
+  assert.equal(ctx.gains[0].gain.value, 0.5);
+  player.setVolume(5);
+  assert.equal(ctx.gains[0].gain.value, 1);
+  player.setVolume(-1);
+  assert.equal(ctx.gains[0].gain.value, 0);
+});
+
+test('setRate changes the source playbackRate and the position speed', () => {
+  const { player, ctx } = harness();
+  load(player, 1000);
+  player.play();
+  player.setRate(2);
+  assert.equal(ctx.sources[1].playbackRate.value, 2);
+  ctx.currentTime = 0.25;
+  assert.equal(player.getPosition(), 500);
+});
+
+test('setRate while playing restarts the source at the current position', () => {
+  const { player, ctx } = harness();
+  load(player, 2000);
+  player.play();
+  ctx.currentTime = 0.25;
+  player.setRate(2);
+  assert.equal(ctx.sources.length, 2);
+  assert.deepEqual(ctx.sources[1].starts[0], [0, 0.25, 1.75]);
+  assert.equal(ctx.sources[1].playbackRate.value, 2);
+  assert.equal(player.getState().status, 'playing');
+});
+
+test('setRate while paused stores the speed without creating a source', () => {
+  const { player } = harness();
+  load(player, 1000);
+  player.play();
+  player.pause();
+  player.setRate(1.5);
+  assert.equal(player.getState().status, 'paused');
+  player.play();
+  assert.equal(player.getState().status, 'playing');
 });
